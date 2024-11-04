@@ -1,0 +1,103 @@
+<html>
+<head>
+    <title>Intensity Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <style>
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+
+</head>
+
+<body>
+<div id="map"></div>
+</body>
+
+<script type="text/javascript">
+    const socket = io();
+    const map = L.map(document.getElementById('map'), {
+        center: [23.5, 121],
+        zoom: 8,
+    });
+
+    const Esri_OceanBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri',
+        maxZoom: 13
+    });
+    Esri_OceanBasemap.addTo(map);
+
+    let pgaStations = L.layerGroup().addTo(map);
+
+    function addPgaStation(station_name, station_loc, intensity) {
+        let mark = L.circleMarker(station_loc.slice(0, 2), {
+            color: getIntensityColor(intensity),
+            fillColor: getIntensityColor(intensity),
+            fillOpacity: 0.5,
+            radius: 10,
+            alt: station_name,
+            renderer: L.canvas()
+        }).bindPopup(station_name);
+
+        pgaStations.addLayer(mark);
+    }
+
+
+    function getIntensityColor(intensity) {
+        switch (intensity) {
+            case "0":
+                return "#ffffff";
+            case "1":
+                return "#33FFDD";
+            case "2":
+                return "#34ff32";
+            case "3":
+                return "#fefd32";
+            case "4":
+                return "#fe8532";
+            case "5-":
+                return "#fd5233";
+            case "5+":
+                return "#c43f3b";
+            case "6-":
+                return "#9d4646";
+            case "6+":
+                return "#9a4c86";
+            case "7":
+                return "#b51fea";
+        }
+    }
+
+    socket.on('connect_init', function () {
+    });
+
+
+    socket.on('dataset_data', function (msg) {
+        console.log(msg);
+        let station_name = msg.station_name;
+        let targetLoc = msg.target;
+        let intensity = msg.intensity;
+
+
+        for (let i = 0; i < station_name.length; i++) {
+            addPgaStation(station_name[i], targetLoc[i], intensity[i]);
+        }
+
+    });
+
+
+</script>
+</html>
