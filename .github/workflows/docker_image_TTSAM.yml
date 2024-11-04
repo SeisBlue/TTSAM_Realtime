@@ -1,0 +1,47 @@
+name: Docker Image TTSAM Realtime
+
+on:
+  push:
+    paths:
+      - '.github/workflows/docker_image_TTSAM.yml'
+      - 'docker/Dockerfile'
+      - 'docker/requirements.txt'
+      - 'docker/conda_requirements.txt'
+
+env:
+  DOCKER_REPO: seisblue/ttsam-realtime
+
+jobs:
+  Build_Docker_Image:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REPO }}
+        tags: |
+          type=raw,value={{date 'YYYYMMDD'}},latest
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v6
+      with:
+        context:
+        push: ${{ github.event_name != 'pull_request' }}
+        file: docker/Dockerfile
+        tags: ${{ steps.meta.outputs.tags }}, ${{ env.DOCKER_REPO }}:${{ github.sha }}

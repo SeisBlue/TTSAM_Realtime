@@ -8,6 +8,7 @@ mlflow
 numexpr>=2.8.4
 numpy
 obspy
+paho-mqtt
 pandas
 plotly
 scikit-learn
