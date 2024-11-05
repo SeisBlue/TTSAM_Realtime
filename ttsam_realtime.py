@@ -69,14 +69,17 @@ def wave_emitter():
     while True:
         wave = wave_queue.get()
         wave_id = join_id_from_dict(wave, order="NSLC")
+
         if "Z" not in wave_id:
             continue
+
         wave["waveid"] = wave_id
 
         wave_packet = {
             "waveid": wave_id,
             "data": wave["data"].tolist(),
         }
+
         socketio.emit("wave_packet", wave_packet)
 
 
@@ -142,8 +145,7 @@ site_info = pd.read_csv("data/site_info.txt", sep="\s+")
 
 def get_station_position(station):
     latitude, longitude, elevation = site_info.loc[
-        (site_info["Station"] == station), ["Latitude", "Longitude",
-                                            "Elevation"]
+        (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
     ].values[0]
     return latitude, longitude, elevation
 
@@ -157,63 +159,81 @@ def earthworm_wave_listener():
             continue
 
         wave = earthworm.get_wave(0)
+        if not wave:
+            continue
 
-        if wave:
-            """
-            這裡並沒有去處理每個 trace 如果時間不連續的問題
-            """
+        """
+        這裡並沒有去處理每個 trace 如果時間不連續的問題
+        """
 
-            # 如果時間重置(tankplayer 重播)，清空 buffer
-            if latest_time > wave["startt"] + 60:
-                wave_buffer.clear()
-                time_buffer.clear()
-                print(
-                    "time reversed over 60 secs, flush wave_buffer and time_buffer")
-            latest_time = wave["endt"]
+        # 如果時間重置(tankplayer 重播)，清空 buffer
+        if latest_time > wave["startt"] + 60:
+            wave_buffer.clear()
+            time_buffer.clear()
+            print("time reversed over 60 secs, flush wave_buffer and time_buffer")
 
-            try:
-                wave = convert_to_tsmip_legacy_naming(wave)
+        latest_time = wave["endt"]
 
-                wave_id = join_id_from_dict(wave, order="NSLC")
+        try:
+            wave = convert_to_tsmip_legacy_naming(wave)
 
-                wave["data"] = wave["data"] * get_wave_constant(wave)
+            wave_id = join_id_from_dict(wave, order="NSLC")
 
-                # 將 wave_id 加入 wave_queue 給 wave_emitter 發送至前端
-                if "Z" in wave_id:
-                    wave_queue.put(wave)
+            wave["data"] = wave["data"] * get_wave_constant(wave)
 
-                # add new trace to buffer
-                if wave_id not in wave_buffer.keys():
-                    # wave_buffer 初始化時全部填入 wave 的平均值，確保 demean 時不會被斷點影響
-                    wave_buffer[wave_id] = np.full(
-                        sample_rate * buffer_time,
-                        fill_value=np.array(wave["data"]).mean(),
-                    )
-                    time_buffer[wave_id] = np.append(
-                        np.linspace(
-                            wave["startt"] - (buffer_time - 1),
-                            wave["startt"],
-                            sample_rate * (buffer_time - 1),
-                        ),
-                        np.linspace(wave["startt"], wave["endt"],
-                                    wave["data"].size),
-                    )
+            # 將 wave_id 加入 wave_queue 給 wave_emitter 發送至前端
+            if "Z" in wave_id:
+                wave_queue.put(wave)
 
-                wave_buffer[wave_id] = np.append(wave_buffer[wave_id],
-                                                 wave["data"])
-
-                wave_buffer[wave_id] = wave_buffer[wave_id][wave["data"].size:]
-
-                time_buffer[wave_id] = np.append(
-                    time_buffer[wave_id],
-                    np.linspace(wave["startt"], wave["endt"],
-                                wave["data"].size),
+            # add new trace to buffer
+            if wave_id not in wave_buffer.keys():
+                # wave_buffer 初始化時全部填入 wave 的平均值，確保 demean 時不會被斷點影響
+                wave_buffer[wave_id] = wave_array_init(
+                    sample_rate, buffer_time, fill_value=np.array(wave["data"]).mean()
                 )
-                time_buffer[wave_id] = time_buffer[wave_id][wave["data"].size:]
+                time_buffer[wave_id] = time_array_init(
+                    sample_rate,
+                    buffer_time,
+                    wave["startt"],
+                    wave["endt"],
+                    wave["data"].size,
+                )
 
-            except Exception as e:
-                print("earthworm_wave_listener error", e)
+            wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
+
+            new_time_array = np.linspace(
+                wave["startt"], wave["endt"], wave["data"].size
+            )
+            time_buffer[wave_id] = slide_array(time_buffer[wave_id], new_time_array)
+
+        except Exception as e:
+            print("earthworm_wave_listener error", e)
         time.sleep(0.000001)
+
+
+def wave_array_init(sample_rate, buffer_time, fill_value):
+    return np.full(sample_rate * buffer_time, fill_value=fill_value)
+
+
+def time_array_init(sample_rate, buffer_time, start_time, end_time, data_length):
+    """
+    生成一個時間序列，包含前後兩段
+    後段從 start_time 內插至 end_time (確定的時間序列)
+    前段從 start_time 外插至 buffer 開始點 (往前預估的時間序列)
+    """
+    return np.append(
+        np.linspace(
+            start_time - (buffer_time - 1),
+            start_time,
+            sample_rate * (buffer_time - 1),
+        ),
+        np.linspace(start_time, end_time, data_length),
+    )
+
+
+def slide_array(array, data):
+    array = np.append(array, data)
+    return array[data.size :]
 
 
 def parse_pick_msg(pick_msg):
@@ -289,6 +309,7 @@ def event_cutter(pick_buffer, debug=False):
             try:
                 wave_id = f"{network}.{station}.{location}.{channel[0:2]}{component}"
                 data[component.lower()] = wave_buffer[wave_id].tolist()
+
             except KeyError:
                 print(f"{wave_id} {component} not found, add zero array")
                 wave_id = f"{network}.{station}.{location}.{channel[0:2]}Z"
@@ -329,8 +350,7 @@ def lowpass(data, freq=10, df=100, corners=4):
 
     if f > 1:
         f = 1.0
-    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter",
-                        output="zpk")
+    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter", output="zpk")
 
     sos = zpk2sos(z, p, k)
     return sosfilt(sos, data)
@@ -456,8 +476,7 @@ def ttsam_model_predict(dataset, debug=False):
         tensor = convert_torch_tensor(dataset)
         weight, sigma, mu = full_model(tensor)
 
-        pga_list = torch.sum(weight * mu,
-                             dim=2).cpu().detach().numpy().flatten()
+        pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
         pga_list = pga_list[: len(tensor["target_name"])]
 
         dataset["pga"] = pga_list.tolist()
@@ -522,9 +541,11 @@ def model_inference(debug=False):
                     TaiwanIntensity().calculate(pga, label=True)
                     for pga in dataset["pga"]
                 ]
-                report = {}
+                report = {"over_threshold": []}
                 for i, intensity in enumerate(dataset["intensity"]):
                     report[f"{dataset['target_name'][i]}"] = intensity
+                    if intensity in ["4", "5-", "5+", "6-", "6+", "7"]:
+                        report["over_threshold"].append(dataset["target_name"][i])
 
                 # 資料傳至 MQTT
                 mqtt_client.publish(topic, json.dumps(report))
