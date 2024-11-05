@@ -3,6 +3,7 @@ import bisect
 import multiprocessing
 import threading
 import time
+import json
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
+import paho.mqtt.client as mqtt
 
 from model.ttsam_model import get_full_model
 
@@ -29,6 +31,8 @@ pick_buffer = manager.dict()
 
 event_queue = manager.Queue()
 dataset_queue = manager.Queue()
+
+report_queue = manager.Queue()
 
 
 @app.route("/")
@@ -138,7 +142,8 @@ site_info = pd.read_csv("data/site_info.txt", sep="\s+")
 
 def get_station_position(station):
     latitude, longitude, elevation = site_info.loc[
-        (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
+        (site_info["Station"] == station), ["Latitude", "Longitude",
+                                            "Elevation"]
     ].values[0]
     return latitude, longitude, elevation
 
@@ -162,7 +167,8 @@ def earthworm_wave_listener():
             if latest_time > wave["startt"] + 60:
                 wave_buffer.clear()
                 time_buffer.clear()
-                print("time reversed over 60 secs, flush wave_buffer and time_buffer")
+                print(
+                    "time reversed over 60 secs, flush wave_buffer and time_buffer")
             latest_time = wave["endt"]
 
             try:
@@ -189,18 +195,21 @@ def earthworm_wave_listener():
                             wave["startt"],
                             sample_rate * (buffer_time - 1),
                         ),
-                        np.linspace(wave["startt"], wave["endt"], wave["data"].size),
+                        np.linspace(wave["startt"], wave["endt"],
+                                    wave["data"].size),
                     )
 
-                wave_buffer[wave_id] = np.append(wave_buffer[wave_id], wave["data"])
+                wave_buffer[wave_id] = np.append(wave_buffer[wave_id],
+                                                 wave["data"])
 
-                wave_buffer[wave_id] = wave_buffer[wave_id][wave["data"].size :]
+                wave_buffer[wave_id] = wave_buffer[wave_id][wave["data"].size:]
 
                 time_buffer[wave_id] = np.append(
                     time_buffer[wave_id],
-                    np.linspace(wave["startt"], wave["endt"], wave["data"].size),
+                    np.linspace(wave["startt"], wave["endt"],
+                                wave["data"].size),
                 )
-                time_buffer[wave_id] = time_buffer[wave_id][wave["data"].size :]
+                time_buffer[wave_id] = time_buffer[wave_id][wave["data"].size:]
 
             except Exception as e:
                 print("earthworm_wave_listener error", e)
@@ -320,7 +329,8 @@ def lowpass(data, freq=10, df=100, corners=4):
 
     if f > 1:
         f = 1.0
-    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter", output="zpk")
+    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter",
+                        output="zpk")
 
     sos = zpk2sos(z, p, k)
     return sosfilt(sos, data)
@@ -446,7 +456,8 @@ def ttsam_model_predict(dataset, debug=False):
         tensor = convert_torch_tensor(dataset)
         weight, sigma, mu = full_model(tensor)
 
-        pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
+        pga_list = torch.sum(weight * mu,
+                             dim=2).cpu().detach().numpy().flatten()
         pga_list = pga_list[: len(tensor["target_name"])]
 
         dataset["pga"] = pga_list.tolist()
@@ -511,10 +522,12 @@ def model_inference(debug=False):
                     TaiwanIntensity().calculate(pga, label=True)
                     for pga in dataset["pga"]
                 ]
-                report = []
+                report = {}
                 for i, intensity in enumerate(dataset["intensity"]):
-                    report.append(f"{dataset['target_name'][i]}: {intensity}")
+                    report[f"{dataset['target_name'][i]}"] = intensity
 
+                # 資料傳至 MQTT
+                mqtt_client.publish(topic, json.dumps(report))
                 print(report)
 
                 # 資料傳至前端
@@ -535,6 +548,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, help="web server port")
     args = parser.parse_args()
 
+    # 初始化 Earthworm
     earthworm = PyEW.EWModule(
         def_ring=1000, mod_id=2, inst_id=255, hb_time=30, db=False
     )
@@ -542,6 +556,13 @@ if __name__ == "__main__":
     earthworm.add_ring(1002)  # buf_ring 1: Wave ring 2
     earthworm.add_ring(1005)  # buf_ring 2: Pick ring
 
+    # 初始化 MQTT
+    mqtt_client = mqtt.Client()
+    mqtt_client.username_pw_set("ttsam", "ttsam")
+    mqtt_client.connect("0.0.0.0", 1883)
+    topic = "ttsam"
+
+    # 初始化進程
     processes = []
     functions = [
         earthworm_wave_listener,
