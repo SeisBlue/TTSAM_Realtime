@@ -2,14 +2,16 @@ import argparse
 import bisect
 import json
 import multiprocessing
+import sys
 import threading
 import time
-import sys
+from datetime import datetime
 
 import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
+import pytz
 import torch
 import torch.nn as nn
 from flask import Flask, render_template
@@ -554,12 +556,26 @@ def model_inference():
     進行模型預測
     """
     log_folder = "logs"
-
+    log_file = None
     while True:
         # 小於 3 個測站不觸發模型預測
         if len(pick_buffer) < 3:
+            if log_file:
+                log_file.close()
+
+            log_file = None
             loading_animation()
             continue
+
+        if len(pick_buffer) >= 3:
+            if not log_file:
+                log_start_time = time.time()
+                first_pick_timestamp = list(pick_buffer.values())[0]["pick_time"]
+                first_pick_time = datetime.fromtimestamp(
+                    float(first_pick_timestamp), tz=pytz.timezone("Asia/Taipei")
+                ).strftime("%Y%m%d_%H%M%S")
+                log_file = f"{log_folder}/ttsam_{first_pick_time}.log"
+                log_file = open(log_file, "w+")
 
         try:
             start_time = time.time()
@@ -568,6 +584,7 @@ def model_inference():
             event_data = event_cutter(pick_buffer)
             dataset = convert_dataset(event_data)
             dataset = get_target_dataset(dataset, target_csv)
+
             for batch in dataset_batch(dataset):
                 wave = np.array(batch["waveform"])
                 wave_transposed = wave.transpose(0, 2, 1)
@@ -591,31 +608,35 @@ def model_inference():
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
 
-            report = {"over_threshold": []}
+            report = {"log_time": "", "alarm": []}
 
             for i, target_name in enumerate(dataset["target_name"]):
                 intensity = dataset["intensity"][i]
                 report[f"{target_name}"] = intensity
 
                 if intensity in ["4", "5-", "5+", "6-", "6+", "7"]:
-                    report["over_threshold"].append(target_name)
+                    report["alarm"].append(target_name)
 
             end_time = time.time()
-            report["logging_time"] = end_time
+            report["timestamp"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            )
+            report["log_time"] = end_time - log_start_time
+            report["run_time"] = end_time - start_time
+
             # 資料傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
             print(report)
             sys.stdout.flush()
+            log_file.write(json.dumps(report) + "\n")
 
             # 資料傳至前端
             dataset_queue.put(dataset)
 
-            print("model_inference time:", end_time - start_time)
-
         except Exception as e:
             print("model_inference error:", e)
 
-        time.sleep(0.2)
+        time.sleep(0.5)
 
 
 """
