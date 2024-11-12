@@ -4,6 +4,7 @@ import json
 import multiprocessing
 import threading
 import time
+import sys
 
 import numpy as np
 import paho.mqtt.client as mqtt
@@ -395,34 +396,6 @@ def get_site_info(pick):
         print("get_site_info error:", e)
 
 
-def get_target(dataset, target_file="data/eew_target.csv"):
-    try:
-        target_df = pd.read_csv(target_file, sep=",")
-
-        target_list = []
-        target_name_list = []
-        target_dict = target_df.to_dict(orient="records")
-        for i, target in enumerate(target_dict):
-            latitude = target["latitude"]
-            longitude = target["longitude"]
-            elevation = target["elevation"]
-            target_list.append(
-                [latitude, longitude, elevation, get_vs30(latitude, longitude)]
-            )
-            target_name_list.append(target["station"])
-
-        dataset["target"] = target_list
-        dataset["target_name"] = target_name_list
-
-        return dataset
-
-    except FileNotFoundError:
-        print("eew_target.csv not found")
-
-    except Exception as e:
-        print("get_target error:", e)
-
-
 def convert_dataset(event_msg):
     try:
         waveform_list = []
@@ -444,6 +417,9 @@ def convert_dataset(event_msg):
             "waveform": waveform_list,
             "station": station_list,
             "station_name": station_name_list,
+            "target": [],
+            "target_name": [],
+            "pga": [],
         }
 
         return dataset
@@ -452,56 +428,72 @@ def convert_dataset(event_msg):
         print("converter error:", e)
 
 
-def convert_torch_tensor(dataset):
+def read_target_csv(target_file="data/eew_target.csv"):
     try:
-        station_limit = min(len(dataset["waveform"]), 25)
-        target_limit = min(len(dataset["target"]), 25)
+        target_df = pd.read_csv(target_file, sep=",")
+        target = target_df.to_dict(orient="records")
+        return target
 
-        wave = np.array(dataset["waveform"])
-        wave_transposed = wave.transpose(0, 2, 1)
-
-        waveform = np.zeros((25, 3000, 3))
-        station = np.zeros((25, 4))
-        target = np.zeros((25, 4))
-
-        # 取前 25 筆資料，不足的話補 0
-        waveform[:station_limit] = wave_transposed[:station_limit]
-        station[:station_limit] = dataset["station"][:station_limit]
-        target[:target_limit] = dataset["target"][:target_limit]
-
-        input_waveform = torch.tensor(waveform).to(torch.double).unsqueeze(0)
-        input_station = torch.tensor(station).to(torch.double).unsqueeze(0)
-        target_station = torch.tensor(target).to(torch.double).unsqueeze(0)
-        tensor = {
-            "waveform": input_waveform,
-            "station": input_station,
-            "station_name": dataset["station_name"][:station_limit],
-            "target": target_station,
-            "target_name": dataset["target_name"][:target_limit],
-        }
-
-        return tensor
+    except FileNotFoundError:
+        print("eew_target.csv not found")
 
     except Exception as e:
-        print("reorder_array error:", e)
+        print("get_target error:", e)
 
 
-def ttsam_model_predict(dataset):
+def dataset_batch(dataset, batch_size=25):
+    batch = {}
+    try:
+        # 固定前 25 站的 waveform
+        batch["waveform"] = dataset["waveform"][:batch_size]
+        batch["station"] = dataset["station"][:batch_size]
+        batch["station_name"] = dataset["station_name"][:batch_size]
+
+        for i in range(0, len(dataset["target"]), batch_size):
+            # 迭代 25 站的 target
+            batch["target"] = dataset["target"][i : i + batch_size]
+            batch["target_name"] = dataset["target_name"][i : i + batch_size]
+
+            yield batch
+
+    except Exception as e:
+        print("dataset_batch error:", e)
+
+
+def get_target_dataset(dataset, target_csv):
+    target_list = []
+    target_name_list = []
+    for target in target_csv:
+        latitude = target["latitude"]
+        longitude = target["longitude"]
+        elevation = target["elevation"]
+        target_list.append(
+            [latitude, longitude, elevation, get_vs30(latitude, longitude)]
+        )
+        target_name_list.append(target["station"])
+    dataset["target"] = target_list
+    dataset["target_name"] = target_name_list
+
+    return dataset
+
+
+def ttsam_model_predict(tensor):
     try:
         model_path = f"model/ttsam_trained_model_11.pt"
         full_model = get_full_model(model_path)
-        tensor = convert_torch_tensor(dataset)
+
         weight, sigma, mu = full_model(tensor)
+        pga_list = get_average_pga(weight, sigma, mu)
 
-        pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
-        pga_list = pga_list[: len(tensor["target_name"])]
-
-        dataset["pga"] = pga_list.tolist()
-
-        return dataset
+        return pga_list
 
     except Exception as e:
         print("ttsam_model_predict error:", e)
+
+
+def get_average_pga(weight, sigma, mu):
+    pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
+    return pga_list.tolist()
 
 
 def calculate_intensity(pga, pgv=None, label=False):
@@ -533,47 +525,102 @@ def calculate_intensity(pga, pgv=None, label=False):
         print("calculate_intensity error:", e)
 
 
+def prepare_tensor(data, shape, limit):
+    # 輸出固定的 tensor shape, 並將資料填入
+    tensor_data = np.zeros(shape)
+    tensor_limit = min(len(data), limit)
+    tensor_data[:tensor_limit] = data[:tensor_limit]
+    return torch.tensor(tensor_data).to(torch.double).unsqueeze(0)
+
+
+def loading_animation():
+    # 定義 loading 動畫的元素
+    chars = ["-", "/", "|", "\\"]
+
+    # 無限循環顯示 loading 動畫
+    for char in chars:
+        # 清除上一個字符
+        sys.stdout.write("\r" + " " * 20 + "\r")
+        sys.stdout.flush()
+
+        # 顯示目前的 loading 字符
+        sys.stdout.write(f"waiting for trigger station > 3 {char}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+
+
 def model_inference():
     """
     進行模型預測
     """
+    log_folder = "logs"
+
     while True:
         # 小於 3 個測站不觸發模型預測
         if len(pick_buffer) < 3:
-            time.sleep(0.5)
+            loading_animation()
             continue
 
         try:
             start_time = time.time()
+            target_csv = read_target_csv("data/eew_target.csv")
 
             event_data = event_cutter(pick_buffer)
             dataset = convert_dataset(event_data)
-            dataset = get_target(dataset)
-            dataset = ttsam_model_predict(dataset)
+            dataset = get_target_dataset(dataset, target_csv)
+            for batch in dataset_batch(dataset):
+                wave = np.array(batch["waveform"])
+                wave_transposed = wave.transpose(0, 2, 1)
+
+                batch_waveform = prepare_tensor(wave_transposed, (25, 3000, 3), 25)
+                batch_station = prepare_tensor(batch["station"], (25, 4), 25)
+                batch_target = prepare_tensor(batch["target"], (25, 4), 25)
+
+                tensor = {
+                    "waveform": batch_waveform,
+                    "station": batch_station,
+                    "station_name": batch["station_name"],
+                    "target": batch_target,
+                    "target_name": batch["target_name"],
+                }
+
+                pga_list = ttsam_model_predict(tensor)
+                dataset["pga"].extend(pga_list)
 
             dataset["intensity"] = [
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
+
             report = {"over_threshold": []}
 
-            for i, intensity in enumerate(dataset["intensity"]):
-                report[f"{dataset['target_name'][i]}"] = intensity
+            for i, target_name in enumerate(dataset["target_name"]):
+                intensity = dataset["intensity"][i]
+                report[f"{target_name}"] = intensity
 
                 if intensity in ["4", "5-", "5+", "6-", "6+", "7"]:
-                    report["over_threshold"].append(dataset["target_name"][i])
+                    report["over_threshold"].append(target_name)
 
+            end_time = time.time()
+            report["logging_time"] = end_time
             # 資料傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
             print(report)
+            sys.stdout.flush()
 
             # 資料傳至前端
             dataset_queue.put(dataset)
-            end_time = time.time()
+
             print("model_inference time:", end_time - start_time)
 
         except Exception as e:
             print("model_inference error:", e)
 
+        time.sleep(0.2)
+
+
+"""
+PyTorch Model
+"""
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
