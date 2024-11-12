@@ -87,13 +87,13 @@
 
     socket.on('dataset_data', function (msg) {
         console.log(msg);
-        let station_name = msg.station_name;
+        let target_name = msg.target_name;
         let targetLoc = msg.target;
         let intensity = msg.intensity;
 
 
-        for (let i = 0; i < station_name.length; i++) {
-            addPgaStation(station_name[i], targetLoc[i], intensity[i]);
+        for (let i = 0; i < target_name.length; i++) {
+            addPgaStation(target_name[i], targetLoc[i], intensity[i]);
         }
 
     });
