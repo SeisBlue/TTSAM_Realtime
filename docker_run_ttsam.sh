@@ -5,6 +5,6 @@ docker run \
 --rm \
 --ipc host \
 --net=host \
---name tt-sam-cpu \
-seisblue/ttsam \
+--name ttsam-cpu \
+seisblue/ttsam-realtime \
 /opt/conda/bin/python3 /workspace/ttsam_realtime.py
