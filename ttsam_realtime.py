@@ -143,23 +143,29 @@ def convert_to_tsmip_legacy_naming(wave):
 
 def get_wave_constant(wave):
     # count to cm/s^2
-    wave_constant = site_info.loc[
-        (site_info["Station"] == wave["station"])
-        & (site_info["Channel"] == wave["channel"]),
-        "Constant",
-    ].values[0]
-
-    if not wave_constant:
+    try:
+        wave_constant = site_info.loc[
+            (site_info["Station"] == wave["station"])
+            & (site_info["Channel"] == wave["channel"]),
+            "Constant",
+        ].values[0]
+    except Exception as e:
+        print(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
         wave_constant = 3.2e-6
 
     return wave_constant
 
 
 def get_station_position(station):
-    latitude, longitude, elevation = site_info.loc[
-        (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
-    ].values[0]
-    return latitude, longitude, elevation
+    try:
+        latitude, longitude, elevation = site_info.loc[
+            (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
+        ].values[0]
+        return latitude, longitude, elevation
+    except Exception as e:
+        print("get_station_position error:", e)
+        return
+
 
 
 def wave_array_init(sample_rate, buffer_time, fill_value):
@@ -193,18 +199,21 @@ def earthworm_wave_listener():
     latest_time = 0
     while True:
         if earthworm.mod_sta() is False:
+            time.sleep(0.00001)
             continue
 
         wave = earthworm.get_wave(0)
         if not wave:
+            time.sleep(0.00001)
             continue
 
         # 如果時間重置(tankplayer 重播)，清空 buffer
-        if latest_time > wave["startt"] + 60:
-            wave_buffer.clear()
-            time_buffer.clear()
-            print("time reversed over 60 secs, flush wave and time buffer")
-        latest_time = wave["endt"]
+        # TODO: CWA 測試會平繁出現時間倒退的情況
+        # if latest_time > wave["startt"] + 60:
+        #     wave_buffer.clear()
+        #     time_buffer.clear()
+        #     print("time reversed over 60 secs, flush wave and time buffer")
+        # latest_time = wave["endt"]
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
@@ -239,7 +248,7 @@ def earthworm_wave_listener():
         except Exception as e:
             print("earthworm_wave_listener error", e)
 
-        time.sleep(0.000001)
+        time.sleep(0.00001)
 
 
 """
@@ -281,8 +290,10 @@ def earthworm_pick_listener():
     pick msg 的生命週期為 p 波後 2-9 秒
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
+    # TODO: 如果 upsec 9 沒出現，pick 會一直卡在裡面
     while True:
-        pick_msg = earthworm.get_msg(buf_ring=2, msg_type=0)
+        pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
+
         if not pick_msg:
             continue
 
@@ -298,11 +309,18 @@ def earthworm_pick_listener():
             elif pick_data["update_sec"] == "9":
                 pick_buffer.__delitem__(pick_id)
 
+            # 超時移除 pick
+            # 如果 new pick 的秒數比舊的晚 10 秒，則刪除舊的
+            for pick_id, buffer_pick in pick_buffer.items():
+                if buffer_pick["update_sec"] + 10 < pick_data["update_sec"]:
+                    pick_buffer.__delitem__(pick_id)
+
+
         except Exception as e:
             print("earthworm_pick_listener error:", e)
             continue
 
-        time.sleep(0.001)
+        time.sleep(0.00001)
 
 
 """
@@ -395,7 +413,11 @@ def get_site_info(pick):
         return [latitude, longitude, elevation, vs30]
 
     except Exception as e:
-        print("get_site_info error:", e)
+        print(f"{pick['station']} not found in site_info, use pick info")
+        latitude, longitude, elevation = pick['lat'], pick['lon'], 100
+        vs30 = get_vs30(latitude, longitude)
+        return [latitude, longitude, elevation, vs30]
+
 
 
 def convert_dataset(event_msg):
@@ -546,7 +568,7 @@ def loading_animation():
         sys.stdout.flush()
 
         # 顯示目前的 loading 字符
-        sys.stdout.write(f"waiting for trigger station > 3 {char}")
+        sys.stdout.write(f"waiting for event {char}")
         sys.stdout.flush()
         time.sleep(0.1)
 
@@ -562,18 +584,21 @@ def model_inference():
         if len(pick_buffer) < 3:
             if log_file:
                 log_file.close()
-
+            # 重置 log_file
             log_file = None
             loading_animation()
             continue
 
         if len(pick_buffer) >= 3:
             if not log_file:
+                # 當觸發模型預測時，開始記錄 log
                 log_start_time = time.time()
                 first_pick_timestamp = list(pick_buffer.values())[0]["pick_time"]
                 first_pick_time = datetime.fromtimestamp(
                     float(first_pick_timestamp), tz=pytz.timezone("Asia/Taipei")
                 ).strftime("%Y%m%d_%H%M%S")
+
+                # 以第一個 pick 的時間為 log 檔案名稱
                 log_file = f"{log_folder}/ttsam_{first_pick_time}.log"
                 log_file = open(log_file, "w+")
 
@@ -585,6 +610,7 @@ def model_inference():
             dataset = convert_dataset(event_data)
             dataset = get_target_dataset(dataset, target_csv)
 
+            # 模型預測所有 target
             for batch in dataset_batch(dataset):
                 wave = np.array(batch["waveform"])
                 wave_transposed = wave.transpose(0, 2, 1)
@@ -601,20 +627,23 @@ def model_inference():
                     "target_name": batch["target_name"],
                 }
 
+                # 模型預測
                 pga_list = ttsam_model_predict(tensor)
                 dataset["pga"].extend(pga_list)
+
 
             dataset["intensity"] = [
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
 
+            # 產生報告
             report = {"log_time": "", "alarm": []}
-
             for i, target_name in enumerate(dataset["target_name"]):
                 intensity = dataset["intensity"][i]
                 report[f"{target_name}"] = intensity
 
                 if intensity in ["4", "5-", "5+", "6-", "6+", "7"]:
+                    # 過預警門檻值的測站
                     report["alarm"].append(target_name)
 
             end_time = time.time()
@@ -624,7 +653,7 @@ def model_inference():
             report["log_time"] = end_time - log_start_time
             report["run_time"] = end_time - start_time
 
-            # 資料傳至 MQTT
+            # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
             print(report)
             sys.stdout.flush()
@@ -1044,13 +1073,20 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, help="web server port")
     args = parser.parse_args()
 
-    # 初始化 Earthworm
+    # Local Earthworm
     earthworm = PyEW.EWModule(
         def_ring=1000, mod_id=2, inst_id=255, hb_time=30, db=False
     )
-    earthworm.add_ring(1000)  # buf_ring 0: Wave ring(tank player)
-    earthworm.add_ring(1002)  # buf_ring 1: Wave ring 2
-    earthworm.add_ring(1005)  # buf_ring 2: Pick ring
+    earthworm.add_ring(1000)  # buf_ring 0: Wave ring
+    earthworm.add_ring(1005)  # buf_ring 1: Pick ring
+
+    # CWA Earthworm
+    # earthworm = PyEW.EWModule(
+    #     def_ring=1034, mod_id=2, inst_id=52, hb_time=30, db=False
+    # )
+    #
+    # earthworm.add_ring(1034)  # buf_ring 0: Wave ring
+    # earthworm.add_ring(1005)  # buf_ring 1: Pick ring
 
     # 初始化 MQTT
     mqtt_client = mqtt.Client()
