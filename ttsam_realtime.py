@@ -28,13 +28,15 @@ manager = multiprocessing.Manager()
 wave_buffer = manager.dict()
 wave_queue = manager.Queue()
 
-time_buffer = manager.dict()
+# time_buffer = manager.dict()
 pick_buffer = manager.dict()
 
 event_queue = manager.Queue()
 dataset_queue = manager.Queue()
 
 report_queue = manager.Queue()
+
+wave_endt = manager.Value("d", 0)
 
 """
 Web Server
@@ -156,18 +158,6 @@ def get_wave_constant(wave):
     return wave_constant
 
 
-def get_station_position(station):
-    try:
-        latitude, longitude, elevation = site_info.loc[
-            (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
-        ].values[0]
-        return latitude, longitude, elevation
-    except Exception as e:
-        print("get_station_position error:", e)
-        return
-
-
-
 def wave_array_init(sample_rate, buffer_time, fill_value):
     return np.full(sample_rate * buffer_time, fill_value=fill_value)
 
@@ -194,12 +184,13 @@ def slide_array(array, data):
 
 
 def earthworm_wave_listener():
+    # TODO: wave endt 比 Earthworm 時間還要晚 0.5 秒左右
     buffer_time = 30  # 設定緩衝區保留時間
     sample_rate = 100  # 設定取樣率
-    latest_time = 0
+
     while True:
-        if earthworm.mod_sta() is False:
-            time.sleep(0.00001)
+        if not earthworm.mod_sta():
+            time.sleep(0.1)
             continue
 
         wave = earthworm.get_wave(0)
@@ -213,7 +204,9 @@ def earthworm_wave_listener():
         #     wave_buffer.clear()
         #     time_buffer.clear()
         #     print("time reversed over 60 secs, flush wave and time buffer")
-        # latest_time = wave["endt"]
+
+        # get latest time
+        wave_endt.value = max(wave["endt"], wave_endt.value)
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
@@ -230,25 +223,24 @@ def earthworm_wave_listener():
                 wave_buffer[wave_id] = wave_array_init(
                     sample_rate, buffer_time, fill_value=np.array(wave["data"]).mean()
                 )
-                time_buffer[wave_id] = time_array_init(
-                    sample_rate,
-                    buffer_time,
-                    wave["startt"],
-                    wave["endt"],
-                    wave["data"].size,
-                )
+                # time_buffer[wave_id] = time_array_init(
+                #     sample_rate,
+                #     buffer_time,
+                #     wave["startt"],
+                #     wave["endt"],
+                #     wave["data"].size,
+                # )
 
             wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
 
-            new_time_array = np.linspace(
-                wave["startt"], wave["endt"], wave["data"].size
-            )
-            time_buffer[wave_id] = slide_array(time_buffer[wave_id], new_time_array)
+            # new_time_array = np.linspace(
+            #     wave["startt"], wave["endt"], wave["data"].size
+            # )
+            # time_buffer[wave_id] = slide_array(time_buffer[wave_id],
+            #                                    new_time_array)
 
         except Exception as e:
             print("earthworm_wave_listener error", e)
-
-        time.sleep(0.00001)
 
 
 """
@@ -290,10 +282,18 @@ def earthworm_pick_listener():
     pick msg 的生命週期為 p 波後 2-9 秒
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
-    # TODO: 如果 upsec 9 沒出現，pick 會一直卡在裡面
     while True:
-        pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
+        # 超時移除 pick
+        window = 10
+        try:
+            for pick_id, buffer_pick in pick_buffer.items():
+                if float(buffer_pick["pick_time"]) + window < wave_endt.value:
+                    pick_buffer.__delitem__(pick_id)
+        except Exception as e:
+            print("earthworm_pick_listener error:", e)
 
+        # 取得 pick msg
+        pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
         if not pick_msg:
             continue
 
@@ -304,17 +304,6 @@ def earthworm_pick_listener():
             # 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
                 pick_buffer[pick_id] = pick_data
-
-            # 9 秒時移除 pick
-            elif pick_data["update_sec"] == "9":
-                pick_buffer.__delitem__(pick_id)
-
-            # 超時移除 pick
-            # 如果 new pick 的秒數比舊的晚 10 秒，則刪除舊的
-            for pick_id, buffer_pick in pick_buffer.items():
-                if buffer_pick["update_sec"] + 10 < pick_data["update_sec"]:
-                    pick_buffer.__delitem__(pick_id)
-
 
         except Exception as e:
             print("earthworm_pick_listener error:", e)
@@ -357,7 +346,7 @@ def event_cutter(pick_buffer):
 
         trace_dict = {
             "traceid": pick_id,
-            "time": time_buffer[pick_id].tolist(),
+            #     "time": time_buffer[pick_id].tolist(),
             "data": data,
         }
 
@@ -406,6 +395,17 @@ def get_vs30(lat, lon):
         print("get_vs30 error", e)
 
 
+def get_station_position(station):
+    try:
+        latitude, longitude, elevation = site_info.loc[
+            (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
+        ].values[0]
+        return latitude, longitude, elevation
+    except Exception as e:
+        print("get_station_position error:", e)
+        return
+
+
 def get_site_info(pick):
     try:
         latitude, longitude, elevation = get_station_position(pick["station"])
@@ -414,10 +414,9 @@ def get_site_info(pick):
 
     except Exception as e:
         print(f"{pick['station']} not found in site_info, use pick info")
-        latitude, longitude, elevation = pick['lat'], pick['lon'], 100
+        latitude, longitude, elevation = pick["lat"], pick["lon"], 100
         vs30 = get_vs30(latitude, longitude)
         return [latitude, longitude, elevation, vs30]
-
 
 
 def convert_dataset(event_msg):
@@ -592,7 +591,6 @@ def model_inference():
         if len(pick_buffer) >= 3:
             if not log_file:
                 # 當觸發模型預測時，開始記錄 log
-                log_start_time = time.time()
                 first_pick_timestamp = list(pick_buffer.values())[0]["pick_time"]
                 first_pick_time = datetime.fromtimestamp(
                     float(first_pick_timestamp), tz=pytz.timezone("Asia/Taipei")
@@ -603,7 +601,7 @@ def model_inference():
                 log_file = open(log_file, "w+")
 
         try:
-            start_time = time.time()
+            inference_start_time = time.time()
             target_csv = read_target_csv("data/eew_target.csv")
 
             event_data = event_cutter(pick_buffer)
@@ -631,7 +629,6 @@ def model_inference():
                 pga_list = ttsam_model_predict(tensor)
                 dataset["pga"].extend(pga_list)
 
-
             dataset["intensity"] = [
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
@@ -646,12 +643,13 @@ def model_inference():
                     # 過預警門檻值的測站
                     report["alarm"].append(target_name)
 
-            end_time = time.time()
+            inference_end_time = time.time()
             report["timestamp"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
-            report["log_time"] = end_time - log_start_time
-            report["run_time"] = end_time - start_time
+            report["wave_time"] = wave_endt.value - float(first_pick_timestamp)
+            report["run_time"] = inference_end_time - inference_start_time
+            report["log_time"] = report["wave_time"] + report["run_time"]
 
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
@@ -664,8 +662,6 @@ def model_inference():
 
         except Exception as e:
             print("model_inference error:", e)
-
-        time.sleep(0.5)
 
 
 """
