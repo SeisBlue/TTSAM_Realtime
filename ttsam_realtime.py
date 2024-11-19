@@ -1064,29 +1064,32 @@ def get_full_model(model_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default='config.json', help="config file")
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, help="web server ip")
     parser.add_argument("--port", type=int, help="web server port")
+    parser.add_argument("--test-env", action="store_true", help="test environment, inst_id = 255")
     args = parser.parse_args()
 
-    # Local Earthworm
-    earthworm = PyEW.EWModule(
-        def_ring=1000, mod_id=2, inst_id=255, hb_time=30, db=False
-    )
-    earthworm.add_ring(1000)  # buf_ring 0: Wave ring
-    earthworm.add_ring(1005)  # buf_ring 1: Pick ring
+    # get config
+    config = json.load(open(args.config, "r"))
 
-    # CWA Earthworm
-    # earthworm = PyEW.EWModule(
-    #     def_ring=1034, mod_id=2, inst_id=52, hb_time=30, db=False
-    # )
-    #
-    # earthworm.add_ring(1034)  # buf_ring 0: Wave ring
-    # earthworm.add_ring(1005)  # buf_ring 1: Pick ring
+    inst_id = 52 # CWA
+    if args.test_env:
+        print("test env, inst_id = 255")
+        inst_id = 255 # local
+
+    earthworm = PyEW.EWModule(
+        def_ring=1034, mod_id=2, inst_id=inst_id, hb_time=30, db=False
+    )
+    earthworm.add_ring(1034)  # buf_ring 0: Wave ring
+    earthworm.add_ring(1005)  # buf_ring 1: Pick ring
 
     # 初始化 MQTT
     mqtt_client = mqtt.Client()
-    mqtt_client.username_pw_set("ttsam", "ttsam")
+    username = config['mqtt']['username']
+    password = config['mqtt']['password']
+    mqtt_client.username_pw_set(username, password)
     mqtt_client.connect("0.0.0.0", 1883)
     topic = "ttsam"
 
