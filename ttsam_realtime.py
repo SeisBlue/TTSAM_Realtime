@@ -126,7 +126,7 @@ Earthworm Wave Listener
 
 try:
     site_info = pd.read_csv("data/site_info.txt", sep="\s+")
-    constant_dict = site_info.set_index(['Station', 'Channel'])['Constant'].to_dict()
+    constant_dict = site_info.set_index(["Station", "Channel"])["Constant"].to_dict()
 
 except FileNotFoundError:
     print("site_info.txt not found")
@@ -1040,20 +1040,24 @@ def get_full_model(model_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='ttsam_config.json', help="config file")
+    parser.add_argument(
+        "--config", type=str, default="ttsam_config.json", help="config file"
+    )
     parser.add_argument("--web", action="store_true", help="run web server")
-    parser.add_argument("--host", type=str, default='0.0.0.0', help="web server ip")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
     parser.add_argument("--port", type=int, default=5000, help="web server port")
-    parser.add_argument("--test-env", action="store_true", help="test environment, inst_id = 255")
+    parser.add_argument(
+        "--test-env", action="store_true", help="test environment, inst_id = 255"
+    )
     args = parser.parse_args()
 
     # get config
     config = json.load(open(args.config, "r"))
 
-    inst_id = 52 # CWA
+    inst_id = 52  # CWA
     if args.test_env:
         print("test env, inst_id = 255")
-        inst_id = 255 # local
+        inst_id = 255  # local
 
     earthworm = PyEW.EWModule(
         def_ring=1034, mod_id=2, inst_id=inst_id, hb_time=30, db=False
@@ -1063,10 +1067,8 @@ if __name__ == "__main__":
 
     # 初始化 MQTT
     mqtt_client = mqtt.Client()
-    username = config['mqtt']['username']
-    password = config['mqtt']['password']
-    mqtt_client.username_pw_set(username, password)
-    mqtt_client.connect("0.0.0.0", 1883)
+    mqtt_client.username_pw_set(config["mqtt"]["username"], config["mqtt"]["password"])
+    mqtt_client.connect(config["mqtt"]["host"], config["mqtt"]["port"])
     topic = "ttsam"
 
     processes = []
