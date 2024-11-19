@@ -114,7 +114,7 @@ def web_server():
     threading.Thread(target=event_emitter).start()
     threading.Thread(target=dataset_emitter).start()
 
-    if args.web or args.host or args.port:
+    if args.web:
         # 開啟 web server
         app.run(host=args.host, port=args.port, use_reloader=False)
         socketio.run(app, debug=True)
@@ -1064,10 +1064,10 @@ def get_full_model(model_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='config.json', help="config file")
+    parser.add_argument("--config", type=str, default='ttsam_config.json', help="config file")
     parser.add_argument("--web", action="store_true", help="run web server")
-    parser.add_argument("--host", type=str, help="web server ip")
-    parser.add_argument("--port", type=int, help="web server port")
+    parser.add_argument("--host", type=str, default='0.0.0.0', help="web server ip")
+    parser.add_argument("--port", type=int, default=5000, help="web server port")
     parser.add_argument("--test-env", action="store_true", help="test environment, inst_id = 255")
     args = parser.parse_args()
 

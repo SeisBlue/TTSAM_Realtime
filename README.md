@@ -15,19 +15,17 @@ A real-time seismic intensity prediction system that utilizes deep learning to p
 
 ## Requirements
 
-- Python 3.7+
-- PyTorch
-- Flask
-- SocketIO
-- Paho-MQTT
-- NumPy
-- Pandas
-- SciPy
-- PyEW (Earthworm Python Interface)
+- Earthworm
+- MQTT broker
+- Docker 
 
 ## Installation
 
 1. Clone this repository
+```bash
+git clone https://github.com/SeisBlue/TTSAM_Realtime.git
+```
+
 2. Pull the Docker image:
 ```bash
 docker pull seisblue/ttsam-realtime
@@ -50,16 +48,18 @@ docker run \
 -v /opt/Earthworm/run/params:/opt/Earthworm/run/params:ro \
 --rm \
 --ipc host \
---net=host \
+--net host \
 --name ttsam-cpu \
 seisblue/ttsam-realtime \
 /opt/conda/bin/python3 /workspace/ttsam_realtime.py [options]
 ```
 
 Options:
-- `--web`: Run the web server
-- `--host`: Web server IP
-- `--port`: Web server port
+- `--config`: MQTT configuration file, default: `config.json`
+- `--web`: Run the web server, default: `False`
+- `--host`: Web server IP, default: `0.0.0.0`
+- `--port`: Web server port, default: `5000`
+
 
 ## System Components
 
