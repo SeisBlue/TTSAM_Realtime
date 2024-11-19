@@ -200,10 +200,6 @@ def earthworm_wave_listener():
 
         # 如果時間重置(tankplayer 重播)，清空 buffer
         # TODO: CWA 測試會平繁出現時間倒退的情況
-        # if latest_time > wave["startt"] + 60:
-        #     wave_buffer.clear()
-        #     time_buffer.clear()
-        #     print("time reversed over 60 secs, flush wave and time buffer")
 
         # get latest time
         wave_endt.value = max(wave["endt"], wave_endt.value)
@@ -223,22 +219,7 @@ def earthworm_wave_listener():
                 wave_buffer[wave_id] = wave_array_init(
                     sample_rate, buffer_time, fill_value=np.array(wave["data"]).mean()
                 )
-                # time_buffer[wave_id] = time_array_init(
-                #     sample_rate,
-                #     buffer_time,
-                #     wave["startt"],
-                #     wave["endt"],
-                #     wave["data"].size,
-                # )
-
             wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
-
-            # new_time_array = np.linspace(
-            #     wave["startt"], wave["endt"], wave["data"].size
-            # )
-            # time_buffer[wave_id] = slide_array(time_buffer[wave_id],
-            #                                    new_time_array)
-
         except Exception as e:
             print("earthworm_wave_listener error", e)
 
