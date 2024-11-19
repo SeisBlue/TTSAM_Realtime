@@ -126,6 +126,8 @@ Earthworm Wave Listener
 
 try:
     site_info = pd.read_csv("data/site_info.txt", sep="\s+")
+    constant_dict = site_info.set_index(['Station', 'Channel'])['Constant'].to_dict()
+
 except FileNotFoundError:
     print("site_info.txt not found")
 
@@ -146,11 +148,8 @@ def convert_to_tsmip_legacy_naming(wave):
 def get_wave_constant(wave):
     # count to cm/s^2
     try:
-        wave_constant = site_info.loc[
-            (site_info["Station"] == wave["station"])
-            & (site_info["Channel"] == wave["channel"]),
-            "Constant",
-        ].values[0]
+        wave_constant = constant_dict[wave["station"], wave["channel"]]
+
     except Exception as e:
         print(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
         wave_constant = 3.2e-6
@@ -190,16 +189,11 @@ def earthworm_wave_listener():
 
     while True:
         if not earthworm.mod_sta():
-            time.sleep(0.1)
             continue
 
         wave = earthworm.get_wave(0)
         if not wave:
-            time.sleep(0.00001)
             continue
-
-        # 如果時間重置(tankplayer 重播)，清空 buffer
-        # TODO: CWA 測試會平繁出現時間倒退的情況
 
         # get latest time
         wave_endt.value = max(wave["endt"], wave_endt.value)
@@ -629,6 +623,7 @@ def model_inference():
                 "%Y-%m-%d %H:%M:%S.%f"
             )
             report["wave_time"] = wave_endt.value - float(first_pick_timestamp)
+            report["wave_endt"] = wave_endt.value
             report["run_time"] = inference_end_time - inference_start_time
             report["log_time"] = report["wave_time"] + report["run_time"]
 
