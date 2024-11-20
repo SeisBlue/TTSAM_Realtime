@@ -1,4 +1,4 @@
-# TTSAM (Taiwan Transformer Seismic Alert Model)
+# TT-SAM Realtime System
 
 A real-time seismic intensity prediction system that utilizes deep learning to process seismic waveforms and predict ground motion intensities across Taiwan.
 
