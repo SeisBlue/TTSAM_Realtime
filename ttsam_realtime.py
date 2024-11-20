@@ -250,7 +250,7 @@ def parse_pick_msg(pick_msg):
         return pick
 
     except IndexError as e:
-        logger.error("pick_msg parsing error:", e)
+        logger.error(f"pick_msg parsing error: {pick_msg_column}", e)
 
 
 def earthworm_pick_listener():
@@ -267,7 +267,7 @@ def earthworm_pick_listener():
                 if float(buffer_pick["pick_time"]) + window < wave_endt.value:
                     pick_buffer.__delitem__(pick_id)
         except Exception as e:
-            logger.error("earthworm_pick_listener error:", e)
+            logger.error(f"delete pick error: {pick_id}", e)
 
         # 取得 pick msg
         pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
@@ -322,7 +322,6 @@ def event_cutter(pick_buffer):
 
         trace_dict = {
             "traceid": pick_id,
-            #     "time": time_buffer[pick_id].tolist(),
             "data": data,
         }
 
@@ -559,6 +558,7 @@ def model_inference():
         if len(pick_buffer) < 3:
             if log_file:
                 log_file.close()
+
             # 重置 log_file
             log_file = None
             loading_animation()
@@ -577,6 +577,7 @@ def model_inference():
                 log_file = open(log_file, "w+")
 
         try:
+            wave_endtime = wave_endt.value  # 獲得最新的 wave 結束時間
             inference_start_time = time.time()
             target_csv = read_target_csv("data/eew_target.csv")
 
@@ -623,8 +624,8 @@ def model_inference():
             report["timestamp"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
-            report["wave_time"] = wave_endt.value - float(first_pick_timestamp)
-            report["wave_endt"] = wave_endt.value
+            report["wave_time"] = wave_endtime - float(first_pick_timestamp)
+            report["wave_endt"] = wave_endtime
             report["run_time"] = inference_end_time - inference_start_time
             report["log_time"] = report["wave_time"] + report["run_time"]
 
@@ -647,10 +648,10 @@ PyTorch Model
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
-    print("Cuda detected, torch using gpu")
+    logger.info("Cuda detected, torch using gpu")
 else:
     device = torch.device("cpu")
-    print("Cuda not detected, torch using cpu")
+    logger.info("Cuda not detected, torch using cpu")
 
 
 class LambdaLayer(nn.Module):
@@ -1050,6 +1051,7 @@ logger.add(
 
 
 if __name__ == "__main__":
+    logger.info("TTSAM Realtime Start")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", type=str, default="ttsam_config.json", help="config file"
