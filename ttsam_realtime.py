@@ -284,6 +284,10 @@ def earthworm_pick_listener():
             logger.info(f"{pick_msg}")
             continue
 
+        if "1830798" in pick_msg:
+            logger.info(f"{pick_msg}")
+            continue
+
         try:
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
@@ -1049,15 +1053,6 @@ def get_full_model(model_path):
     return full_model
 
 
-# 配置日誌設置
-logger.remove()
-logger.add(
-    "logs/ttsam_error.log",
-    rotation="1 week",
-    level="INFO",
-    enqueue=True,
-    backtrace=True,
-)
 
 
 if __name__ == "__main__":
@@ -1070,7 +1065,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--test-env", action="store_true", help="test environment, inst_id = 255"
     )
+    parser.add_argument("--verbose-level", type=str, default="ERROR",
+                        help="change verbose level: ERROR, WARNING, INFO")
+    parser.add_argument("--log-level", type=str, default="ERROR",
+                        help="change log level: ERROR, WARNING, INFO")
     args = parser.parse_args()
+
+    # 配置日誌設置
+    logger.remove()
+    logger.add(sys.stderr, format="{time} {level} {message}", level=args.verbose_level)
+    logger.add(
+        "logs/ttsam_error.log",
+        rotation="1 week",
+        level=args.log_level,
+        enqueue=True,
+        backtrace=True,
+    )
 
     # get config
     config = json.load(open("ttsam_config.json", "r"))
