@@ -271,8 +271,11 @@ def earthworm_pick_listener():
             for pick_id, buffer_pick in pick_buffer.items():
                 if float(buffer_pick["pick_time"]) + window < wave_endt.value:
                     pick_buffer.__delitem__(pick_id)
+        except BrokenPipeError:
+            break
+
         except Exception as e:
-            logger.error(f"delete pick error: {pick_id}", e)
+            logger.error(f"delete pick error: {pick_id}")
 
         # 取得 pick msg
         pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
