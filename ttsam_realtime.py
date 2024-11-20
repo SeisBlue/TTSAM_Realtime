@@ -272,7 +272,7 @@ def earthworm_pick_listener():
             for pick_id, buffer_pick in pick_buffer.items():
                 if float(buffer_pick["timestamp"]) + window < time.time():
                     pick_buffer.__delitem__(pick_id)
-                    print(f"delete pick: {pick_id} {wave_endt.value}")
+                    print(f"delete pick: {pick_id}")
         except BrokenPipeError:
             break
 
@@ -306,6 +306,10 @@ def earthworm_pick_listener():
                 pick_data["timestamp"] = time.time()
                 pick_buffer[pick_id] = pick_data
                 print(f"add pick: {pick_id}")
+
+            if pick_data["update_sec"] == "9":
+                pick_buffer.__delitem__(pick_id)
+                print(f"delete pick: {pick_id}")
 
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
