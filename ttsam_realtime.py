@@ -265,6 +265,7 @@ def earthworm_pick_listener():
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
     # TODO: wave_endt 很容易大於 window
+    # 正負 3 秒以上的封包丟掉？
     while True:
         # 超時移除 pick
         window = 10
@@ -300,6 +301,12 @@ def earthworm_pick_listener():
         try:
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
+
+            if time.time() > float(pick_data["pick_time"]) + 10:
+                continue
+
+            if time.time() < float(pick_data["pick_time"]) - 10:
+                continue
 
             # 9 秒時刪除 pick
             if pick_data["update_sec"] == "9":
