@@ -60,7 +60,10 @@ docker pull seisblue/ttsam-realtime
        ```json
        "mqtt": {
          "username": "ttsam",
-         "password": "ttsam"
+         "password": "ttsam",
+         "host": "0.0.0.0",
+         "port": 1883,
+         "topic": "ttsam"
        }
         ```
 ## Usage
@@ -85,6 +88,17 @@ Options:
 - `--host`: Web server IP, default: `0.0.0.0`
 - `--port`: Web server port, default: `5000`
 
+## Update
+
+Pull the latest code:
+```bash
+git pull
+```
+
+Pull the latest Docker image:
+```bash 
+docker pull seisblue/ttsam-realtime
+```
 
 ## System Components
 

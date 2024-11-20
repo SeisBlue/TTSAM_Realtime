@@ -281,6 +281,10 @@ def earthworm_pick_listener():
             time.sleep(0.00001)
             continue
 
+        if "Restarting" in pick_msg:
+            logger.info(f"{pick_msg}")
+            continue
+
         try:
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
@@ -1085,12 +1089,16 @@ if __name__ == "__main__":
     earthworm.add_ring(1005)  # buf_ring 1: Pick ring
 
     # 初始化 MQTT
-    mqtt_client = mqtt.Client()
     username = config["mqtt"]["username"]
     password = config["mqtt"]["password"]
+    host = config["mqtt"]["host"]
+    port = config["mqtt"]["port"]
+    topic = config["mqtt"]["topic"]
+
+    mqtt_client = mqtt.Client()
     mqtt_client.username_pw_set(username, password)
-    mqtt_client.connect(host="0.0.0.0", port=1883)
-    topic = "ttsam"
+    mqtt_client.connect(host=host, port=port)
+
 
     processes = []
     functions = [
