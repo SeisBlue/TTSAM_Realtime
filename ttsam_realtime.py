@@ -197,8 +197,14 @@ def earthworm_wave_listener():
         if not wave:
             continue
 
-        # get latest time
+        # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
+
+        # 在測試的時候如果最新時間比 wave_endt 還要提早超過 1 小時，則重置 wave_endt
+        reset_time_limit = 3600
+        if wave["endt"] < wave_endt.value - reset_time_limit:
+            wave_endt.value = wave["endt"]
+            logger.warning("wave_endt reset")
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
