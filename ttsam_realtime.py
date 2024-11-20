@@ -275,7 +275,7 @@ def earthworm_pick_listener():
             break
 
         except Exception as e:
-            logger.error(f"delete pick error: {pick_id}")
+            logger.error(f"delete pick error: {pick_id}", e)
 
         # 取得 pick msg
         pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
@@ -558,7 +558,7 @@ def loading_animation():
         sys.stdout.flush()
 
         # 顯示目前的 loading 字符
-        sys.stdout.write(f"waiting for event {char}")
+        sys.stdout.write(f"waiting for event {char} \n")
         sys.stdout.flush()
         time.sleep(0.1)
 
