@@ -284,12 +284,15 @@ def earthworm_pick_listener():
             continue
 
         if "Restarting" in pick_msg:
-            logger.info(f"{pick_msg}")
+            logger.warning(f"{pick_msg}")
             continue
 
         if "1830798" in pick_msg:
-            logger.info(f"{pick_msg}")
+            logger.warning(f"{pick_msg}")
             continue
+
+        print(pick_msg)
+        logger.info(f"{pick_msg}")
 
         try:
             pick_data = parse_pick_msg(pick_msg)
