@@ -292,6 +292,7 @@ def earthworm_pick_listener():
             continue
 
         print(pick_msg)
+        sys.stdout.flush()
         logger.info(f"{pick_msg}")
 
         try:
@@ -305,7 +306,7 @@ def earthworm_pick_listener():
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
             continue
-
+        time.sleep(0.00001)
 
 """
 Model Inference
