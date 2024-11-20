@@ -1063,9 +1063,7 @@ logger.add(
 if __name__ == "__main__":
     logger.info("TTSAM Realtime Start")
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, default="ttsam_config.json", help="config file"
-    )
+    parser.add_argument("--mqtt", action="store_true", help="connect to mqtt broker")
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
     parser.add_argument("--port", type=int, default=5000, help="web server port")
@@ -1075,7 +1073,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # get config
-    config = json.load(open(args.config, "r"))
+    config = json.load(open("ttsam_config.json", "r"))
 
     inst_id = 52  # CWA
     if args.test_env:
@@ -1097,7 +1095,8 @@ if __name__ == "__main__":
 
     mqtt_client = mqtt.Client()
     mqtt_client.username_pw_set(username, password)
-    mqtt_client.connect(host=host, port=port)
+    if args.mqtt:
+        mqtt_client.connect(host=host, port=port)
 
 
     processes = []

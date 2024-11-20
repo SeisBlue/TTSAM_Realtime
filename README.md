@@ -83,6 +83,7 @@ seisblue/ttsam-realtime \
 ```
 
 Options:
+- `--mqtt`: Connect to MQTT broker, default: `False`
 - `--config`: MQTT configuration file, default: `ttsam_config.json`
 - `--web`: Run the web server, default: `False`
 - `--host`: Web server IP, default: `0.0.0.0`
