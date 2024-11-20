@@ -401,7 +401,7 @@ def get_station_position(station):
         ].values[0]
         return latitude, longitude, elevation
     except Exception as e:
-        logger.error("get_station_position error:", e)
+        logger.error(f"get_station_position error: {station}", e)
         return
 
 
