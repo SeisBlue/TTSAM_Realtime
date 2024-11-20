@@ -558,7 +558,7 @@ def loading_animation():
         sys.stdout.flush()
 
         # 顯示目前的 loading 字符
-        sys.stdout.write(f"waiting for event {char} \n")
+        sys.stdout.write(f"waiting for event {char} ")
         sys.stdout.flush()
         time.sleep(0.1)
 
