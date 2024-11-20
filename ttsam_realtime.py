@@ -7,6 +7,7 @@ import threading
 import time
 from datetime import datetime
 
+from loguru import logger
 import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
@@ -28,7 +29,6 @@ manager = multiprocessing.Manager()
 wave_buffer = manager.dict()
 wave_queue = manager.Queue()
 
-# time_buffer = manager.dict()
 pick_buffer = manager.dict()
 
 event_queue = manager.Queue()
@@ -129,7 +129,7 @@ try:
     constant_dict = site_info.set_index(["Station", "Channel"])["Constant"].to_dict()
 
 except FileNotFoundError:
-    print("site_info.txt not found")
+    logger.warning("site_info.txt not found")
 
 
 def join_id_from_dict(data, order="NSLC"):
@@ -151,7 +151,9 @@ def get_wave_constant(wave):
         wave_constant = constant_dict[wave["station"], wave["channel"]]
 
     except Exception as e:
-        print(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
+        logger.warning(
+            f"{wave['station']} not found in site_info.txt, use default 3.2e-6"
+        )
         wave_constant = 3.2e-6
 
     return wave_constant
@@ -215,7 +217,7 @@ def earthworm_wave_listener():
                 )
             wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
         except Exception as e:
-            print("earthworm_wave_listener error", e)
+            logger.error("earthworm_wave_listener error", e)
 
 
 """
@@ -247,8 +249,8 @@ def parse_pick_msg(pick_msg):
 
         return pick
 
-    except IndexError:
-        print("pick_msg parsing error:", pick_msg)
+    except IndexError as e:
+        logger.error("pick_msg parsing error:", e)
 
 
 def earthworm_pick_listener():
@@ -265,11 +267,12 @@ def earthworm_pick_listener():
                 if float(buffer_pick["pick_time"]) + window < wave_endt.value:
                     pick_buffer.__delitem__(pick_id)
         except Exception as e:
-            print("earthworm_pick_listener error:", e)
+            logger.error("earthworm_pick_listener error:", e)
 
         # 取得 pick msg
         pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
         if not pick_msg:
+            time.sleep(0.00001)
             continue
 
         try:
@@ -281,10 +284,8 @@ def earthworm_pick_listener():
                 pick_buffer[pick_id] = pick_data
 
         except Exception as e:
-            print("earthworm_pick_listener error:", e)
+            logger.error("earthworm_pick_listener error:", e)
             continue
-
-        time.sleep(0.00001)
 
 
 """
@@ -294,7 +295,7 @@ try:
     vs30_table = pd.read_csv(f"data/Vs30ofTaiwan.csv")
     tree = cKDTree(vs30_table[["lat", "lon"]])
 except FileNotFoundError:
-    print("Vs30ofTaiwan.csv not found")
+    logger.warning("Vs30ofTaiwan.csv not found")
 
 
 def event_cutter(pick_buffer):
@@ -314,7 +315,7 @@ def event_cutter(pick_buffer):
                 data[component.lower()] = wave_buffer[wave_id].tolist()
 
             except KeyError:
-                print(f"{wave_id} {component} not found, add zero array")
+                logger.warning(f"{wave_id} {component} not found, add zero array")
                 wave_id = f"{network}.{station}.{location}.{channel[0:2]}Z"
                 data[component.lower()] = np.zeros(3000).tolist()
                 continue
@@ -341,7 +342,7 @@ def signal_processing(waveform):
         return data
 
     except Exception as e:
-        print("signal_processing error:", e)
+        logger.error("signal_processing error:", e)
 
 
 def lowpass(data, freq=10, df=100, corners=4):
@@ -367,7 +368,7 @@ def get_vs30(lat, lon):
         return float(vs30)
 
     except Exception as e:
-        print("get_vs30 error", e)
+        logger.error("get_vs30 error", e)
 
 
 def get_station_position(station):
@@ -377,7 +378,7 @@ def get_station_position(station):
         ].values[0]
         return latitude, longitude, elevation
     except Exception as e:
-        print("get_station_position error:", e)
+        logger.error("get_station_position error:", e)
         return
 
 
@@ -388,7 +389,7 @@ def get_site_info(pick):
         return [latitude, longitude, elevation, vs30]
 
     except Exception as e:
-        print(f"{pick['station']} not found in site_info, use pick info")
+        logger.warning(f"{pick['station']} not found in site_info, use pick info")
         latitude, longitude, elevation = pick["lat"], pick["lon"], 100
         vs30 = get_vs30(latitude, longitude)
         return [latitude, longitude, elevation, vs30]
@@ -423,7 +424,7 @@ def convert_dataset(event_msg):
         return dataset
 
     except Exception as e:
-        print("converter error:", e)
+        logger.error("converter error:", e)
 
 
 def read_target_csv(target_file="data/eew_target.csv"):
@@ -433,10 +434,10 @@ def read_target_csv(target_file="data/eew_target.csv"):
         return target
 
     except FileNotFoundError:
-        print("eew_target.csv not found")
+        logger.warning("eew_target.csv not found")
 
     except Exception as e:
-        print("get_target error:", e)
+        logger.error("get_target error:", e)
 
 
 def dataset_batch(dataset, batch_size=25):
@@ -455,7 +456,7 @@ def dataset_batch(dataset, batch_size=25):
             yield batch
 
     except Exception as e:
-        print("dataset_batch error:", e)
+        logger.error("dataset_batch error:", e)
 
 
 def get_target_dataset(dataset, target_csv):
@@ -486,7 +487,7 @@ def ttsam_model_predict(tensor):
         return pga_list
 
     except Exception as e:
-        print("ttsam_model_predict error:", e)
+        logger.error("ttsam_model_predict error:", e)
 
 
 def get_average_pga(weight, sigma, mu):
@@ -520,7 +521,7 @@ def calculate_intensity(pga, pgv=None, label=False):
             return intensity
 
     except Exception as e:
-        print("calculate_intensity error:", e)
+        logger.error("calculate_intensity error:", e)
 
 
 def prepare_tensor(data, shape, limit):
@@ -637,7 +638,7 @@ def model_inference():
             dataset_queue.put(dataset)
 
         except Exception as e:
-            print("model_inference error:", e)
+            logger.error("model_inference error:", e)
 
 
 """
@@ -1038,6 +1039,16 @@ def get_full_model(model_path):
     return full_model
 
 
+# 配置日誌設置
+logger.add(
+    "logs/ttsam_error.log",
+    rotation="1 week",
+    level="INFO",
+    enqueue=True,
+    backtrace=True,
+)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1067,8 +1078,10 @@ if __name__ == "__main__":
 
     # 初始化 MQTT
     mqtt_client = mqtt.Client()
-    mqtt_client.username_pw_set(config["mqtt"]["username"], config["mqtt"]["password"])
-    mqtt_client.connect(config["mqtt"]["host"], config["mqtt"]["port"])
+    username = config["mqtt"]["username"]
+    password = config["mqtt"]["password"]
+    mqtt_client.username_pw_set(username, password)
+    mqtt_client.connect(host="0.0.0.0", port=1883)
     topic = "ttsam"
 
     processes = []
