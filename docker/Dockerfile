@@ -6,9 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install linux package
 RUN apt-get update && apt-get upgrade -y; \
     apt-get install -y \
-    curl git htop sudo vim wget\
-    python3-dev python3-pip libgeos-dev pkg-config libhdf5-dev\
-    ghostscript gdal-bin graphicsmagick ffmpeg
+    curl git htop sudo vim wget
 
 # Install conda package
 COPY docker/conda_requirements.txt /tmp/
