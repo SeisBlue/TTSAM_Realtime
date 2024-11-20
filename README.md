@@ -32,12 +32,37 @@ docker pull seisblue/ttsam-realtime
 ```
 3. Prepare the required data files in the `data` directory:
     - `site_info.txt`: Station information
+      ```
+      Station Channel Location Latitude Longitude Elevation Depth Azimuth Start_time End_time Constant 
+      ALS HLE 10 23.508380 120.813410 2417.00 0.00 90.0 2018-08-08 2599-12-31 3.27E-6 
+      ALS HLN 10 23.508380 120.813410 2417.00 0.00 0.0 2018-08-08 2599-12-31 3.24E-6 
+      ALS HLZ 10 23.508380 120.813410 2417.00 0.00 0.0 2018-08-08 2599-12-31 3.25E-6 
+      ```
+    - `eew_target.csv`: Target stations for prediction
+      ```
+      network,station,station_zh,longitude,latitude,elevation
+      CWB_SMT,TAP,臺北地震站,121.514,25.038,16
+      TSMIP,A024,板橋地震站,121.475,25.019,14
+      CWASN,NTS,淡水地震站,121.449,25.164,15
+      ```
     - `Vs30ofTaiwan.csv`: VS30 data for Taiwan
-    - `eew_target.txt`: Target stations for prediction
-
+      ```
+      x,y,Vs30,x_97,y_97,lon,lat
+      287760,2802000,534.43737793,288590.5292444,2801796.6794629595,121.3833232712489,25.324688719187737
+      287840,2802000,534.24029541,288670.5304836,2801796.67998464,121.38411791685077,25.324686654878782
+      287920,2802000,534.02142334,288750.5317228,2801796.6805063197,121.38491256236529,25.324684586285322
+      ```
 4. Place trained model in the `model` directory:
-    - `ttsam_trained_model_11.pt`
+    - `ttsam_trained_model_11.pt` ([TT-SAM](https://github.com/JasonChang0320/TT-SAM))
 
+5. MQTT configuration file:
+    - `ttsam_config.json`
+       ```json
+       "mqtt": {
+         "username": "ttsam",
+         "password": "ttsam"
+       }
+        ```
 ## Usage
 
 Run the system with:
@@ -55,7 +80,7 @@ seisblue/ttsam-realtime \
 ```
 
 Options:
-- `--config`: MQTT configuration file, default: `config.json`
+- `--config`: MQTT configuration file, default: `ttsam_config.json`
 - `--web`: Run the web server, default: `False`
 - `--host`: Web server IP, default: `0.0.0.0`
 - `--port`: Web server port, default: `5000`
