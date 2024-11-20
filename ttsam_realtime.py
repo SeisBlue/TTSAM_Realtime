@@ -301,15 +301,17 @@ def earthworm_pick_listener():
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
 
+            # 9 秒時刪除 pick
+            if pick_data["update_sec"] == "9":
+                pick_buffer.__delitem__(pick_id)
+                print(f"delete pick: {pick_id}")
+
             # 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
                 pick_data["timestamp"] = time.time()
                 pick_buffer[pick_id] = pick_data
                 print(f"add pick: {pick_id}")
 
-            if pick_data["update_sec"] == "9":
-                pick_buffer.__delitem__(pick_id)
-                print(f"delete pick: {pick_id}")
 
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
