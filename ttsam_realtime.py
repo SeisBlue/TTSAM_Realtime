@@ -552,6 +552,7 @@ def prepare_tensor(data, shape, limit):
 
 
 def loading_animation():
+    triggered_stations = len(pick_buffer)
     # 定義 loading 動畫的元素
     chars = ["-", "/", "|", "\\"]
 
@@ -562,7 +563,7 @@ def loading_animation():
         sys.stdout.flush()
 
         # 顯示目前的 loading 字符
-        sys.stdout.write(f"waiting for event {char} ")
+        sys.stdout.write(f"waiting for event {triggered_stations} {char} ")
         sys.stdout.flush()
         time.sleep(0.1)
 
