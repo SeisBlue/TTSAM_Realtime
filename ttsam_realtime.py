@@ -185,7 +185,6 @@ def slide_array(array, data):
 
 
 def earthworm_wave_listener():
-    # TODO: wave endt 比 Earthworm 時間還要晚 0.5 秒左右
     buffer_time = 30  # 設定緩衝區保留時間
     sample_rate = 100  # 設定取樣率
 
@@ -200,8 +199,8 @@ def earthworm_wave_listener():
         # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
 
-        # 在測試的時候如果最新時間比 wave_endt 還要提早超過 1 小時，則重置 wave_endt
-        reset_time_limit = 3600
+        # 在測試的時候如果最新時間比 wave_endt 還要提早超過 1 天，則重置 wave_endt
+        reset_time_limit = 86400
         if wave["endt"] < wave_endt.value - reset_time_limit:
             wave_endt.value = wave["endt"]
             logger.warning("wave_endt reset")
@@ -1051,9 +1050,10 @@ def get_full_model(model_path):
 
 
 # 配置日誌設置
+logger.remove()
 logger.add(
     "logs/ttsam_error.log",
-    rotation="1 month",
+    rotation="1 week",
     level="INFO",
     enqueue=True,
     backtrace=True,
