@@ -264,6 +264,7 @@ def earthworm_pick_listener():
     pick msg 的生命週期為 p 波後 2-9 秒
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
+    # TODO: wave_endt 很容易大於 window
     while True:
         # 超時移除 pick
         window = 10
@@ -271,7 +272,7 @@ def earthworm_pick_listener():
             for pick_id, buffer_pick in pick_buffer.items():
                 if float(buffer_pick["pick_time"]) + window < wave_endt.value:
                     pick_buffer.__delitem__(pick_id)
-                    print(f"delete pick: {pick_id}")
+                    print(f"delete pick: {pick_id} {wave_endt.value}")
         except BrokenPipeError:
             break
 
