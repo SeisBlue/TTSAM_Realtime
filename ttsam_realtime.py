@@ -1049,7 +1049,7 @@ def get_full_model(model_path):
 # 配置日誌設置
 logger.add(
     "logs/ttsam_error.log",
-    rotation="1 week",
+    rotation="1 month",
     level="INFO",
     enqueue=True,
     backtrace=True,
