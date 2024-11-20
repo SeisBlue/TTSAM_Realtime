@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install linux package
 RUN apt-get update && apt-get upgrade -y; \
     apt-get install -y \
-    curl git htop sudo vim wget python3-dev;
+    curl git htop sudo vim wget build-essential
 
 # Install conda package
 COPY docker/conda_requirements.txt /tmp/
