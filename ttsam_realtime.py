@@ -199,11 +199,11 @@ def earthworm_wave_listener():
         # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
 
-        # 在測試的時候如果最新時間比 wave_endt 還要提早超過 1 天，則重置 wave_endt
-        reset_time_limit = 86400
+        # 如果最新時間比 wave_endt 還要提早超過 1 小時，則重置 wave_endt
+        reset_time_limit = 3600
         if wave["endt"] < wave_endt.value - reset_time_limit:
             wave_endt.value = wave["endt"]
-            logger.warning("wave_endt reset")
+            logger.warning(f"wave_endt rewind over 1 hr {wave['endt']}")
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
@@ -270,7 +270,7 @@ def earthworm_pick_listener():
         window = 10
         try:
             for pick_id, buffer_pick in pick_buffer.items():
-                if float(buffer_pick["pick_time"]) + window < wave_endt.value:
+                if float(buffer_pick["timestamp"]) + window < time.time():
                     pick_buffer.__delitem__(pick_id)
                     print(f"delete pick: {pick_id} {wave_endt.value}")
         except BrokenPipeError:
@@ -303,6 +303,7 @@ def earthworm_pick_listener():
 
             # 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
+                pick_data["timestamp"] = time.time()
                 pick_buffer[pick_id] = pick_data
                 print(f"add pick: {pick_id}")
 
