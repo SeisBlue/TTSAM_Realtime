@@ -1,17 +1,15 @@
 # Dockerfile for TT-SAM environment (CPU version)
 
-## Building the Docker Image
-
-1. Clone the repository:
+## Pull the Docker image:
 ```sh
-git clone 
-cd 
+docker pull seisblue/ttsam
 ```
 
 ## Building the Docker Image
 
 ```bash
-docker build -t ttsam:latest -f CWA_Real_Time/docker/Dockerfile .
+cd CWA_TTSAM_Realtime
+docker build -t ttsam:latest -f docker/Dockerfile .
 ```
 
 ## Running the Docker Container
@@ -20,17 +18,27 @@ docker build -t ttsam:latest -f CWA_Real_Time/docker/Dockerfile .
 docker run \
 -v $(pwd):/workspace \
 -v /opt/Earthworm/run/params:/opt/Earthworm/run/params:ro \
--p 0.0.0.0:5000:5000 \
 --rm \
 --ipc host \
+--net host \
 --name tt-sam-cpu \
 seisblue/ttsam \
-/opt/conda/bin/python3 /workspace/ttsam_realtime.py
+/opt/conda/bin/python3 /workspace/ttsam_realtime.py [options]
 ```
 ## Accessing the Container
 
+```bash
+docker exec -it tt-sam-cpu /bin/bash
+```
 
 ## Stopping the Container
 
+```bash
+docker stop tt-sam-cpu
+```
 
+## Removing the Container
 
+```bash
+docker rm tt-sam-cpu
+```
