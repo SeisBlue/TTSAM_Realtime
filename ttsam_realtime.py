@@ -125,8 +125,10 @@ Earthworm Wave Listener
 """
 
 try:
-    site_info = pd.read_csv("data/site_info.txt", sep="\s+")
+    logger.info("Loading data/site_info.csv...")
+    site_info = pd.read_csv("data/site_info.csv", sep=",")
     constant_dict = site_info.set_index(["Station", "Channel"])["Constant"].to_dict()
+    logger.info("site_info.csv loaded")
 
 except FileNotFoundError:
     logger.warning("site_info.txt not found")
@@ -325,12 +327,15 @@ def earthworm_pick_listener():
             continue
         time.sleep(0.00001)
 
+
 """
 Model Inference
 """
 try:
+    logger.info("Loading data/Vs30ofTaiwan.csv...")
     vs30_table = pd.read_csv(f"data/Vs30ofTaiwan.csv")
     tree = cKDTree(vs30_table[["lat", "lon"]])
+    logger.info("Vs30ofTaiwan.csv loaded")
 except FileNotFoundError:
     logger.warning("Vs30ofTaiwan.csv not found")
 
@@ -465,8 +470,10 @@ def convert_dataset(event_msg):
 
 def read_target_csv(target_file="data/eew_target.csv"):
     try:
+        logger.info(f"Loading {target_file}...")
         target_df = pd.read_csv(target_file, sep=",")
         target = target_df.to_dict(orient="records")
+        logger.info(f"{target_file} loaded")
         return target
 
     except FileNotFoundError:
@@ -1090,10 +1097,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--test-env", action="store_true", help="test environment, inst_id = 255"
     )
-    parser.add_argument("--verbose-level", type=str, default="ERROR",
-                        help="change verbose level: ERROR, WARNING, INFO")
-    parser.add_argument("--log-level", type=str, default="ERROR",
-                        help="change log level: ERROR, WARNING, INFO")
+    parser.add_argument(
+        "--verbose-level",
+        type=str,
+        default="ERROR",
+        help="change verbose level: ERROR, WARNING, INFO",
+    )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="ERROR",
+        help="change log level: ERROR, WARNING, INFO",
+    )
     args = parser.parse_args()
 
     # 配置日誌設置
@@ -1108,7 +1123,9 @@ if __name__ == "__main__":
     )
 
     # get config
+    logger.info("Loading ttsam_config.json...")
     config = json.load(open("ttsam_config.json", "r"))
+    logger.info("ttsam_config.json loaded")
 
     inst_id = 52  # CWA
     if args.test_env:
@@ -1132,7 +1149,6 @@ if __name__ == "__main__":
     mqtt_client.username_pw_set(username, password)
     if args.mqtt:
         mqtt_client.connect(host=host, port=port)
-
 
     processes = []
     functions = [
