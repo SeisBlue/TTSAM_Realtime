@@ -262,18 +262,17 @@ def parse_pick_msg(pick_msg):
 
 def earthworm_pick_listener():
     """
-    監看 pick ring 的訊息，並保存活著的 pick msg
-    pick msg 的生命週期為 p 波後 2-9 秒
+    監看 pick ring 的訊息，並將 pick 加入 pick_buffer
+    pick msg 的時間窗為 p 波後 2-10 秒
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
-    # TODO: wave_endt 很容易大於 window
-    # 正負 3 秒以上的封包丟掉？
+    event_window = 10
+
     while True:
-        # 超時移除 pick
-        window = 10
         try:
+            # 超時移除 pick
             for pick_id, buffer_pick in pick_buffer.items():
-                if float(buffer_pick["timestamp"]) + window < time.time():
+                if float(buffer_pick["sys_time"]) + event_window < time.time():
                     pick_buffer.__delitem__(pick_id)
                     print(f"delete pick: {pick_id}")
         except BrokenPipeError:
@@ -288,11 +287,13 @@ def earthworm_pick_listener():
             time.sleep(0.00001)
             continue
 
+        # PickRing trace gap 太大會有 Restarting 的訊息
         if "Restarting" in pick_msg:
             logger.warning(f"{pick_msg}")
             continue
 
-        if "1830798" in pick_msg:
+        # PickRing 的未知短訊息，如：1732070774 124547
+        if len(pick_msg.split()) < 13:
             logger.warning(f"{pick_msg}")
             continue
 
@@ -304,23 +305,20 @@ def earthworm_pick_listener():
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
 
+            # 跳過程式啟動前殘留在 shared memory 的 Pick
             if time.time() > float(pick_data["pick_time"]) + 10:
-                continue
+                if args.test_env:
+                    # 測試環境使用歷史資料，不跳過
+                    pass
+                else:
+                    continue
 
-            if time.time() < float(pick_data["pick_time"]) - 10:
-                continue
-
-            # 9 秒時刪除 pick
-            if pick_data["update_sec"] == "9":
-                pick_buffer.__delitem__(pick_id)
-                print(f"delete pick: {pick_id}")
-
-            # 2 秒時加入 pick
+            # upsec 為 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
-                pick_data["timestamp"] = time.time()
+                # 以系統時間作為時間戳記
+                pick_data["sys_time"] = time.time()
                 pick_buffer[pick_id] = pick_data
                 print(f"add pick: {pick_id}")
-
 
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
@@ -612,13 +610,15 @@ def model_inference():
         if len(pick_buffer) >= 3:
             if not log_file:
                 # 當觸發模型預測時，開始記錄 log
-                first_pick_timestamp = list(pick_buffer.values())[0]["pick_time"]
-                first_pick_time = datetime.fromtimestamp(
-                    float(first_pick_timestamp), tz=pytz.timezone("Asia/Taipei")
+                # 取得第一個 pick 的時間
+                event_first_pick = list(pick_buffer.values())[0]
+                first_pick_timestring = datetime.fromtimestamp(
+                    float(event_first_pick["pick_time"]),
+                    tz=pytz.timezone("Asia/Taipei"),
                 ).strftime("%Y%m%d_%H%M%S")
 
                 # 以第一個 pick 的時間為 log 檔案名稱
-                log_file = f"{log_folder}/ttsam_{first_pick_time}.log"
+                log_file = f"{log_folder}/ttsam_{first_pick_timestring}.log"
                 log_file = open(log_file, "w+")
 
         try:
@@ -669,10 +669,13 @@ def model_inference():
             report["timestamp"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
-            report["wave_time"] = wave_endtime - float(first_pick_timestamp)
+            report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
             report["wave_endt"] = wave_endtime
             report["run_time"] = inference_end_time - inference_start_time
-            report["log_time"] = report["wave_time"] + report["run_time"]
+            # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
+            report["log_time"] = (
+                inference_end_time - event_first_pick["sys_time"] + 2
+            )  # upsec 2 sec
 
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
@@ -1083,8 +1086,6 @@ def get_full_model(model_path):
     )
 
     return full_model
-
-
 
 
 if __name__ == "__main__":
