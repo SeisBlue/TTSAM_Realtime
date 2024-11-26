@@ -124,14 +124,16 @@ def web_server():
 Earthworm Wave Listener
 """
 
+# Load site info
+site_info_file = "data/site_info.csv"
 try:
-    logger.info("Loading data/site_info.csv...")
-    site_info = pd.read_csv("data/site_info.csv", sep=",")
+    logger.info(f"Loading {site_info_file}...")
+    site_info = pd.read_csv(site_info_file)
     constant_dict = site_info.set_index(["Station", "Channel"])["Constant"].to_dict()
-    logger.info("site_info.csv loaded")
+    logger.info(f"{site_info_file} loaded")
 
 except FileNotFoundError:
-    logger.warning("site_info.txt not found")
+    logger.warning(f"{site_info_file} not found")
 
 
 def join_id_from_dict(data, order="NSLC"):
@@ -274,7 +276,7 @@ def earthworm_pick_listener():
             for pick_id, buffer_pick in pick_buffer.items():
                 if float(buffer_pick["sys_time"]) + event_window < time.time():
                     pick_buffer.__delitem__(pick_id)
-                    print(f"delete pick: {pick_id}")
+                    logger.info(f"delete pick: {pick_id}")
         except BrokenPipeError:
             break
 
@@ -297,10 +299,6 @@ def earthworm_pick_listener():
             logger.warning(f"{pick_msg}")
             continue
 
-        print(pick_msg)
-        sys.stdout.flush()
-        logger.info(f"{pick_msg}")
-
         try:
             pick_data = parse_pick_msg(pick_msg)
             pick_id = join_id_from_dict(pick_data, order="NSLC")
@@ -308,17 +306,20 @@ def earthworm_pick_listener():
             # 跳過程式啟動前殘留在 shared memory 的 Pick
             if time.time() > float(pick_data["pick_time"]) + 10:
                 if args.test_env:
-                    # 測試環境使用歷史資料，不跳過
-                    pass
+                    pass  # 測試環境使用歷史資料，不跳過
                 else:
+                    logger.warning(f"{pick_msg}")
                     continue
 
             # upsec 為 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
                 # 以系統時間作為時間戳記
+                print(f"{pick_msg}")
+                sys.stdout.flush()
+                logger.info(f"{pick_msg}")
                 pick_data["sys_time"] = time.time()
                 pick_buffer[pick_id] = pick_data
-                print(f"add pick: {pick_id}")
+                logger.info(f"add pick: {pick_id}")
 
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
@@ -329,13 +330,26 @@ def earthworm_pick_listener():
 """
 Model Inference
 """
+# Load Vs30 grid
+vs30_file = "data/Vs30ofTaiwan.csv"
 try:
-    logger.info("Loading data/Vs30ofTaiwan.csv...")
-    vs30_table = pd.read_csv(f"data/Vs30ofTaiwan.csv")
+    logger.info(f"Loading {vs30_file}...")
+    vs30_table = pd.read_csv(vs30_file)
     tree = cKDTree(vs30_table[["lat", "lon"]])
-    logger.info("Vs30ofTaiwan.csv loaded")
+    logger.info(f"{vs30_file} loaded")
 except FileNotFoundError:
-    logger.warning("Vs30ofTaiwan.csv not found")
+    logger.warning(f"{vs30_file} not found")
+
+# Load target station
+target_file = "data/eew_target.csv"
+try:
+    logger.info(f"Loading {target_file}...")
+    target_df = pd.read_csv(target_file)
+    target_dict = target_df.to_dict(orient="records")
+    logger.info(f"{target_file} loaded")
+
+except FileNotFoundError:
+    logger.warning(f"{target_file} not found")
 
 
 def event_cutter(pick_buffer):
@@ -466,21 +480,6 @@ def convert_dataset(event_msg):
         logger.error("converter error:", e)
 
 
-def read_target_csv(target_file="data/eew_target.csv"):
-    try:
-        logger.info(f"Loading {target_file}...")
-        target_df = pd.read_csv(target_file, sep=",")
-        target = target_df.to_dict(orient="records")
-        logger.info(f"{target_file} loaded")
-        return target
-
-    except FileNotFoundError:
-        logger.warning("eew_target.csv not found")
-
-    except Exception as e:
-        logger.error("get_target error:", e)
-
-
 def dataset_batch(dataset, batch_size=25):
     batch = {}
     try:
@@ -500,10 +499,11 @@ def dataset_batch(dataset, batch_size=25):
         logger.error("dataset_batch error:", e)
 
 
-def get_target_dataset(dataset, target_csv):
+def get_target_dataset(dataset):
     target_list = []
     target_name_list = []
-    for target in target_csv:
+
+    for target in target_dict:
         latitude = target["latitude"]
         longitude = target["longitude"]
         elevation = target["elevation"]
@@ -518,14 +518,16 @@ def get_target_dataset(dataset, target_csv):
 
 
 def ttsam_model_predict(tensor):
+    model_path = f"model/ttsam_trained_model_11.pt"
     try:
-        model_path = f"model/ttsam_trained_model_11.pt"
         full_model = get_full_model(model_path)
-
         weight, sigma, mu = full_model(tensor)
         pga_list = get_average_pga(weight, sigma, mu)
 
         return pga_list
+
+    except FileNotFoundError:
+        logger.warning(f"{model_path} not found")
 
     except Exception as e:
         logger.error("ttsam_model_predict error:", e)
@@ -628,13 +630,14 @@ def model_inference():
                 log_file = open(log_file, "w+")
 
         try:
+            pick_count = len(pick_buffer)
+            print(f"{pick_count} picks in window, model inference start")
             wave_endtime = wave_endt.value  # 獲得最新的 wave 結束時間
             inference_start_time = time.time()
-            target_csv = read_target_csv("data/eew_target.csv")
 
             event_data = event_cutter(pick_buffer)
             dataset = convert_dataset(event_data)
-            dataset = get_target_dataset(dataset, target_csv)
+            dataset = get_target_dataset(dataset)
 
             # 模型預測所有 target
             for batch in dataset_batch(dataset):
@@ -1120,7 +1123,7 @@ if __name__ == "__main__":
 
     # 配置日誌設置
     logger.remove()
-    logger.add(sys.stderr, format="{time} {level} {message}", level=args.verbose_level)
+    logger.add(sys.stderr, level=args.verbose_level)
     logger.add(
         "logs/ttsam_error.log",
         rotation="1 week",
@@ -1130,13 +1133,14 @@ if __name__ == "__main__":
     )
 
     # get config
-    logger.info("Loading ttsam_config.json...")
-    config = json.load(open("ttsam_config.json", "r"))
-    logger.info("ttsam_config.json loaded")
+    config_file = "ttsam_config.json"
+    logger.info(f"Loading {config_file}...")
+    config = json.load(open(config_file, "r"))
+    logger.info(f"{config_file} loaded")
 
     inst_id = 52  # CWA
     if args.test_env:
-        print("test env, inst_id = 255")
+        logger.info("test env, inst_id = 255")
         inst_id = 255  # local
 
     earthworm = PyEW.EWModule(
