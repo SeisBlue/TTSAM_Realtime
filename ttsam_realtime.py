@@ -576,16 +576,22 @@ def prepare_tensor(data, shape, limit):
 def loading_animation():
     triggered_stations = len(pick_buffer)
     # 定義 loading 動畫的元素
-    chars = ["-", "/", "|", "\\"]
+    loading_chars = ["-", "/", "|", "\\"]
 
     # 無限循環顯示 loading 動畫
-    for char in chars:
+    for char in loading_chars:
         # 清除上一個字符
         sys.stdout.write("\r" + " " * 20 + "\r")
         sys.stdout.flush()
 
         # 顯示目前的 loading 字符
-        sys.stdout.write(f"waiting for event {triggered_stations} {char} ")
+        wave_timestring = datetime.fromtimestamp(
+            float(wave_endt.value), tz=pytz.timezone("Asia/Taipei")
+        ).strftime("%Y-%m-%d %H:%M:%S.%f")
+
+        sys.stdout.write(
+            f"wave: {wave_timestring} waiting for event {triggered_stations} {char} "
+        )
         sys.stdout.flush()
         time.sleep(0.1)
 
