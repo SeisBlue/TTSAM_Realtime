@@ -276,7 +276,7 @@ def earthworm_pick_listener():
             for pick_id, buffer_pick in pick_buffer.items():
                 if float(buffer_pick["sys_time"]) + event_window < time.time():
                     pick_buffer.__delitem__(pick_id)
-                    logger.info(f"delete pick: {pick_id}")
+                    logger.debug(f"delete pick: {pick_id}")
         except BrokenPipeError:
             break
 
@@ -288,15 +288,14 @@ def earthworm_pick_listener():
         if not pick_msg:
             time.sleep(0.00001)
             continue
+        logger.debug(f"{pick_msg}")
 
         # PickRing trace gap 太大會有 Restarting 的訊息
         if "Restarting" in pick_msg:
-            logger.warning(f"{pick_msg}")
             continue
 
         # PickRing 的未知短訊息，如：1732070774 124547
         if len(pick_msg.split()) < 13:
-            logger.warning(f"{pick_msg}")
             continue
 
         try:
@@ -308,18 +307,17 @@ def earthworm_pick_listener():
                 if args.test_env:
                     pass  # 測試環境使用歷史資料，不跳過
                 else:
-                    logger.warning(f"{pick_msg}")
                     continue
 
             # upsec 為 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
-                # 以系統時間作為時間戳記
-                print(f"{pick_msg}")
+                print(pick_msg)
                 sys.stdout.flush()
-                logger.info(f"{pick_msg}")
+
+                # 以系統時間作為時間戳記
                 pick_data["sys_time"] = time.time()
                 pick_buffer[pick_id] = pick_data
-                logger.info(f"add pick: {pick_id}")
+                logger.debug(f"add pick: {pick_id}")
 
         except Exception as e:
             logger.error("earthworm_pick_listener error:", e)
@@ -338,7 +336,7 @@ try:
     tree = cKDTree(vs30_table[["lat", "lon"]])
     logger.info(f"{vs30_file} loaded")
 except FileNotFoundError:
-    logger.warning(f"{vs30_file} not found")
+    logger.error(f"{vs30_file} not found")
 
 # Load target station
 target_file = "data/eew_target.csv"
@@ -349,7 +347,7 @@ try:
     logger.info(f"{target_file} loaded")
 
 except FileNotFoundError:
-    logger.warning(f"{target_file} not found")
+    logger.error(f"{target_file} not found")
 
 
 def event_cutter(pick_buffer):
@@ -369,7 +367,7 @@ def event_cutter(pick_buffer):
                 data[component.lower()] = wave_buffer[wave_id].tolist()
 
             except KeyError:
-                logger.warning(f"{wave_id} {component} not found, add zero array")
+                logger.debug(f"{wave_id} {component} not found, add zero array")
                 wave_id = f"{network}.{station}.{location}.{channel[0:2]}Z"
                 data[component.lower()] = np.zeros(3000).tolist()
                 continue
@@ -442,7 +440,7 @@ def get_site_info(pick):
         return [latitude, longitude, elevation, vs30]
 
     except Exception as e:
-        logger.warning(f"{pick['station']} not found in site_info, use pick info")
+        logger.debug(f"{pick['station']} not found in site_info, use pick info")
         latitude, longitude, elevation = pick["lat"], pick["lon"], 100
         vs30 = get_vs30(latitude, longitude)
         return [latitude, longitude, elevation, vs30]
@@ -527,7 +525,7 @@ def ttsam_model_predict(tensor):
         return pga_list
 
     except FileNotFoundError:
-        logger.warning(f"{model_path} not found")
+        logger.error(f"{model_path} not found")
 
     except Exception as e:
         logger.error("ttsam_model_predict error:", e)
@@ -586,13 +584,15 @@ def loading_animation():
         sys.stdout.write("\r" + " " * 20 + "\r")
         sys.stdout.flush()
 
-        # 顯示目前的 loading 字符
+        wave_count = len(wave_buffer)
+
         wave_timestring = datetime.fromtimestamp(
             float(wave_endt.value), tz=pytz.timezone("Asia/Taipei")
         ).strftime("%Y-%m-%d %H:%M:%S.%f")
 
+        # 顯示目前的 loading 字符
         sys.stdout.write(
-            f"wave: {wave_timestring} waiting for event {triggered_stations} {char} "
+            f"{wave_count} waves: {wave_timestring} waiting for event {triggered_stations} {char} "
         )
         sys.stdout.flush()
         time.sleep(0.1)
@@ -679,7 +679,10 @@ def model_inference():
                 "%Y-%m-%d %H:%M:%S.%f"
             )
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
-            report["wave_endt"] = wave_endtime
+            report["wave_endt"] = datetime.fromtimestamp(
+                    float(wave_endtime),
+                    tz=pytz.timezone("Asia/Taipei"),
+                ).strftime("%Y-%m-%d %H:%M:%S.%f")
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
@@ -1110,16 +1113,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose-level",
         type=str,
-        default="ERROR",
-        help="change verbose level: ERROR, WARNING, INFO",
+        default="INFO",
+        help="change verbose level: ERROR, WARNING, INFO, DEBUG",
     )
     parser.add_argument(
         "--log-level",
         type=str,
-        default="ERROR",
-        help="change log level: ERROR, WARNING, INFO",
+        default="INFO",
+        help="change log level: ERROR, WARNING, INFO, DEBUG",
     )
     args = parser.parse_args()
+
+    # get config
+    config_file = "ttsam_config.json"
+    logger.info(f"Loading {config_file}...")
+    config = json.load(open(config_file, "r"))
+    logger.info(f"{config_file} loaded")
 
     # 配置日誌設置
     logger.remove()
@@ -1131,12 +1140,6 @@ if __name__ == "__main__":
         enqueue=True,
         backtrace=True,
     )
-
-    # get config
-    config_file = "ttsam_config.json"
-    logger.info(f"Loading {config_file}...")
-    config = json.load(open(config_file, "r"))
-    logger.info(f"{config_file} loaded")
 
     inst_id = 52  # CWA
     if args.test_env:
