@@ -46,15 +46,15 @@ Web Server
 
 @app.route("/", methods=["GET"])
 def index():
-    log_dir = "logs"
+    report_log_dir = "logs/report"
     try:
         files = []
-        for f in os.listdir(log_dir):
-            file_path = os.path.join(log_dir, f)
-            if f.endswith(".log") and os.path.isfile(file_path) and "error" not in f:
+        for f in os.listdir(report_log_dir):
+            file_path = os.path.join(report_log_dir, f)
+            if f.startswith('report') and f.endswith(".log") and os.path.isfile(file_path):
                 files.append(f)
         files.sort(
-            key=lambda x: os.path.getmtime(os.path.join(log_dir, x)), reverse=True
+            key=lambda x: os.path.getmtime(os.path.join(report_log_dir, x)), reverse=True
         )
     except FileNotFoundError:
         files = []
@@ -63,7 +63,11 @@ def index():
 
 @app.route("/get_file_content")
 def get_file_content():
+    report_log_dir = "logs/report"
     file_name = request.args.get("file")
+    if not file_name.startswith("report"):
+        return "Invalid file type", 400
+
     if not file_name.endswith(".log"):
         return "Invalid file type", 400
 
@@ -72,7 +76,7 @@ def get_file_content():
         return "Invalid file name", 400
 
     try:
-        file_path = os.path.join("logs", file_name)
+        file_path = os.path.join(report_log_dir, file_name)
         with open(file_path, "r", encoding="utf-8") as file:
             content = file.read()
         return content
@@ -657,9 +661,13 @@ def model_inference():
                     tz=pytz.timezone("Asia/Taipei"),
                 ).strftime("%Y%m%d_%H%M%S")
 
-                # 以第一個 pick 的時間為 log 檔案名稱
-                log_file = f"{log_folder}/ttsam_{first_pick_timestring}.log"
-                log_file = open(log_file, "w+")
+                # 以第一個 pick 的時間為 report log 檔案名稱
+                report_log_file = f"{log_folder}/report/report_{first_pick_timestring}.log"
+                report_log_file = open(report_log_file, "w+")
+
+                pick_log_file = f"{log_folder}/pick/pick_{first_pick_timestring}.log"
+                pick_log_file = open(pick_log_file, "w+")
+
 
         try:
             pick_count = len(pick_buffer)
@@ -697,7 +705,7 @@ def model_inference():
             ]
 
             # 產生報告
-            report = {"log_time": "", "alarm": []}
+            report = {"sta": len(pick_buffer), "log_time": "", "alarm": []}
             for i, target_name in enumerate(dataset["target_name"]):
                 intensity = dataset["intensity"][i]
                 report[f"{target_name}"] = intensity
@@ -718,14 +726,17 @@ def model_inference():
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
-                inference_end_time - event_first_pick["sys_time"] + 2
+                f"{inference_end_time - event_first_pick['sys_time'] + 2:.4f}"
             )  # upsec 2 sec
 
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
             print(report)
             sys.stdout.flush()
-            log_file.write(json.dumps(report) + "\n")
+            report_log_file.write(json.dumps(report) + "\n")
+
+            pick_log = {'log_time': report["log_time"], "picks": list(pick_buffer.values())}
+            pick_log_file.write(json.dumps(pick_log) + "\n")
 
             # 資料傳至前端
             dataset_queue.put(dataset)
