@@ -610,8 +610,8 @@ def prepare_tensor(data, shape, limit):
     return torch.tensor(tensor_data).to(torch.double).unsqueeze(0)
 
 
-def loading_animation():
-    triggered_stations = len(pick_buffer)
+def loading_animation(pick_threshold):
+    pick_counts = len(pick_buffer)
     loading_chars = ["-", "\\", "|", "/"]
 
     # 無限循環顯示 loading 動畫
@@ -628,7 +628,7 @@ def loading_animation():
 
         # 顯示目前的 loading 字符
         sys.stdout.write(
-            f"{wave_count} waves: {wave_timestring} waiting for event {triggered_stations} {char} "
+            f"{wave_count} waves: {wave_timestring} waiting for event {pick_counts}/{pick_threshold} {char} "
         )
         sys.stdout.flush()
         time.sleep(0.1)
@@ -638,21 +638,22 @@ def model_inference():
     """
     進行模型預測
     """
+    pick_threshold = 5
     log_folder = "logs"
-    log_file = None
+    report_log_file = None
     while True:
         # 小於 3 個測站不觸發模型預測
-        if len(pick_buffer) < 3:
-            if log_file:
-                log_file.close()
+        if len(pick_buffer) < pick_threshold:
+            if report_log_file:
+                report_log_file.close()
 
-            # 重置 log_file
-            log_file = None
-            loading_animation()
+            # 重置 report_log_file
+            report_log_file = None
+            loading_animation(pick_threshold)
             continue
 
-        if len(pick_buffer) >= 3:
-            if not log_file:
+        if len(pick_buffer) >= pick_threshold:
+            if not report_log_file:
                 # 當觸發模型預測時，開始記錄 log
                 # 取得第一個 pick 的時間
                 event_first_pick = list(pick_buffer.values())[0]
