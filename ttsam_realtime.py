@@ -624,14 +624,13 @@ def loading_animation(pick_threshold):
 
         wave_timestring = datetime.fromtimestamp(
             float(wave_endt.value), tz=pytz.timezone("Asia/Taipei")
-        ).strftime("%H:%M:%S.%f")
+        ).strftime("%Y-%m-%d %H:%M:%S.%f")
 
-        sys_time = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
-                "%Y-%m-%d %H:%M:%S.%f")
+        delay = time.time() - wave_endt.value
 
         # 顯示目前的 loading 字符
         sys.stdout.write(
-            f"{sys_time} {wave_count} waves: {wave_timestring} picks:{pick_counts}/{pick_threshold} waiting for event {char} "
+            f"{wave_count} waves: {wave_timestring[:-3]} lag:{delay:.3f} picks:{pick_counts}/{pick_threshold} waiting for event {char} "
         )
         sys.stdout.flush()
         time.sleep(0.1)
