@@ -3,14 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首頁</title>
+    <title>Home</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <style>
+        #container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #side-panel {
+            width: 400px;
+            background-color: #f0f0f0;
+            padding: 10px;
+        }
+
+        #navbar {
+            margin-bottom: 10px;
+        }
+
+        #map {
+            flex: 1;
+        }
+
+        #listContainer {
+            margin-top: 10px;
+            max-height: 80%;
+            overflow-y: auto;
+            white-space: nowrap;
+        }
+
+        #listContainer div {
+            display: block;
+            cursor: pointer;
+        }
+
+        #listContainer div.selected {
+            background-color: #d0d0d0;
+        }
+
+        .legend {
+            background: #d0d0d0;
+            line-height: 1.5em;
+            padding: 6px 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+
+    </style>
 </head>
+
 <body>
-<div id="navbar">
-    <a href="{{ url_for('trace_page') }}">Trace</a>
-    <a href="{{ url_for('event_page') }}">Event</a>
-    <a href="{{ url_for('dataset_page') }}">Dataset</a>
-    <a href="{{ url_for('map_page') }}">Map</a>
+<div id="container">
+
+
+    <div id="side-panel">
+        <div id="navbar">
+            <a href="{{ url_for('index') }}">History</a>
+            <a href="{{ url_for('trace_page') }}">Trace</a>
+            <a href="{{ url_for('event_page') }}">Event</a>
+            <a href="{{ url_for('dataset_page') }}">Dataset</a>
+            <a href="{{ url_for('map_page') }}">Map</a>
+        </div>
+
+        <form method="POST" action="/">
+            <label for="files">選擇檔案：</label>
+            <select name="selected_file" id="files" onchange="fetchFileContent()">
+                {% for file in files %}
+                    <option value="{{ file }}">{{ file }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <div id="listContainer"></div>
+    </div>
+    <div id="map"></div>
 </div>
 </body>
+
+
+<script type="text/javascript">
+    const socket = io();
+    const map = L.map(document.getElementById('map'), {
+        center: [23.5, 121],
+        zoom: 8,
+    });
+
+    const Esri_OceanBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri',
+        maxZoom: 13
+    });
+    Esri_OceanBasemap.addTo(map);
+
+    // 添加圖例
+    const legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'legend');
+        const intensities = ["0", "1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"];
+        const labels = [];
+
+        intensities.forEach(intensity => {
+            labels.push(
+                '<i style="background:' + getIntensityColor(intensity) + '"></i> ' +
+                intensity
+            );
+        });
+
+        div.innerHTML = labels.join('<br>');
+        return div;
+    };
+
+    legend.addTo(map);
+
+    let pgaStations = L.layerGroup().addTo(map);
+
+    function addPgaStation(station_name, latitude, longitude, intensity) {
+        let mark = L.circleMarker([latitude, longitude], {
+            color: getIntensityColor(intensity),
+            fillColor: getIntensityColor(intensity),
+            fillOpacity: 0.5,
+            radius: 10,
+            alt: station_name,
+            renderer: L.canvas()
+        }).bindPopup(station_name);
+
+        pgaStations.addLayer(mark);
+    }
+
+
+    function getIntensityColor(intensity) {
+        switch (intensity) {
+            case "0":
+                return "#ffffff";
+            case "1":
+                return "#33FFDD";
+            case "2":
+                return "#34ff32";
+            case "3":
+                return "#fefd32";
+            case "4":
+                return "#fe8532";
+            case "5-":
+                return "#fd5233";
+            case "5+":
+                return "#c43f3b";
+            case "6-":
+                return "#9d4646";
+            case "6+":
+                return "#9a4c86";
+            case "7":
+                return "#b51fea";
+            default:
+                return "#bbbbbb";
+        }
+    }
+
+    // 將 target 字典轉換為 JSON 格式並嵌入到 JavaScript 中
+    const target = {{ target|tojson }}
+    console.log(target);
+
+    // 迭代 target 字典並調用 addPgaStation 函數
+    target.forEach(function (station) {
+        addPgaStation(station.station, station.latitude, station.longitude, "");
+    });
+
+    socket.on('connect_init', function () {
+    });
+
+    async function fetchFileContent() {
+        const selectedFile = document.getElementById('files').value;
+        const response = await fetch(`/get_file_content?file=${selectedFile}`);
+        const text = await response.text();
+        const jsonData = text.split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line));
+        displayList(jsonData);
+    }
+
+    function displayList(data) {
+        const listContainer = document.getElementById('listContainer');
+        listContainer.innerHTML = '';
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.textContent = JSON.stringify(item);
+            div.addEventListener('click', () => selectItem(div));
+            listContainer.appendChild(div);
+        });
+    }
+
+    function selectItem(div) {
+        const selected = document.querySelector('#listContainer .selected');
+        if (selected) {
+            selected.classList.remove('selected');
+        }
+        div.classList.add('selected');
+
+        // 更新 pga 顏色
+        const itemData = JSON.parse(div.textContent);
+        updateStationColors(itemData);
+
+    }
+
+    document.addEventListener('keydown', (event) => {
+        const selected = document.querySelector('#listContainer .selected');
+        if (!selected) return;
+
+        let newSelected;
+        if (event.key === 'ArrowDown') {
+            newSelected = selected.nextElementSibling;
+            event.preventDefault();
+        } else if (event.key === 'ArrowUp') {
+            newSelected = selected.previousElementSibling;
+            event.preventDefault();
+        }
+
+        if (newSelected) {
+            selectItem(newSelected);
+            newSelected.scrollIntoView({behavior: 'auto', block: 'nearest'});
+        }
+    });
+
+    function updateStationColors(data) {
+        const nonStationKeys = ["log_time", "alarm", "timestamp", "wave_time", "wave_endt", "run_time"];
+        Object.keys(data).forEach(stationName => {
+            if (!nonStationKeys.includes(stationName)) {
+                const intensity = data[stationName];
+                pgaStations.eachLayer(layer => {
+                    if (layer.options.alt === stationName) {
+                        layer.setStyle({
+                            color: getIntensityColor(intensity),
+                            fillColor: getIntensityColor(intensity)
+                        });
+                    }
+                });
+            }
+        });
+    }
+</script>
 </html>

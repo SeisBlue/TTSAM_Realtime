@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
     <title>Intensity Map</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -12,19 +13,61 @@
             crossorigin=""></script>
 
     <style>
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
+        #container {
+            display: flex;
             height: 100vh;
+        }
+
+        #side-panel {
+            width: 200px;
+            background-color: #f0f0f0;
+            padding: 10px;
+        }
+
+        #navbar {
+            margin-bottom: 10px;
+        }
+
+        #map {
+            flex: 1;
+        }
+
+        .legend {
+            background: #d0d0d0;
+            line-height: 1.5em;
+            padding: 6px 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
         }
     </style>
 
 </head>
 
 <body>
-<div id="map"></div>
+<div id="container">
+
+
+    <div id="side-panel">
+        <div id="navbar">
+            <a href="{{ url_for('index') }}">History</a>
+            <a href="{{ url_for('trace_page') }}">Trace</a>
+            <a href="{{ url_for('event_page') }}">Event</a>
+            <a href="{{ url_for('dataset_page') }}">Dataset</a>
+            <a href="{{ url_for('map_page') }}">Map</a>
+        </div>
+
+
+    </div>
+    <div id="map"></div>
+</div>
 </body>
 
 <script type="text/javascript">
@@ -40,7 +83,56 @@
     });
     Esri_OceanBasemap.addTo(map);
 
+    // 添加圖例
+    const legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'legend');
+        const intensities = ["0", "1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"];
+        const labels = [];
+
+        intensities.forEach(intensity => {
+            labels.push(
+                '<i style="background:' + getIntensityColor(intensity) + '"></i> ' +
+                intensity
+            );
+        });
+
+        div.innerHTML = labels.join('<br>');
+        return div;
+    };
+
+    legend.addTo(map);
+
     let pgaStations = L.layerGroup().addTo(map);
+    let stationMarkers = {};
+
+    function addOrUpdatePgaStation(station_name, station_loc, intensity) {
+        if (stationMarkers[station_name]) {
+            // Update existing marker
+            let marker = stationMarkers[station_name];
+            marker.setLatLng(station_loc.slice(0, 2));
+            marker.setStyle({
+                color: getIntensityColor(intensity),
+                fillColor: getIntensityColor(intensity),
+                fillOpacity: 0.5,
+                radius: 10
+            });
+        } else {
+            // Add new marker
+            let marker = L.circleMarker(station_loc.slice(0, 2), {
+                color: getIntensityColor(intensity),
+                fillColor: getIntensityColor(intensity),
+                fillOpacity: 0.5,
+                radius: 10,
+                alt: station_name,
+                renderer: L.canvas()
+            }).bindPopup(station_name);
+
+            pgaStations.addLayer(marker);
+            stationMarkers[station_name] = marker;
+        }
+    }
 
     function addPgaStation(station_name, station_loc, intensity) {
         let mark = L.circleMarker(station_loc.slice(0, 2), {
@@ -91,11 +183,9 @@
         let targetLoc = msg.target;
         let intensity = msg.intensity;
 
-
         for (let i = 0; i < target_name.length; i++) {
-            addPgaStation(target_name[i], targetLoc[i], intensity[i]);
+            addOrUpdatePgaStation(target_name[i], targetLoc[i], intensity[i]);
         }
-
     });
 
 

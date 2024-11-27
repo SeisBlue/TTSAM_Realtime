@@ -5,6 +5,7 @@ import multiprocessing
 import sys
 import threading
 import time
+import os
 from datetime import datetime
 
 from loguru import logger
@@ -15,7 +16,7 @@ import PyEW
 import pytz
 import torch
 import torch.nn as nn
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
@@ -43,9 +44,41 @@ Web Server
 """
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def index():
-    return render_template("index.html")
+    log_dir = "logs"
+    try:
+        files = []
+        for f in os.listdir(log_dir):
+            file_path = os.path.join(log_dir, f)
+            if f.endswith(".log") and os.path.isfile(file_path) and "error" not in f:
+                files.append(f)
+        files.sort(
+            key=lambda x: os.path.getmtime(os.path.join(log_dir, x)), reverse=True
+        )
+    except FileNotFoundError:
+        files = []
+    return render_template("index.html", files=files, target=target_dict)
+
+
+@app.route("/get_file_content")
+def get_file_content():
+    file_name = request.args.get("file")
+    if not file_name.endswith(".log"):
+        return "Invalid file type", 400
+
+    # 檢查文件名是否包含相對路徑
+    if ".." in file_name or "/" in file_name or "\\" in file_name:
+        return "Invalid file name", 400
+
+    try:
+        file_path = os.path.join("logs", file_name)
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        return content
+
+    except Exception as e:
+        return str(e), 500
 
 
 @app.route("/trace")
@@ -575,8 +608,7 @@ def prepare_tensor(data, shape, limit):
 
 def loading_animation():
     triggered_stations = len(pick_buffer)
-    # 定義 loading 動畫的元素
-    loading_chars = ["-", "/", "|", "\\"]
+    loading_chars = ["-", "\\", "|", "/"]
 
     # 無限循環顯示 loading 動畫
     for char in loading_chars:
@@ -680,9 +712,9 @@ def model_inference():
             )
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
             report["wave_endt"] = datetime.fromtimestamp(
-                    float(wave_endtime),
-                    tz=pytz.timezone("Asia/Taipei"),
-                ).strftime("%Y-%m-%d %H:%M:%S.%f")
+                float(wave_endtime),
+                tz=pytz.timezone("Asia/Taipei"),
+            ).strftime("%Y-%m-%d %H:%M:%S.%f")
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
