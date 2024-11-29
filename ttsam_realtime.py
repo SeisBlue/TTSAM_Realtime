@@ -28,6 +28,7 @@ socketio = SocketIO(app)
 manager = multiprocessing.Manager()
 
 wave_buffer = manager.dict()
+wave_process_queue = manager.Queue()
 wave_queue = manager.Queue()
 
 pick_buffer = manager.dict()
@@ -38,6 +39,7 @@ dataset_queue = manager.Queue()
 report_queue = manager.Queue()
 
 wave_endt = manager.Value("d", 0)
+wave_speed_count = manager.Value("i", 0)
 
 """
 Web Server
@@ -51,10 +53,15 @@ def index():
         files = []
         for f in os.listdir(report_log_dir):
             file_path = os.path.join(report_log_dir, f)
-            if f.startswith('report') and f.endswith(".log") and os.path.isfile(file_path):
+            if (
+                f.startswith("report")
+                and f.endswith(".log")
+                and os.path.isfile(file_path)
+            ):
                 files.append(f)
         files.sort(
-            key=lambda x: os.path.getmtime(os.path.join(report_log_dir, x)), reverse=True
+            key=lambda x: os.path.getmtime(os.path.join(report_log_dir, x)),
+            reverse=True,
         )
     except FileNotFoundError:
         files = []
@@ -225,17 +232,11 @@ def slide_array(array, data):
     return array[data.size :]
 
 
-def earthworm_wave_listener():
-    buffer_time = 30  # 設定緩衝區保留時間
-    sample_rate = 100  # 設定取樣率
-
+def wave_process():
     while True:
-        if not earthworm.mod_sta():
-            continue
-
-        wave = earthworm.get_wave(0)
-        if not wave:
-            continue
+        wave = wave_process_queue.get()
+        buffer_time = 30  # 設定緩衝區保留時間
+        sample_rate = 100  # 設定取樣率
 
         # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
@@ -262,8 +263,21 @@ def earthworm_wave_listener():
                     sample_rate, buffer_time, fill_value=np.array(wave["data"]).mean()
                 )
             wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
+            wave_speed_count.value += 1
         except Exception as e:
-            logger.error("earthworm_wave_listener error", e)
+            logger.error("earthworm_wave_process error", e)
+
+
+def earthworm_wave_listener():
+    while True:
+        if not earthworm.mod_sta():
+            continue
+
+        wave = earthworm.get_wave(0)
+        if not wave:
+            continue
+
+        wave_process_queue.put(wave)
 
 
 """
@@ -615,9 +629,11 @@ def loading_animation(pick_threshold):
     loading_chars = ["-", "\\", "|", "/"]
 
     # 無限循環顯示 loading 動畫
+    wave_speed_count.value = 0
+    start_time = time.time()
     for char in loading_chars:
         # 清除上一個字符
-        sys.stdout.write("\r" + " " * 20 + "\r")
+        sys.stdout.write("\r" + " " * 30 + "\r")
         sys.stdout.flush()
 
         wave_count = len(wave_buffer)
@@ -628,9 +644,12 @@ def loading_animation(pick_threshold):
 
         delay = time.time() - wave_endt.value
 
+        delta = time.time() - start_time
+        wave_process_rate = wave_speed_count.value / delta
+
         # 顯示目前的 loading 字符
         sys.stdout.write(
-            f"{wave_count} waves: {wave_timestring[:-3]} lag:{delay:.3f} picks:{pick_counts}/{pick_threshold} waiting for event {char} "
+            f"{wave_count} waves: {wave_timestring[:-3]} rate: {wave_process_rate:.3f} lag:{delay:.3f}s picks:{pick_counts}/{pick_threshold} {char} "
         )
         sys.stdout.flush()
         time.sleep(0.1)
@@ -665,12 +684,13 @@ def model_inference():
                 ).strftime("%Y%m%d_%H%M%S")
 
                 # 以第一個 pick 的時間為 report log 檔案名稱
-                report_log_file = f"{log_folder}/report/report_{first_pick_timestring}.log"
+                report_log_file = (
+                    f"{log_folder}/report/report_{first_pick_timestring}.log"
+                )
                 report_log_file = open(report_log_file, "w+")
 
                 pick_log_file = f"{log_folder}/pick/pick_{first_pick_timestring}.log"
                 pick_log_file = open(pick_log_file, "w+")
-
 
         try:
             pick_count = len(pick_buffer)
@@ -708,7 +728,7 @@ def model_inference():
             ]
 
             # 產生報告
-            report = {"sta": len(pick_buffer), "log_time": "", "alarm": []}
+            report = {"picks": len(pick_buffer), "log_time": "", "alarm": []}
             for i, target_name in enumerate(dataset["target_name"]):
                 intensity = dataset["intensity"][i]
                 report[f"{target_name}"] = intensity
@@ -718,7 +738,7 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["timestamp"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
+            report["report_time"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
@@ -729,8 +749,8 @@ def model_inference():
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
-                f"{inference_end_time - event_first_pick['sys_time'] + 2:.4f}"
-            )  # upsec 2 sec
+                f"{inference_end_time - event_first_pick['sys_time'] + 2:.4f}"  # upsec 2 sec
+            )
 
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
@@ -738,7 +758,10 @@ def model_inference():
             sys.stdout.flush()
             report_log_file.write(json.dumps(report) + "\n")
 
-            pick_log = {'log_time': report["log_time"], "picks": list(pick_buffer.values())}
+            pick_log = {
+                "log_time": report["log_time"],
+                "picks": list(pick_buffer.values()),
+            }
             pick_log_file.write(json.dumps(pick_log) + "\n")
 
             # 資料傳至前端
@@ -1223,3 +1246,10 @@ if __name__ == "__main__":
         p = multiprocessing.Process(target=func)
         processes.append(p)
         p.start()
+
+    wave_workers = 4
+    worker_list = []
+    for _ in range(wave_workers):
+        p = multiprocessing.Process(target=wave_process)
+        p.start()
+        worker_list.append(p)
