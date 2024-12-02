@@ -241,8 +241,7 @@ def wave_process():
         # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
         wave_timestring= datetime.fromtimestamp(
-            float(wave_endt.value), tz=pytz.timezone("Asia/Taipei")
-        ).strftime("%Y-%m-%d %H:%M:%S.%f")
+            float(wave_endt.value)).strftime("%Y-%m-%d %H:%M:%S.%f")
 
         print(wave_timestring)
         sys.stdout.flush()
@@ -649,8 +648,7 @@ def loading_animation(pick_threshold):
         wave_count = len(wave_buffer)
 
         wave_timestring = datetime.fromtimestamp(
-            float(wave_endt.value), tz=pytz.timezone("Asia/Taipei")
-        ).strftime("%Y-%m-%d %H:%M:%S.%f")
+            float(wave_endt.value), ).strftime("%Y-%m-%d %H:%M:%S.%f")
 
         delay = time.time() - wave_endt.value
 
@@ -690,7 +688,6 @@ def model_inference():
                 event_first_pick = list(pick_buffer.values())[0]
                 first_pick_timestring = datetime.fromtimestamp(
                     float(event_first_pick["pick_time"]),
-                    tz=pytz.timezone("Asia/Taipei"),
                 ).strftime("%Y%m%d_%H%M%S")
 
                 # 以第一個 pick 的時間為 report log 檔案名稱
@@ -748,14 +745,12 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["report_time"] = datetime.now(pytz.timezone("Asia/Taipei")).strftime(
+            report["report_time"] = datetime.now().strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
             report["wave_endt"] = datetime.fromtimestamp(
-                float(wave_endtime),
-                tz=pytz.timezone("Asia/Taipei"),
-            ).strftime("%Y-%m-%d %H:%M:%S.%f")
+                float(wave_endtime)).strftime("%Y-%m-%d %H:%M:%S.%f")
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
