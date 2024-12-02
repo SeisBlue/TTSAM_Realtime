@@ -240,11 +240,6 @@ def wave_process():
 
         # 得到最新的 wave 結束時間
         wave_endt.value = max(wave["endt"], wave_endt.value)
-        wave_timestring= datetime.fromtimestamp(
-            float(wave_endt.value)).strftime("%Y-%m-%d %H:%M:%S.%f")
-
-        print(wave_timestring)
-        sys.stdout.flush()
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
