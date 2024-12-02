@@ -239,7 +239,7 @@ def earthworm_wave_listener():
         if not wave:
             continue
 
-        if wave["endt"] < time.time() - 10:
+        if wave["endt"] < time.time() - 3:
             continue
 
         if wave["endt"] > time.time() + 1:
