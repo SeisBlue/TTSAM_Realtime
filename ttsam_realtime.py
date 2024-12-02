@@ -13,7 +13,6 @@ import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
-import pytz
 import torch
 import torch.nn as nn
 from flask import Flask, render_template, request
@@ -28,7 +27,7 @@ socketio = SocketIO(app)
 manager = multiprocessing.Manager()
 
 wave_buffer = manager.dict()
-wave_process_queue = manager.Queue()
+wave_process_queue = multiprocessing.Queue()
 wave_queue = manager.Queue()
 
 pick_buffer = manager.dict()
@@ -232,9 +231,21 @@ def slide_array(array, data):
     return array[data.size :]
 
 
-def wave_process():
+def earthworm_wave_listener():
     while True:
-        wave = wave_process_queue.get()
+        if not earthworm.mod_sta():
+            continue
+
+        wave = earthworm.get_wave(0)
+        if not wave:
+            continue
+
+        if wave["endt"] < time.time() - 10:
+            continue
+
+        if wave["endt"] > time.time() + 1:
+            continue
+
         buffer_time = 30  # 設定緩衝區保留時間
         sample_rate = 100  # 設定取樣率
 
@@ -260,32 +271,6 @@ def wave_process():
             wave_speed_count.value += 1
         except Exception as e:
             logger.error("earthworm_wave_process error", e)
-
-
-def earthworm_wave_listener():
-    wave_workers = 4
-    worker_list = []
-    for _ in range(wave_workers):
-        p = multiprocessing.Process(target=wave_process)
-        p.start()
-        worker_list.append(p)
-
-    while True:
-        if not earthworm.mod_sta():
-            continue
-
-        wave = earthworm.get_wave(0)
-        if not wave:
-            continue
-
-        if wave['endt'] < time.time() - 10:
-            continue
-
-        if wave['endt'] > time.time() + 10:
-
-            continue
-
-        wave_process_queue.put(wave)
 
 
 """
@@ -646,8 +631,9 @@ def loading_animation(pick_threshold):
 
         wave_count = len(wave_buffer)
 
-        wave_timestring = datetime.fromtimestamp(
-            float(wave_endt.value) ).strftime("%Y-%m-%d %H:%M:%S.%f")
+        wave_timestring = datetime.fromtimestamp(float(wave_endt.value)).strftime(
+            "%Y-%m-%d %H:%M:%S.%f"
+        )
 
         delay = time.time() - wave_endt.value
 
@@ -744,12 +730,11 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["report_time"] = datetime.now().strftime(
+            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
+            report["wave_endt"] = datetime.fromtimestamp(float(wave_endtime)).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
-            report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
-            report["wave_endt"] = datetime.fromtimestamp(
-                float(wave_endtime)).strftime("%Y-%m-%d %H:%M:%S.%f")
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
@@ -1250,4 +1235,3 @@ if __name__ == "__main__":
         p = multiprocessing.Process(target=func)
         processes.append(p)
         p.start()
-
