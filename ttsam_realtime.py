@@ -27,7 +27,6 @@ socketio = SocketIO(app)
 manager = multiprocessing.Manager()
 
 wave_buffer = manager.dict()
-wave_process_queue = multiprocessing.Queue()
 wave_queue = manager.Queue()
 
 pick_buffer = manager.dict()
