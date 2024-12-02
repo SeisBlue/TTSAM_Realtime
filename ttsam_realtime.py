@@ -648,7 +648,7 @@ def loading_animation(pick_threshold):
         wave_count = len(wave_buffer)
 
         wave_timestring = datetime.fromtimestamp(
-            float(wave_endt.value), ).strftime("%Y-%m-%d %H:%M:%S.%f")
+            float(wave_endt.value) ).strftime("%Y-%m-%d %H:%M:%S.%f")
 
         delay = time.time() - wave_endt.value
 
