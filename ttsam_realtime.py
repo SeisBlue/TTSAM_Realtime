@@ -269,12 +269,22 @@ def wave_process():
 
 
 def earthworm_wave_listener():
+    wave_workers = 4
+    worker_list = []
+    for _ in range(wave_workers):
+        p = multiprocessing.Process(target=wave_process)
+        p.start()
+        worker_list.append(p)
+
     while True:
         if not earthworm.mod_sta():
             continue
 
         wave = earthworm.get_wave(0)
         if not wave:
+            continue
+
+        if wave['endt'] < time.time() - 10:
             continue
 
         wave_process_queue.put(wave)
@@ -1247,9 +1257,3 @@ if __name__ == "__main__":
         processes.append(p)
         p.start()
 
-    wave_workers = 4
-    worker_list = []
-    for _ in range(wave_workers):
-        p = multiprocessing.Process(target=wave_process)
-        p.start()
-        worker_list.append(p)
