@@ -249,7 +249,7 @@ def earthworm_wave_listener():
         sample_rate = 100  # 設定取樣率
 
         # 得到最新的 wave 結束時間
-        wave_endt.value = max(wave["endt"], wave_endt.value)
+        wave_endt.value = wave["endt"]
 
         try:
             wave = convert_to_tsmip_legacy_naming(wave)
