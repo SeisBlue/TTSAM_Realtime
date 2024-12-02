@@ -287,6 +287,7 @@ def earthworm_wave_listener():
             continue
 
         if wave['endt'] > time.time() + 10:
+
             continue
 
         wave_process_queue.put(wave)
