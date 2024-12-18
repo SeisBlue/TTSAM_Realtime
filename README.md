@@ -97,7 +97,7 @@ seisblue/ttsam-realtime \
 /opt/conda/bin/python3 /workspace/ttsam_realtime.py --web --mqtt
 ```
 
-將其中的`/opt/Earthworm/run/params`改為本地的 Earthworm 資料夾。
+第二個 `-v /opt/Earthworm/run/params`(左邊)改為本地的 Earthworm 資料夾。
 
 ttsam_realtime.py 的所有選項：
 - --mqtt: 連接到 MQTT broker。

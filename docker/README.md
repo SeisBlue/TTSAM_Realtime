@@ -2,14 +2,14 @@
 
 ## 下載 Docker image:
 ```sh
-docker pull seisblue/ttsam
+docker pull seisblue/ttsam-realtime
 ```
 
 ## 建立 Docker Image
 
 ```bash
 cd CWA_TTSAM_Realtime
-docker build -t ttsam:latest -f docker/Dockerfile .
+docker build -t ttsam-realtime:latest -f docker/Dockerfile .
 ```
 
 ## 執行 ttsam 主程式
@@ -22,7 +22,7 @@ docker run \
 --ipc host \
 --net host \
 --name ttsam-cpu \
-seisblue/ttsam \
+seisblue/ttsam-realtime \
 /opt/conda/bin/python3 /workspace/ttsam_realtime.py [options]
 ```
 - -v $(pwd):/workspace - 將本地目錄掛載到容器的 /workspace 目錄。
@@ -50,4 +50,10 @@ docker stop ttsam-cpu
 
 ```bash
 docker rm ttsam-cpu
+```
+
+## 刪除 Image
+
+```bash
+docker rmi seisblue/ttsam-realtime
 ```
