@@ -49,5 +49,5 @@ docker stop ttsam-cpu
 ## 刪除 Container
 
 ```bash
-docker rm tt-sam-cpu
+docker rm ttsam-cpu
 ```

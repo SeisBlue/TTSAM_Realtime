@@ -99,6 +99,16 @@ seisblue/ttsam-realtime \
 
 將其中的`/opt/Earthworm/run/params`改為本地的 Earthworm 資料夾。
 
+ttsam_realtime.py 的所有選項：
+- --mqtt: 連接到 MQTT broker。
+- --web: 運行網頁伺服器。
+- --host: 指定網頁伺服器的 IP 地址（預設：0.0.0.0）。
+- --port: 指定網頁伺服器的端口（預設：5000）。
+- --test-env: 在測試環境模式下運行（將 inst_id 設置為 255）。
+- --verbose-level: 設置詳細級別（選項：ERROR，WARNING，INFO，DEBUG；預設：INFO）。
+- --log-level: 設置日誌級別（選項：ERROR，WARNING，INFO，DEBUG；預設：INFO）。
+
+
 ### 複製 MQTT 設定檔範本：
 
 ```bash
@@ -141,7 +151,7 @@ ssh -L 5000:192.168.x.x:5000 user@remote
 
 啟動系統後，可在瀏覽器中輸入 `http://127.0.0.1:5000` 進入網頁介面。
 
-目前提供四個頁面：
+目前提供五個頁面：
 
 - history：顯示歷史地震事件
 - trace：顯示即時地震波形
