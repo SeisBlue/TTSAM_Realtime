@@ -1,74 +1,65 @@
-# TT-SAM Realtime System
+# TT-SAM 即時資料管線
 
-A real-time seismic intensity prediction system that utilizes deep learning to process seismic waveforms and predict ground motion intensities across Taiwan.
+此專案為地震預警模型 [TT-SAM](https://github.com/JasonChang0320/TT-SAM) 的即時資料管線，整合 Earthworm
+平台的即時串流波形與 P 波資訊，經過資料前處理、資料轉換、模型震度預測、最後產出震度報告，提供 MQTT
+資訊發布與簡易網頁介面呈現，能在地震 P 波後迅速給出指定目標站點之震度推估。
 
-![TTSAM_Realtime_Architecture](TTSAM_Realtime_Architecture.png)
+---
 
-## Features
+![TTSAM_Realtime_Architecture](/TTSAM_Realtime_Architecture.png)
 
-- Real-time seismic waveform processing
-- Deep learning-based ground motion prediction
-- Integration with Earthworm seismic processing system
-- Web-based visualization interface
-- MQTT support for real-time notifications
-- Multi-station processing capability
+本系統主要包括 4 個主要模組：
 
-## Requirements
+- Wave Listener：接收地震波形
+- Pick Listener：接收 P 波訊息
+- Model Inference：觸發 TT-SAM 模型預測震度
+- Web Server：提供可視化界面
 
-- Earthworm
-- MQTT broker
-- Docker 
+---
 
-## Installation
+## 安裝與環境配置
 
-1. Clone this repository
+### 系統需求
+
+- [Earthworm](http://www.earthwormcentral.org/)
+- MQTT broker [(Mosquitto)](https://mosquitto.org/)
+- [Docker](https://www.docker.com/)
+
+### 由 Docker 安裝
+
+1. 下載專案：
+
 ```bash
 git clone https://github.com/SeisBlue/TTSAM_Realtime.git
 ```
 
-2. Pull the Docker image:
+2. 下載 Docker 映像檔：
+
 ```bash
 docker pull seisblue/ttsam-realtime
 ```
-3. Prepare the required data files in the `data` directory:
-    - `site_info.txt`: Station information
-      ```
-      Station Channel Location Latitude Longitude Elevation Depth Azimuth Start_time End_time Constant 
-      ALS HLE 10 23.508380 120.813410 2417.00 0.00 90.0 2018-08-08 2599-12-31 3.27E-6 
-      ALS HLN 10 23.508380 120.813410 2417.00 0.00 0.0 2018-08-08 2599-12-31 3.24E-6 
-      ALS HLZ 10 23.508380 120.813410 2417.00 0.00 0.0 2018-08-08 2599-12-31 3.25E-6 
-      ```
-    - `eew_target.csv`: Target stations for prediction
-      ```
-      network,station,station_zh,longitude,latitude,elevation
-      CWB_SMT,TAP,臺北地震站,121.514,25.038,16
-      TSMIP,A024,板橋地震站,121.475,25.019,14
-      CWASN,NTS,淡水地震站,121.449,25.164,15
-      ```
-    - `Vs30ofTaiwan.csv`: VS30 data for Taiwan
-      ```
-      x,y,Vs30,x_97,y_97,lon,lat
-      287760,2802000,534.43737793,288590.5292444,2801796.6794629595,121.3833232712489,25.324688719187737
-      287840,2802000,534.24029541,288670.5304836,2801796.67998464,121.38411791685077,25.324686654878782
-      287920,2802000,534.02142334,288750.5317228,2801796.6805063197,121.38491256236529,25.324684586285322
-      ```
-4. Place trained model in the `model` directory:
-    - `ttsam_trained_model_11.pt` ([TT-SAM](https://github.com/JasonChang0320/TT-SAM))
 
-5. MQTT configuration file:
-    - `ttsam_config.json`
-       ```json
-       "mqtt": {
-         "username": "ttsam",
-         "password": "ttsam",
-         "host": "0.0.0.0",
-         "port": 1883,
-         "topic": "ttsam"
-       }
-        ```
-## Usage
+3. 檢查必需檔案：
 
-Run the system with:
+- ttsam_config.json (MQTT 設定檔案)
+- data/site_info.txt (測站資訊)
+- data/eew_target.csv (預測震度位置)
+- data/Vs30ofTaiwan.csv (全台 VS30 網格)
+- model/ttsam_trained_model_11.pt (TT-SAM 模型參數)
+
+檔案格式請參考 [資料檔案說明](/docs/data.md)
+
+---
+
+## 快速啟動
+
+### 進入專案目錄：
+
+```bash
+cd CWA_TTSAM_Realtime
+```
+
+### 檢查 docker_run_ttsam.sh：
 
 ```bash
 docker run \
@@ -79,70 +70,46 @@ docker run \
 --net host \
 --name ttsam-cpu \
 seisblue/ttsam-realtime \
-/opt/conda/bin/python3 /workspace/ttsam_realtime.py [options]
+/opt/conda/bin/python3 /workspace/ttsam_realtime.py --web --mqtt
 ```
 
-Options:
-- `--mqtt`: Connect to MQTT broker, default: `False`
-- `--config`: MQTT configuration file, default: `ttsam_config.json`
-- `--web`: Run the web server, default: `False`
-- `--host`: Web server IP, default: `0.0.0.0`
-- `--port`: Web server port, default: `5000`
+將其中的`/opt/Earthworm/run/params`改為本地的 Earthworm 資料夾。
 
-## Update
+### 啟動系統：
 
-Pull the latest code:
 ```bash
-git pull
+./docker_run_ttsam.sh
 ```
 
-Pull the latest Docker image:
-```bash 
-docker pull seisblue/ttsam-realtime
+歷史預測震度會存放在`logs/report/` 目錄。
+
+---
+
+## 網頁介面
+
+### 開啟 ssh 通道
+
+```bash
+ssh -L 5000:192.168.x.x:5000 user@remote
 ```
 
-## System Components
+啟動系統後，可在瀏覽器中輸入 `http://127.0.0.1:5000` 進入網頁介面。
 
-- Wave Listener: Processes incoming seismic waveforms
-- Pick Listener: Handles phase picks and triggering
-- Model Inference: Runs deep learning prediction
-- Web Server: Provides visualization interface
-- MQTT Client: Broadcasts predictions
+目前提供四個頁面：
 
-## Model Architecture
+- history：顯示歷史地震事件
+- trace：顯示即時地震波形
+- event：顯示地震事件詳細資訊
+- dataset：顯示處理後的資料集
+- intensityMap：顯示地震震度分佈
 
-[TT-SAM](https://github.com/JasonChang0320/TT-SAM)
+---
 
-The system uses a deep learning model combining:
-- CNN for waveform processing
-- Transformer for station data integration
-- MDN (Mixture Density Network) for uncertainty estimation
+## 文件列表
 
-## References
-Münchmeyer, J., Bindi, D., Leser, U., & Tilmann, F. (2021). The transformer earthquake
-alerting model: A new versatile approach to earthquake early warning. Geophysical Journal
-International, 225(1), 646-656.
-(https://academic.oup.com/gji/article/225/1/646/6047414)
+- [資料檔案說明](docs/data.md)
+- [Docker 文件](docs/docker.md)
+- [資料夾結構](docs/folders.md)
 
-Liu, Kun-Sung, Tzay-Chyn Shin, and Yi-Ben Tsai. (1999). A free-field strong motion
-network in Taiwan: TSMIP. Terrestrial, Atmospheric and Oceanic Sciences, 10(2), 377-396.
-(http://tao.cgu.org.tw/index.php/articles/archive/geophysics/item/308)
 
-Akazawa, T. (2004, August). A technique for automatic detection of onset time of P-and Sphases
-in strong motion records. In Proc. of the 13th world conf. on earthquake engineering
-(Vol. 786, p. 786). Vancouver, Canada.
-(https://www.iitk.ac.in/nicee/wcee/article/13_786.pdf)
 
-Kuo, C. H., Wen, K. L., Hsieh, H. H., Lin, C. M., Chang, T. M., & Kuo, K. W. (2012). Site
-classification and Vs30 estimation of free-field TSMIP stations using the logging data of
-EGDT. Engineering Geology, 129, 68-75.
-(https://www.sciencedirect.com/science/article/pii/S0013795212000397)
-
-Lee, C. T., & Tsai, B. R. (2008). Mapping Vs30 in Taiwan. TAO: Terrestrial, Atmospheric
-and Oceanic Sciences, 19(6), 6.
-(https://www.researchgate.net/profile/Chyi-Tyi-Lee-2/publication/250211755_Mapping_Vs30_in_Taiwan/links/557fa82608aeb61eae262086/Mapping-Vs30-in-Taiwan.pdf)
-
-Huang, H. H., Wu, Y. M., Song, X., Chang, C. H., Lee, S. J., Chang, T. M., & Hsieh, H. H.
-(2014). Joint Vp and Vs tomography of Taiwan: Implications for subduction-collision
-orogeny. Earth and Planetary Science Letters, 392, 177-191.
-(https://www.sciencedirect.com/science/article/pii/S0012821X14000995)

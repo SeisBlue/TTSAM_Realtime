@@ -1,4 +1,4 @@
-# Dockerfile for TT-SAM environment (CPU version)
+# Dockerfile 相關文件
 
 ## Pull the Docker image:
 ```sh
