@@ -55,6 +55,7 @@ docker pull seisblue/ttsam-realtime
 
 ```bash
 cd CWA_TTSAM_Realtime
+git stash
 git pull
 ```
 
@@ -122,7 +123,7 @@ cp mqtt_config.json ttsam_config.json
 ### 啟動系統：
 
 ```bash
-./run_ttsam.sh
+sh run_ttsam.sh
 ```
 
 歷史預測震度會存放在`logs/report/` 目錄。
