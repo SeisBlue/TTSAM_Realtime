@@ -17,6 +17,14 @@
 
 ---
 
+## 其他文件列表
+
+- [資料夾結構](docs/folders.md)
+- [資料檔案說明](docs/data.md)
+- [Docker 文件](docker/README.md)
+
+---
+
 ## 安裝與環境配置
 
 ### 系統需求
@@ -100,6 +108,7 @@ seisblue/ttsam-realtime \
 第二個 `-v /opt/Earthworm/run/params`(左邊)改為本地的 Earthworm 資料夾。
 
 ttsam_realtime.py 的所有選項：
+
 - --mqtt: 連接到 MQTT broker。
 - --web: 運行網頁伺服器。
 - --host: 指定網頁伺服器的 IP 地址（預設：0.0.0.0）。
@@ -107,7 +116,6 @@ ttsam_realtime.py 的所有選項：
 - --test-env: 在測試環境模式下運行（將 inst_id 設置為 255）。
 - --verbose-level: 設置詳細級別（選項：ERROR，WARNING，INFO，DEBUG；預設：INFO）。
 - --log-level: 設置日誌級別（選項：ERROR，WARNING，INFO，DEBUG；預設：INFO）。
-
 
 ### 複製 MQTT 設定檔範本：
 
@@ -159,12 +167,6 @@ ssh -L 5000:192.168.x.x:5000 user@remote
 - dataset：顯示處理後的資料集
 - intensityMap：顯示地震震度分佈
 
----
 
-## 文件列表
-
-- [資料夾結構](docs/folders.md)
-- [資料檔案說明](docs/data.md)
-- [Docker 文件](docker/README.md)
 
 
