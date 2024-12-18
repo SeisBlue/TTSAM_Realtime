@@ -142,10 +142,22 @@ cp mqtt_config.json ttsam_config.json
 ### 啟動系統：
 
 ```bash
-sh run_ttsam.sh
+screen -S ttsam-realtime # 建立新的 screen
+cd CWA_TTSAM_Realtime # 進入專案目錄
+sh run_ttsam.sh # 執行系統
 ```
 
+`ctrl` + `a` + `d`  將 screen 推入背景
+
+
 歷史預測震度文字報告會存放在`logs/report/` 目錄，可以由網頁介面查看。
+
+### 還原 screen：
+
+```bash
+screen -r ttsam-realtime
+```
+
 
 ---
 
