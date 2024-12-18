@@ -1,18 +1,18 @@
 # Dockerfile 相關文件
 
-## Pull the Docker image:
+## 下載 Docker image:
 ```sh
 docker pull seisblue/ttsam
 ```
 
-## Building the Docker Image
+## 建立 Docker Image
 
 ```bash
 cd CWA_TTSAM_Realtime
 docker build -t ttsam:latest -f docker/Dockerfile .
 ```
 
-## Running the Docker Container
+## 執行 ttsam 主程式
 
 ```bash
 docker run \
@@ -21,23 +21,32 @@ docker run \
 --rm \
 --ipc host \
 --net host \
---name tt-sam-cpu \
+--name ttsam-cpu \
 seisblue/ttsam \
 /opt/conda/bin/python3 /workspace/ttsam_realtime.py [options]
 ```
-## Accessing the Container
+- -v $(pwd):/workspace - 將本地目錄掛載到容器的 /workspace 目錄。
+- -v /opt/Earthworm/run/params:/opt/Earthworm/run/params:ro - 將 Earthworm 資料夾掛載到容器的 /opt/Earthworm/run/params 目錄，並設置為唯讀。
+- --rm - 結束容器後自動刪除。
+- --ipc host - 使用主機的 IPC 通道。
+- --net host - 使用主機的網絡。
+- --name ttsam-cpu - 容器名稱。
+- seisblue/ttsam-realtime - Docker Image 名稱。
+- /opt/conda/bin/python3 /workspace/ttsam_realtime.py --web --mqtt - 執行容器中的命令。
+
+## 進入 Container 內部除錯
 
 ```bash
-docker exec -it tt-sam-cpu /bin/bash
+docker exec -it ttsam-cpu /bin/bash
 ```
 
-## Stopping the Container
+## 停止 Container
 
 ```bash
-docker stop tt-sam-cpu
+docker stop ttsam-cpu
 ```
 
-## Removing the Container
+## 刪除 Container
 
 ```bash
 docker rm tt-sam-cpu

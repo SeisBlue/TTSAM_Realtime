@@ -39,6 +39,8 @@ git clone https://github.com/SeisBlue/TTSAM_Realtime.git
 docker pull seisblue/ttsam-realtime
 ```
 
+Docker 相關操作與 image 自行建置請參考 [Dockerfile 相關文件](docker/README.md)
+
 3. 檢查必需檔案：
 
 - ttsam_config.json (MQTT 設定檔案)
@@ -75,11 +77,10 @@ docker pull seisblue/ttsam-realtime
 cd CWA_TTSAM_Realtime
 ```
 
-### 複製範本：
+### 複製 Docker run 範本：
 
 ```bash
 cp docker_run_ttsam.sh run_ttsam.sh
-
 ```
 
 ### 更改 run_ttsam.sh：
@@ -98,7 +99,7 @@ seisblue/ttsam-realtime \
 
 將其中的`/opt/Earthworm/run/params`改為本地的 Earthworm 資料夾。
 
-### 複製範本：
+### 複製 MQTT 設定檔範本：
 
 ```bash
 cp mqtt_config.json ttsam_config.json
@@ -126,7 +127,7 @@ cp mqtt_config.json ttsam_config.json
 sh run_ttsam.sh
 ```
 
-歷史預測震度會存放在`logs/report/` 目錄。
+歷史預測震度文字報告會存放在`logs/report/` 目錄，可以由網頁介面查看。
 
 ---
 
@@ -152,9 +153,8 @@ ssh -L 5000:192.168.x.x:5000 user@remote
 
 ## 文件列表
 
-- [資料檔案說明](docs/data.md)
-- [Docker 文件](docs/docker.md)
 - [資料夾結構](docs/folders.md)
-
+- [資料檔案說明](docs/data.md)
+- [Docker 文件](docker/README.md)
 
 
