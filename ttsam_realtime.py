@@ -1,22 +1,25 @@
 import argparse
+import asyncio
 import bisect
 import json
 import multiprocessing
+import os
 import sys
 import threading
 import time
-import os
 from datetime import datetime
 
-from loguru import logger
+import discord
 import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
 import torch
 import torch.nn as nn
+from discord.ext import commands
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
+from loguru import logger
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
 
@@ -35,6 +38,7 @@ event_queue = manager.Queue()
 dataset_queue = manager.Queue()
 
 report_queue = manager.Queue()
+discord_queue = manager.Queue()
 
 wave_endt = manager.Value("d", 0)
 wave_speed_count = manager.Value("i", 0)
@@ -740,6 +744,10 @@ def model_inference():
 
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
+
+            # 報告傳至 Discord Bot
+            discord_queue.put(report)
+
             print(report)
             sys.stdout.flush()
             report_log_file.write(json.dumps(report) + "\n")
@@ -1155,10 +1163,59 @@ def get_full_model(model_path):
     return full_model
 
 
+# Discord Bot 子程序
+def discord_bot():
+    TOKEN = config['discord']['token']
+    CHANNEL_ID = config['discord']['channel_id']
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix="!", intents=intents)
+
+    @bot.event
+    async def on_ready():
+        print(f'機器人已登入為 {bot.user}')
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel:
+            await channel.send("你好，這是機器人已啟動的訊息！")
+        else:
+            print("無法找到頻道，請檢查 CHANNEL_ID 是否正確")
+
+    async def send_message(bot, message):
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel:
+            await channel.send(message)
+        else:
+            print("無法找到頻道，請檢查 CHANNEL_ID 是否正確")
+
+    async def listen_for_messages(queue):
+        while True:
+            if not queue.empty():
+                try:
+                    message = queue.get_nowait()
+                    if message == "exit":
+                        print("關閉機器人...")
+                        await bot.close()
+                        break
+                    else:
+                        await send_message(bot, message)
+                except Exception as e:
+                    print(f"錯誤發生：{e}")
+            await asyncio.sleep(0.1)  # 避免效能消耗過大
+
+    async def start():
+        bot_task = asyncio.create_task(bot.start(TOKEN))
+        listen_task = asyncio.create_task(listen_for_messages(discord_queue))
+        await asyncio.gather(bot_task, listen_task)
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(start())
+
+
 if __name__ == "__main__":
     logger.info("TTSAM Realtime Start")
     parser = argparse.ArgumentParser()
     parser.add_argument("--mqtt", action="store_true", help="connect to mqtt broker")
+    parser.add_argument("--discord", action="store_true", help="connect to discord bot")
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
     parser.add_argument("--port", type=int, default=5000, help="web server port")
@@ -1226,6 +1283,9 @@ if __name__ == "__main__":
         model_inference,
         web_server,
     ]
+
+    if args.discord:
+        functions.append(discord_bot)
 
     # 為每個函數創建一個持續運行的 process
     for func in functions:
