@@ -197,7 +197,7 @@ def get_wave_constant(wave):
         wave_constant = constant_dict[wave["station"], wave["channel"]]
 
     except Exception as e:
-        logger.info(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
+        logger.debug(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
         wave_constant = 3.2e-6
 
     return wave_constant
