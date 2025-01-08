@@ -1,5 +1,6 @@
 cython
 discord
+discord_webhook
 flask-socketio
 loguru
 numpy
