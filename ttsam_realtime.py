@@ -1181,6 +1181,7 @@ def send_discord():
 
     if proxies:
         webhook.set_proxies(proxies)
+        logger.info("discord_webhook proxies set")
 
     while True:
         try:
