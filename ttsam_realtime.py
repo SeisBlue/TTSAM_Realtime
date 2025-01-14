@@ -1183,6 +1183,16 @@ def send_discord():
         webhook.set_proxies(proxies)
         logger.info("discord_webhook proxies set")
 
+    if args.discord:
+        embed = DiscordEmbed(title="Server start", color="2196F3")
+        embed.set_timestamp()
+        webhook.add_embed(embed)
+
+        response = webhook.execute()
+        logger.debug(response)
+
+        webhook.remove_embeds()
+
     while True:
         try:
             report = discord_queue.get()
