@@ -1185,24 +1185,23 @@ def send_discord():
     while True:
         try:
             report = discord_queue.get()
-            color = "2196F3"  # blue
             if report["alarm"]:
                 color = "FF5722"  # orange
 
-            context = {
-                "title": "Event Detected",
-                "description": json.dumps(report),
-                "color": color,
-            }
+                context = {
+                    "title": "Event Detected",
+                    "description": json.dumps(report),
+                    "color": color,
+                }
 
-            embed = DiscordEmbed(**context)
-            webhook.add_embed(embed)
+                embed = DiscordEmbed(**context)
+                webhook.add_embed(embed)
 
-            if args.discord:
-                response = webhook.execute()
-                logger.debug(response)
+                if args.discord:
+                    response = webhook.execute()
+                    logger.debug(response)
 
-            webhook.remove_embeds()
+                webhook.remove_embeds()
 
         except Exception as e:
             logger.error("send_discord error:", e)
