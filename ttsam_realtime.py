@@ -9,14 +9,13 @@ import threading
 import time
 from datetime import datetime
 
-import discord
+from discord_webhook import DiscordWebhook, DiscordEmbed
 import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
 import torch
 import torch.nn as nn
-from discord.ext import commands
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from loguru import logger
@@ -119,6 +118,11 @@ def connect_earthworm():
     socketio.emit("connect_init")
 
 
+def earthworm_wave_emitter():
+    while True:
+        socketio.emit("wave_packet", wave)
+
+
 def wave_emitter():
     while True:
         wave = wave_queue.get()
@@ -201,7 +205,9 @@ def get_wave_constant(wave):
         wave_constant = constant_dict[wave["station"], wave["channel"]]
 
     except Exception as e:
-        logger.debug(f"{wave['station']} not found in site_info.txt, use default 3.2e-6")
+        logger.debug(
+            f"{wave['station']} not found in site_info.txt, use default 3.2e-6"
+        )
         wave_constant = 3.2e-6
 
     return wave_constant
@@ -745,7 +751,7 @@ def model_inference():
             # 報告傳至 MQTT
             mqtt_client.publish(topic, json.dumps(report))
 
-            # 報告傳至 Discord Bot
+            # 報告傳至 Discord
             discord_queue.put(report)
 
             print(report)
@@ -1163,52 +1169,44 @@ def get_full_model(model_path):
     return full_model
 
 
-# Discord Bot 子程序
-def discord_bot():
-    TOKEN = config['discord']['token']
-    CHANNEL_ID = config['discord']['channel_id']
-    intents = discord.Intents.default()
-    intents.message_content = True
-    bot = commands.Bot(command_prefix="!", intents=intents)
+def send_discord():
+    proxies = {}
+    try:
+        proxies = config["discord"]["proxies"]
+    except KeyError:
+        logger.debug("discord_webhook no proxy")
 
-    @bot.event
-    async def on_ready():
-        print(f'機器人已登入為 {bot.user}')
-        channel = bot.get_channel(CHANNEL_ID)
-        if channel:
-            await channel.send("你好，這是機器人已啟動的訊息！")
-        else:
-            print("無法找到頻道，請檢查 CHANNEL_ID 是否正確")
+    webhook_url = config["discord"]["webhook_url"]
+    webhook = DiscordWebhook(url=webhook_url)
 
-    async def send_message(bot, message):
-        channel = bot.get_channel(CHANNEL_ID)
-        if channel:
-            await channel.send(message)
-        else:
-            print("無法找到頻道，請檢查 CHANNEL_ID 是否正確")
+    if proxies:
+        webhook.set_proxies(proxies)
 
-    async def listen_for_messages(queue):
-        while True:
-            if not queue.empty():
-                try:
-                    message = queue.get_nowait()
-                    if message == "exit":
-                        print("關閉機器人...")
-                        await bot.close()
-                        break
-                    else:
-                        await send_message(bot, message)
-                except Exception as e:
-                    print(f"錯誤發生：{e}")
-            await asyncio.sleep(0.1)  # 避免效能消耗過大
+    while True:
+        try:
+            report = discord_queue.get()
+            color = "2196F3"  # blue
+            if report["alarm"]:
+                color = "FF5722"  # orange
 
-    async def start():
-        bot_task = asyncio.create_task(bot.start(TOKEN))
-        listen_task = asyncio.create_task(listen_for_messages(discord_queue))
-        await asyncio.gather(bot_task, listen_task)
+            context = {
+                "title": "Event Detected",
+                "description": json.dumps(report),
+                "color": color,
+            }
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start())
+            embed = DiscordEmbed(**context)
+            webhook.add_embed(embed)
+
+            if args.discord:
+                response = webhook.execute()
+                logger.debug(response)
+
+            webhook.remove_embeds()
+
+        except Exception as e:
+            logger.error("send_discord error:", e)
+            print(e)
 
 
 if __name__ == "__main__":
@@ -1282,10 +1280,8 @@ if __name__ == "__main__":
         earthworm_pick_listener,
         model_inference,
         web_server,
+        send_discord,
     ]
-
-    if args.discord:
-        functions.append(discord_bot)
 
     # 為每個函數創建一個持續運行的 process
     for func in functions:

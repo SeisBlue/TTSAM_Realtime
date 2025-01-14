@@ -7,7 +7,10 @@
     "topic": "ttsam"
   },
   "discord": {
-    "token": "token",
-    "channel": 123
+    "webhook_url": "webhook",
+    "proxies": {
+      "http": "proxy",
+      "https": "proxy"
+    }
   }
 }
