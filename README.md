@@ -1,19 +1,23 @@
 # TT-SAM 即時資料管線
 
-此專案為地震預警模型 [TT-SAM](https://github.com/JasonChang0320/TT-SAM) 的即時資料管線，整合 Earthworm
-平台的即時串流波形與 P 波資訊，經過資料前處理、資料轉換、模型震度預測、最後產出震度報告，提供 MQTT
+此專案為地震預警模型 [TT-SAM](https://github.com/JasonChang0320/TT-SAM)
+的即時資料管線，整合 Earthworm
+平台的即時串流波形與 P 波資訊，經過資料前處理、資料轉換、模型震度預測、最後產出震度報告，提供
+MQTT
 資訊發布與簡易網頁介面呈現，能在地震 P 波後迅速給出指定目標站點之震度推估。
 
 ---
 
 ![TTSAM_Realtime_Architecture](/TTSAM_Realtime_Architecture.png)
 
-本系統主要包括 4 個主要模組：
+本系統主要包括以下主要模組：
 
 - Wave Listener：接收地震波形
 - Pick Listener：接收 P 波訊息
 - Model Inference：觸發 TT-SAM 模型預測震度
 - Web Server：提供可視化界面
+- MQTT Sender: 傳送報告至 MQTT 
+- Discord Webhook: 傳送報告至 Discord
 
 ---
 
@@ -149,7 +153,6 @@ sh run_ttsam.sh # 執行系統
 
 `ctrl` + `a` + `d`  將 screen 推入背景
 
-
 歷史預測震度文字報告會存放在`logs/report/` 目錄，可以由網頁介面查看。
 
 ### 還原 screen：
@@ -157,7 +160,6 @@ sh run_ttsam.sh # 執行系統
 ```bash
 screen -r ttsam-realtime
 ```
-
 
 ---
 
@@ -178,7 +180,4 @@ ssh -L 5000:192.168.x.x:5000 user@remote
 - event：顯示地震事件詳細資訊
 - dataset：顯示處理後的資料集
 - intensityMap：顯示地震震度分佈
-
-
-
 
