@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+FROM pytorch/pytorch:2.6.0-cuda11.8-cudnn9-runtime
 
 # Ignore all interactive dialog during apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
