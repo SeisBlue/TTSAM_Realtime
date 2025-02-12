@@ -9,13 +9,13 @@ import threading
 import time
 from datetime import datetime
 
-from discord_webhook import DiscordWebhook, DiscordEmbed
 import numpy as np
 import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
 import torch
 import torch.nn as nn
+from discord_webhook import DiscordEmbed, DiscordWebhook
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from loguru import logger
@@ -116,11 +116,6 @@ def map_page():
 @socketio.on("connect")
 def connect_earthworm():
     socketio.emit("connect_init")
-
-
-def earthworm_wave_emitter():
-    while True:
-        socketio.emit("wave_packet", wave)
 
 
 def wave_emitter():
@@ -694,6 +689,8 @@ def model_inference():
         try:
             pick_count = len(pick_buffer)
             print(f"{pick_count} picks in window, model inference start")
+            sys.stdout.flush()
+
             wave_endtime = wave_endt.value  # 獲得最新的 wave 結束時間
             inference_start_time = time.time()
 
@@ -737,25 +734,19 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
             report["wave_endt"] = datetime.fromtimestamp(float(wave_endtime)).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
+            report["wave_lag"] = inference_end_time - wave_endtime
             report["run_time"] = inference_end_time - inference_start_time
             # log_time 加上 2 秒為 pick msg 的 upsec 2 秒
             report["log_time"] = (
-                f"{inference_end_time - event_first_pick['sys_time'] + 2:.4f}"  # upsec 2 sec
+                f"{inference_end_time - event_first_pick['sys_time'] + 2:.4f}"
+                # upsec 2 sec
             )
-
-            # 報告傳至 MQTT
-            mqtt_client.publish(topic, json.dumps(report))
-
-            # 報告傳至 Discord
-            discord_queue.put(report)
-
-            print(report)
-            sys.stdout.flush()
+            report_queue.put(report)
             report_log_file.write(json.dumps(report) + "\n")
 
             pick_log = {
@@ -1169,6 +1160,115 @@ def get_full_model(model_path):
     return full_model
 
 
+def convert_intensity(value):
+    if value.endswith("+"):
+        return float(value[:-1]) + 0.25
+    elif value.endswith("-"):
+        return float(value[:-1]) - 0.25
+    else:
+        return float(value)
+
+
+def reporter():
+    """
+    累積發送預警之測站，辨識其行政區，每隔一秒檢查是否有新增行政區，避免在短時間內重複發送警報，如果 pick < 5 則重置
+    """
+    station_list = []
+    station_info = {}
+    for target in target_dict:
+        station_list.append(target["station"])
+        station_info[target["station"]] = {
+            "station_zh": target["station_zh"],
+            "county": target["county"],
+        }
+
+    alarm_county = {}
+    past_alarm_county = {}
+    new_alarm_county = {}
+    start_time = time.time()
+    while True:
+        report = report_queue.get()
+
+        for station in station_list:
+            intensity = report.get(station, "N/A")
+            if intensity in ["4", "5-", "5+", "6-", "6+", "7"]:
+                county = station_info[station]["county"]
+                if county not in alarm_county:
+                    alarm_county[county] = intensity
+                else:
+                    alarm_county[county] = max(
+                        alarm_county[county], intensity, key=convert_intensity
+                    )
+
+        if time.time() - start_time < 1:
+            time.sleep(0.1)
+            continue
+
+        for county, intensity in alarm_county.items():
+            if county not in past_alarm_county:
+                new_alarm_county[county] = intensity
+
+            elif convert_intensity(intensity) > convert_intensity(
+                past_alarm_county[county]
+            ):
+                new_alarm_county[county] = intensity
+
+        if new_alarm_county:
+            report["alarm_county"] = alarm_county
+            report["new_alarm_county"] = new_alarm_county
+            format_report = format_earthquake_report(report)
+            print(format_report)
+            sys.stdout.flush()
+
+            # 報告傳至 Discord
+            discord_queue.put(format_report)
+            # 報告傳至 MQTT
+            mqtt_client.publish(topic, json.dumps(report))
+
+            past_alarm_county.update(new_alarm_county)
+            new_alarm_county = {}
+
+        start_time = time.time()
+
+        if len(pick_buffer) < 5:
+            alarm_county = {}
+            new_alarm_county = {}
+            past_alarm_county = {}
+
+
+def format_earthquake_report(raw_report):
+    report_lines = []
+    report_lines.append("--------------------------------------------------")
+    report_lines.append("【地震預警報告】")
+    report_lines.append("")
+
+    # 摘要部分
+    report_lines.append(f"警報時間：{raw_report['report_time']}")
+    report_lines.append("")
+    if "new_alarm_county" in raw_report:
+        report_lines.append("【新增警報】")
+        county_list = []
+        for county, intensity in raw_report["new_alarm_county"].items():
+            county_list.append([intensity, county])
+        county_list = sorted(
+            county_list, key=lambda x: convert_intensity(x[0]), reverse=True
+        )
+        for intensity, county in county_list:
+            report_lines.append(f"{county}：{intensity} 級以上")
+
+        report_lines.append("")
+
+    # 詳細技術資訊部分
+    report_lines.append("【系統資訊】")
+    report_lines.append(f"波形延遲：{raw_report['wave_lag']:.2f} 秒")
+    report_lines.append(f"累積波型：{raw_report['wave_time']:.2f} 秒")
+    report_lines.append(f"計算時間：{raw_report['run_time']:.4f} 秒")
+    report_lines.append("")
+    report_lines.append("--------------------------------------------------")
+
+    return "\n".join(report_lines)
+
+
 def send_discord():
     proxies = {}
     try:
@@ -1196,23 +1296,21 @@ def send_discord():
     while True:
         try:
             report = discord_queue.get()
-            if report["alarm"]:
-                color = "FF5722"  # orange
 
-                context = {
-                    "title": "Event Detected",
-                    "description": json.dumps(report),
-                    "color": color,
-                }
+            context = {
+                "title": "地震預警",
+                "description": report,
+                "color": "FF5722",
+            }
 
-                embed = DiscordEmbed(**context)
-                webhook.add_embed(embed)
+            embed = DiscordEmbed(**context)
+            webhook.add_embed(embed)
 
-                if args.discord:
-                    response = webhook.execute()
-                    logger.debug(response)
+            if args.discord:
+                response = webhook.execute()
+                logger.debug(response)
 
-                webhook.remove_embeds()
+            webhook.remove_embeds()
 
         except Exception as e:
             logger.error("send_discord error:", e)
@@ -1289,6 +1387,7 @@ if __name__ == "__main__":
         earthworm_wave_listener,
         earthworm_pick_listener,
         model_inference,
+        reporter,
         web_server,
         send_discord,
     ]
