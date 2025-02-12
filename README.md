@@ -15,6 +15,7 @@ MQTT
 - Wave Listener：接收地震波形
 - Pick Listener：接收 P 波訊息
 - Model Inference：觸發 TT-SAM 模型預測震度
+- Reporter: 產生文字報告
 - Web Server：提供可視化界面
 - MQTT Sender: 傳送報告至 MQTT 
 - Discord Webhook: 傳送報告至 Discord
