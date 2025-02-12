@@ -734,7 +734,8 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            report["format_time"] = datetime.now().strftime("%Y%m%d_%H%M%S")
             report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
             report["wave_endt"] = datetime.fromtimestamp(float(wave_endtime)).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
@@ -1219,6 +1220,9 @@ def reporter():
             format_report = format_earthquake_report(report)
             print(format_report)
             sys.stdout.flush()
+
+            with open(f"/workspace/logs/format_report/text_report_{report['format_time']}.log", "a") as f:
+                f.write(format_report + "\n")
 
             # 報告傳至 Discord
             discord_queue.put(format_report)
