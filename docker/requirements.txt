@@ -8,5 +8,6 @@ numpy
 paho-mqtt
 pandas
 plotly
+redis
 scipy
 tqdm
