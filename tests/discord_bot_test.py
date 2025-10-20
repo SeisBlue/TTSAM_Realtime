@@ -1,8 +1,7 @@
 import json
 import os
 
-from discord_webhook import DiscordWebhook, DiscordEmbed
-
+from discord_webhook import DiscordEmbed, DiscordWebhook
 
 config_file = "/workspace/ttsam_config.json"
 config = json.load(open(config_file, "r"))

@@ -1221,7 +1221,10 @@ def reporter():
             print(format_report)
             sys.stdout.flush()
 
-            with open(f"/workspace/logs/format_report/text_report_{report['format_time']}.log", "a") as f:
+            with open(
+                f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
+                "a",
+            ) as f:
                 f.write(format_report + "\n")
 
             # 報告傳至 Discord

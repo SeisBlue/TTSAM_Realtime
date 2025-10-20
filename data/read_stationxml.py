@@ -1,5 +1,5 @@
-from obspy import read_inventory
 import pandas as pd
+from obspy import read_inventory
 
 # Read the StationXML file
 inventory = read_inventory("data/CWASN_TSMIP.xml")
