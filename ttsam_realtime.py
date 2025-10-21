@@ -21,6 +21,7 @@ from flask_socketio import SocketIO
 from loguru import logger
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
+import xarray as xr
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -375,10 +376,29 @@ def earthworm_pick_listener():
 Model Inference
 """
 # Load Vs30 grid
-vs30_file = "data/Vs30ofTaiwan.csv"
+vs30_file = "data/Vs30ofTaiwan.nc"
 try:
     logger.info(f"Loading {vs30_file}...")
-    vs30_table = pd.read_csv(vs30_file)
+    ds = xr.open_dataset(vs30_file)
+
+    # 將 2D 座標展平成 1D 陣列供 KDTree 使用
+    lat_flat = ds['lat'].values.flatten()
+    lon_flat = ds['lon'].values.flatten()
+    vs30_flat = ds['vs30'].values.flatten()
+
+    # 建立查詢表格
+    vs30_table = pd.DataFrame({
+        'lat': lat_flat,
+        'lon': lon_flat,
+        'Vs30': vs30_flat
+    })
+
+    # 移除包含 NaN 或 Inf 的資料
+    vs30_table = vs30_table.replace([np.inf, -np.inf], np.nan)
+    vs30_table = vs30_table.dropna()
+
+    logger.info(f"Valid data points: {len(vs30_table)}")
+
     tree = cKDTree(vs30_table[["lat", "lon"]])
     logger.info(f"{vs30_file} loaded")
 except FileNotFoundError:
