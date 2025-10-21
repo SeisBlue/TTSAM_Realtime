@@ -4,6 +4,7 @@ discord-webhook
 fastapi
 flask-socketio
 loguru
+netCDF4
 numpy
 paho-mqtt
 pandas
