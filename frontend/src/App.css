@@ -1,0 +1,188 @@
+.app {
+  min-height: 100vh;
+  background: #0a0e27;
+  color: #e0e0e0;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.connection-status {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.connection-status.connected {
+  background: rgba(46, 213, 115, 0.2);
+  border: 1px solid #2ed573;
+  color: #2ed573;
+}
+
+.connection-status.disconnected {
+  background: rgba(255, 71, 87, 0.2);
+  border: 1px solid #ff4757;
+  color: #ff4757;
+}
+
+.dashboard {
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  color: #64b5f6;
+  border-bottom: 2px solid rgba(100, 181, 246, 0.3);
+  padding-bottom: 0.5rem;
+}
+
+.event-list, .wave-list, .dataset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.event-card, .wave-card, .dataset-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1rem;
+  border-left: 4px solid #ff6b6b;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-card:hover, .wave-card:hover, .dataset-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.event-header, .dataset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.event-time, .dataset-time {
+  font-size: 0.9rem;
+  color: #90caf9;
+}
+
+.event-stations, .dataset-type {
+  font-size: 0.85rem;
+  background: rgba(100, 181, 246, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: #64b5f6;
+}
+
+.event-stations-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.station-tag {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.station-tag.more {
+  background: rgba(255, 167, 38, 0.2);
+  color: #ffa726;
+}
+
+.wave-card {
+  border-left-color: #4ecdc4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wave-id {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #4ecdc4;
+}
+
+.wave-points {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.dataset-card {
+  border-left-color: #95e1d3;
+}
+
+.dataset-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #b0b0b0;
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 2rem;
+  font-style: italic;
+}
+
+/* 捲軸樣式 */
+.event-list::-webkit-scrollbar,
+.wave-list::-webkit-scrollbar,
+.dataset-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.event-list::-webkit-scrollbar-track,
+.wave-list::-webkit-scrollbar-track,
+.dataset-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.event-list::-webkit-scrollbar-thumb,
+.wave-list::-webkit-scrollbar-thumb,
+.dataset-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.event-list::-webkit-scrollbar-thumb:hover,
+.wave-list::-webkit-scrollbar-thumb:hover,
+.dataset-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
