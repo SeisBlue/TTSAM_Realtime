@@ -231,6 +231,33 @@
   border: 1px solid var(--color-border-base);
 }
 
+/* 調整各區塊高度 */
+.left-panel .events-section {
+  flex: 0 0 auto;
+  max-height: 35vh;
+}
+
+.left-panel .waves-section {
+  flex: 0 0 auto;
+  max-height: 25vh;
+}
+
+.left-panel .map-section {
+  flex: 1;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel .map-section h2 {
+  flex: 0 0 auto;
+}
+
+.left-panel .map-section > div {
+  flex: 1;
+  min-height: 0;
+}
+
 .section h2 {
   margin: 0 0 var(--spacing-md) 0;
   font-size: 1.3rem;

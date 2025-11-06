@@ -3,19 +3,46 @@ import io from 'socket.io-client'
 import './App.css'
 import EventDetail from './components/EventDetail'
 import WaveDetail from './components/WaveDetail'
-import DatasetDetail from './components/DatasetDetail'
+import TaiwanMap from './components/TaiwanMap'
 
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [events, setEvents] = useState([])
   const [wavePackets, setWavePackets] = useState([])
-  const [datasets, setDatasets] = useState([])
+  const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
 
   // 右側詳細頁面狀態
   const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
   const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => {
+    // 載入 eew_target 測站資料
+    fetch('/data/eew_target.csv')
+      .then(res => res.text())
+      .then(text => {
+        const lines = text.split('\n').slice(1) // 跳過 header
+        const stations = lines
+          .filter(line => line.trim())
+          .map(line => {
+            const [network, county, station, station_zh, longitude, latitude, elevation] = line.split(',')
+            return {
+              network,
+              county,
+              station,
+              station_zh,
+              longitude: parseFloat(longitude),
+              latitude: parseFloat(latitude),
+              elevation: parseFloat(elevation),
+              status: 'unknown', // unknown, online, warning, offline
+              lastSeen: null,
+              pga: null
+            }
+          })
+        setTargetStations(stations)
+        console.log('📍 Loaded', stations.length, 'target stations')
+      })
+      .catch(err => console.error('載入測站資料失敗:', err))
+
     // 連接到 Mock Server 的 SocketIO
     const socket = io('http://localhost:5001', {
       transports: ['websocket', 'polling']
@@ -54,11 +81,6 @@ function App() {
       }, ...prev].slice(0, 20)) // 保留最新 20 筆
     })
 
-    // 接收預測資料集
-    socket.on('dataset', (data) => {
-      console.log('📊 Dataset received:', data.source_stations)
-      setDatasets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆
-    })
 
     // 清理函式
     return () => {
@@ -136,34 +158,10 @@ function App() {
             </div>
           </section>
 
-          {/* 預測資料集列表 */}
-          <section className="section datasets-section">
-            <h2>📊 預測資料集 ({datasets.length})</h2>
-            <div className="dataset-list">
-              {datasets.length === 0 ? (
-                <p className="empty-message">等待預測資料...</p>
-              ) : (
-                datasets.map((dataset, idx) => (
-                  <div
-                    key={idx}
-                    className={`dataset-card ${selectedType === 'dataset' && selectedItem === dataset ? 'selected' : ''}`}
-                    onClick={() => {
-                      setSelectedType('dataset')
-                      setSelectedItem(dataset)
-                    }}
-                  >
-                    <div className="dataset-header">
-                      <span className="dataset-time">{dataset.timestamp}</span>
-                      <span className="dataset-type">{dataset.model_type}</span>
-                    </div>
-                    <div className="dataset-info">
-                      <span>來源: {dataset.source_stations?.join(', ')}</span>
-                      <span>目標: {dataset.target_names?.length || 0} 個測站</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+          {/* 台灣地圖 - 顯示 target 測站 */}
+          <section className="section map-section">
+            <h2>🗺️ 測站分布</h2>
+            <TaiwanMap stations={targetStations} />
           </section>
         </div>
 
@@ -178,7 +176,6 @@ function App() {
             <>
               {selectedType === 'event' && <EventDetail event={selectedItem} />}
               {selectedType === 'wave' && <WaveDetail wave={selectedItem} />}
-              {selectedType === 'dataset' && <DatasetDetail dataset={selectedItem} />}
             </>
           )}
         </div>

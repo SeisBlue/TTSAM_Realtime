@@ -1,0 +1,155 @@
+.taiwan-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  background: #0a0e27;
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Leaflet 地圖容器 */
+.leaflet-container {
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+/* 自訂 Leaflet 控制項顏色 */
+.leaflet-control-zoom a {
+  background-color: rgba(10, 14, 39, 0.9) !important;
+  color: #e0e0e0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: rgba(30, 60, 114, 0.9) !important;
+  color: #fff !important;
+}
+
+/* 自訂 Tooltip 樣式 */
+.station-tooltip-leaflet {
+  background: rgba(10, 14, 39, 0.95) !important;
+  border: 1px solid rgba(100, 181, 246, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(10px);
+}
+
+.station-tooltip-leaflet .leaflet-tooltip-left::before {
+  border-left-color: rgba(10, 14, 39, 0.95) !important;
+}
+
+.station-tooltip-leaflet .leaflet-tooltip-right::before {
+  border-right-color: rgba(10, 14, 39, 0.95) !important;
+}
+
+.station-tooltip-leaflet .leaflet-tooltip-top::before {
+  border-top-color: rgba(10, 14, 39, 0.95) !important;
+}
+
+.station-tooltip-leaflet .leaflet-tooltip-bottom::before {
+  border-bottom-color: rgba(10, 14, 39, 0.95) !important;
+}
+
+/* Tooltip 內容 */
+.tooltip-content {
+  padding: 8px 12px;
+  color: #e0e0e0;
+  min-width: 150px;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.tooltip-county {
+  font-weight: bold;
+  font-size: 11px;
+  color: #64b5f6;
+}
+
+.tooltip-status {
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tooltip-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  color: #fff;
+}
+
+.tooltip-code {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: monospace;
+  margin-bottom: 3px;
+}
+
+.tooltip-coords {
+  font-size: 9px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* 測站標記動畫 */
+.leaflet-interactive {
+  transition: all 0.2s ease;
+}
+
+.leaflet-interactive:hover {
+  transform: scale(1.3);
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* 圖例 */
+.map-legend {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(10, 14, 39, 0.9);
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: #e0e0e0;
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 響應式 - 手機版圖例垂直排列 */
+@media (max-width: 768px) {
+  .map-legend {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 10px;
+  }
+}
+
