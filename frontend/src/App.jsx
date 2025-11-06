@@ -102,7 +102,11 @@ function App() {
               <span className="wave-text">等待波形</span>
             </div>
           ) : (
-            <div className="wave-status-compact active">
+            <div
+              className="wave-status-compact active clickable"
+              onClick={handleBackToWaveform}
+              title="點擊回到波形顯示"
+            >
               <span className="wave-icon">🌊</span>
               <span className="wave-text">{latestWaveTime}</span>
             </div>
