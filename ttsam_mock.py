@@ -9,7 +9,6 @@ import os
 import random
 import threading
 import time
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -132,8 +131,9 @@ def handle_connect():
 # ========== Mock Data Generators ==========
 
 def generate_mock_wave():
-    """生成模擬波形資料 - 使用 eew_target.csv 測站（約 48 站）"""
-    logger.info("🌊 Starting wave generator with target stations...")
+    """生成模擬波形資料 - 模擬真實網路塞車情況
+    某些測站可能累積好幾秒後才一次送達，完全不可預測的更新模式"""
+    logger.info("🌊 Starting wave generator with realistic network simulation...")
     logger.info(f"📊 Using {len(target_dict)} target stations from eew_target.csv")
 
     # 從 target_dict 提取測站代碼
@@ -142,59 +142,131 @@ def generate_mock_wave():
 
     packet_count = 0
 
+    # 為每個測站維護獨立的資料佇列和網路狀態
+    station_queues = {station: [] for station in stations}
+    station_network_state = {
+        station: {
+            "congestion_level": random.uniform(0, 1),  # 0=暢通, 1=嚴重塞車
+            "burst_probability": random.uniform(0.1, 0.4),  # 爆發傳輸機率
+            "accumulated_packets": 0,  # 累積的封包數
+            "last_send_time": time.time()
+        }
+        for station in stations
+    }
+
+    def generate_waveform_packet():
+        """生成單秒波形封包"""
+        t = np.linspace(0, 1, 100)
+        p_arrival = random.uniform(0.1, 0.3)
+        s_arrival = random.uniform(0.4, 0.7)
+
+        wave_data = (
+            np.where(t >= p_arrival,
+                     np.exp(-(t - p_arrival) / 0.2) * np.sin(2 * np.pi * 5 * (t - p_arrival)) * random.uniform(0.5, 2),
+                     0) +
+            np.where(t >= s_arrival,
+                     np.exp(-(t - s_arrival) / 0.3) * np.sin(2 * np.pi * 2 * (t - s_arrival)) * random.uniform(2, 8),
+                     0) +
+            np.random.randn(100) * 0.3
+        )
+
+        pga = np.max(np.abs(wave_data))
+        return {
+            "waveform": wave_data.tolist(),
+            "pga": float(pga),
+            "status": "active"
+        }
+
+    # 非同步發送執行緒（模擬測站獨立傳輸）
+    def station_sender_loop():
+        """每個測站獨立決定何時發送累積的資料"""
+        while True:
+            try:
+                current_time = time.time()
+
+                # 隨機選擇一些測站檢查是否要發送
+                check_stations = random.sample(stations, min(random.randint(5, 15), len(stations)))
+
+                for station in check_stations:
+                    state = station_network_state[station]
+                    queue = station_queues[station]
+
+                    # 決定是否發送（考慮塞車程度、累積封包數、時間間隔）
+                    time_since_last = current_time - state["last_send_time"]
+
+                    should_send = False
+
+                    if state["accumulated_packets"] > 0:
+                        # 情況 1: 爆發傳輸（累積太多封包後一次送出）
+                        if state["accumulated_packets"] >= random.randint(2, 5):
+                            should_send = random.random() < 0.7  # 70% 機率送出
+
+                        # 情況 2: 隨機傳輸（網路狀況好轉）
+                        elif random.random() < state["burst_probability"]:
+                            should_send = True
+
+                        # 情況 3: 超時強制傳輸（避免累積太久）
+                        elif time_since_last > 8:
+                            should_send = True
+                            logger.debug(f"⏰ {station} 強制傳輸 ({state['accumulated_packets']} 個累積封包)")
+
+                    if should_send and queue:
+                        # 一次送出累積的所有封包
+                        wave_packet = {
+                            "waveid": f"{station}_{int(current_time * 1000)}",
+                            "timestamp": int(current_time * 1000),
+                            "data": {station: queue[0]}  # 只送最新的（模擬覆蓋舊資料）
+                        }
+
+                        socketio.emit("wave_packet", wave_packet)
+
+                        # 清空佇列
+                        burst_size = len(queue)
+                        station_queues[station] = []
+                        state["accumulated_packets"] = 0
+                        state["last_send_time"] = current_time
+
+                        if burst_size > 1:
+                            logger.debug(f"💥 {station} burst send: {burst_size} packets accumulated")
+
+                # 隨機短暫休息（100-300ms）模擬非同步傳輸
+                time.sleep(random.uniform(0.1, 0.3))
+
+            except Exception as e:
+                logger.error(f"❌ Station sender error: {e}")
+                time.sleep(0.5)
+
+    # 啟動非同步發送執行緒
+    threading.Thread(target=station_sender_loop, daemon=True).start()
+    logger.info("🚀 Started asynchronous station sender thread")
+
+    # 主迴圈：每秒為所有測站生成資料並加入佇列
     while True:
         try:
-            # 每輪隨機選擇 10-20 個測站發送波形
-            num_stations = random.randint(10, 20)
-            selected_stations = random.sample(stations, min(num_stations, len(stations)))
-
-            # 建立批次封包（前端期望的格式）
-            wave_packet = {
-                "waveid": f"batch_{int(time.time() * 1000)}",
-                "timestamp": int(time.time() * 1000),
-                "data": {}
-            }
-
-            for station in selected_stations:
-                # 生成隨機波形（1 秒，100 個點 @ 100Hz）
-                t = np.linspace(0, 1, 100)
-
-                # 模擬地震波：P波 + S波 + 噪音
-                p_arrival = random.uniform(0.2, 0.4)
-                s_arrival = random.uniform(0.5, 0.7)
-
-                wave_data = (
-                    # P波（縱波，較小振幅）
-                    np.where(t >= p_arrival,
-                             np.exp(-(t - p_arrival) / 0.2) * np.sin(2 * np.pi * 5 * (t - p_arrival)) * random.uniform(0.5, 2),
-                             0) +
-                    # S波（橫波，較大振幅）
-                    np.where(t >= s_arrival,
-                             np.exp(-(t - s_arrival) / 0.3) * np.sin(2 * np.pi * 2 * (t - s_arrival)) * random.uniform(2, 8),
-                             0) +
-                    # 背景噪音
-                    np.random.randn(100) * 0.2
-                )
-
-                # 計算 PGA（峰值地動加速度）
-                pga = np.max(np.abs(wave_data))
-
-                wave_packet["data"][station] = {
-                    "waveform": wave_data.tolist(),
-                    "pga": float(pga),
-                    "status": "active"
-                }
-
-            # 發送批次封包
-            socketio.emit("wave_packet", wave_packet)
             packet_count += 1
 
-            # 每 10 個封包記錄一次
-            if packet_count % 10 == 0:
-                logger.info(f"📈 Sent {packet_count} wave packets (latest: {len(selected_stations)} stations)")
+            # 為每個測站生成新的波形資料並加入佇列
+            for station in stations:
+                packet = generate_waveform_packet()
+                station_queues[station].append(packet)
+                station_network_state[station]["accumulated_packets"] += 1
 
-            # 間隔 2 秒（模擬每 2 秒更新）
-            time.sleep(2)
+            # 每 10 秒記錄一次狀態
+            if packet_count % 10 == 0:
+                congested_stations = [s for s in stations if station_network_state[s]["accumulated_packets"] > 2]
+                avg_queue = np.mean([station_network_state[s]["accumulated_packets"] for s in stations])
+                logger.info(f"📈 Generated {packet_count} waves | Avg queue: {avg_queue:.1f} | Congested: {len(congested_stations)}/{len(stations)}")
+
+            # 每 20 秒隨機調整網路狀況
+            if packet_count % 20 == 0:
+                for station in random.sample(stations, random.randint(5, 15)):
+                    state = station_network_state[station]
+                    state["congestion_level"] = random.uniform(0, 1)
+                    state["burst_probability"] = random.uniform(0.1, 0.5)
+                logger.debug("🔄 Updated network conditions for random stations")
+
+            # 模擬每秒生成資料
+            time.sleep(1.0)
 
         except Exception as e:
             logger.error(f"❌ Wave generator error: {e}")
@@ -351,9 +423,12 @@ def start_mock_server():
     logger.info("   - http://localhost:5001/intensityMap (震度地圖)")
     logger.info("=" * 60)
     logger.info("📊 Mock data generators will start in background...")
-    logger.info("   - Wave packets: 10-20 stations every 2 seconds")
-    logger.info("     * Each packet contains waveform + PGA data")
-    logger.info("     * Simulated P-wave and S-wave arrivals")
+    logger.info("   - Wave packets: Realistic network congestion simulation 🌐")
+    logger.info("     * Each station generates 1 packet/second (100 samples @ 100Hz)")
+    logger.info("     * Packets accumulate in queue during congestion")
+    logger.info("     * Burst transmission: 2-5 packets sent together randomly")
+    logger.info("     * Asynchronous delivery: stations send independently")
+    logger.info("     * NO predictable update cycle - fully dynamic!")
     logger.info("   - Events: every 10-30s")
     logger.info("   - Datasets: every 15-30s")
     logger.info("=" * 60)
