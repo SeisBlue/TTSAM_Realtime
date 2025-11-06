@@ -58,7 +58,7 @@ function App() {
       console.log('🌊 Wave packet received:', data.waveid)
       const timestamp = new Date().toLocaleString('zh-TW')
       setLatestWaveTime(timestamp)
-      setWavePackets(prev => [{...data, timestamp}, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
+      setWavePackets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
     })
 
     // 接收地震事件

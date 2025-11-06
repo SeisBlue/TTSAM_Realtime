@@ -7,83 +7,41 @@ const STATION_GROUPS = {
   east: {
     title: '東部測站',
     stations: [
-      // 基隆（特殊歸類到東部）
-      'NOU',
-      // 雙溪
-      'TIPB',
-      // 宜蘭
-      'ILA', 'TWC', 'ENT',
-      // 花蓮
-      'HWA', 'EGFH', 'EYUL',
-      // 台東
-      'TTN', 'ECS', 'TAWH',
-      // 恆春（特殊歸類到東部）
-      'HEN'
+      'NOU', 'TIPB', 'ILA', 'TWC', 'ENT',
+      'HWA', 'EGFH', 'EYUL', 'TTN', 'ECS', 'TAWH', 'HEN'
     ]
   },
   west: {
     title: '西部測站',
     stations: [
-      // 台北、新北（除基隆外）
-      'TAP', 'A024', 'NTS',
-      // 桃園
-      'NTY', 'NCU', 'B011',
-      // 新竹
-      'HSN1', 'HSN', 'NJD',
-      // 苗栗
-      'B131', 'TWQ1', 'B045',
-      // 台中
-      'TCU', 'WDJ', 'WHP',
-      // 南投
-      'WNT1', 'WPL', 'WHY',
-      // 彰化
-      'WCHH', 'WYL',
-      // 雲林
-      'WDL', 'WSL',
-      // 嘉義
-      'CHY1', 'C095', 'WCKO',
-      // 台南
-      'TAI', 'C015', 'CHN1',
-      // 高雄
-      'KAU', 'SCS',
-      // 屏東（除恆春外）
-      'SPT', 'SSD'
+      'TAP', 'A024', 'NTS', 'NTY', 'NCU', 'B011',
+      'HSN1', 'HSN', 'NJD', 'B131', 'TWQ1', 'B045',
+      'TCU', 'WDJ', 'WHP', 'WNT1', 'WPL', 'WHY',
+      'WCHH', 'WYL', 'WDL', 'WSL', 'CHY1', 'C095', 'WCKO',
+      'TAI', 'C015', 'CHN1', 'KAU', 'SCS', 'SPT', 'SSD'
     ]
   },
   islands: {
     title: '離島測站',
-    stations: [
-      // 澎湖
-      'PNG',
-      // 金門
-      'KNM',
-      // 馬祖
-      'MSU'
-    ]
+    stations: ['PNG', 'KNM', 'MSU']
   }
 }
 
-// 緯度範圍設定
-const LAT_MAX = 25.4  // 顯示範圍最北（留餘裕避免波形被切）
-
-// 東部測站緯度範圍（最南延伸到 21.5，讓西部有足夠空間）
+const LAT_MAX = 25.4
 const EAST_LAT_MIN = 21.2
 const EAST_LAT_MAX = 25.4
-
-// 離島面板固定高度（px）
 const ISLANDS_PANEL_HEIGHT = 200
-const PANEL_GAP = 8 // 西部與離島之間的 gap
+const PANEL_GAP = 8
 
-// 西部測站緯度範圍會動態計算，以對齊東部測站
-// 計算邏輯：西部可用高度 = 東部高度 - 離島高度 - gap
-// 西部緯度範圍 = 東部緯度範圍 * (西部高度 / 東部高度)
+// 時間軸設定
+const TIME_WINDOW = 60 // 顯示 60 秒的數據（1 分鐘）
+const SAMPLE_RATE = 100 // 100 Hz（每秒 100 個採樣點）
 
-function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout }) {
+function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, currentTime }) {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
-  // 使用傳入的緯度範圍，或使用預設值
   const minLat = latMin ?? EAST_LAT_MIN
   const maxLat = latMax ?? LAT_MAX
 
@@ -105,10 +63,9 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // 嘗試使用 GPU 加速的 2D context
     const ctx = canvas.getContext('2d', {
       alpha: false,
-      desynchronized: true, // 啟用非同步繪製以提升效能
+      desynchronized: true,
       willReadFrequently: false
     })
 
@@ -116,7 +73,6 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
 
     const { width, height } = dimensions
 
-    // 使用 requestAnimationFrame 來優化繪製
     let animationFrameId
 
     const draw = () => {
@@ -125,9 +81,9 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       ctx.fillStyle = '#0a0e27'
       ctx.fillRect(0, 0, width, height)
 
-      // 繪製緯度參考線（簡單佈局時不繪製）
+      // 繪製緯度參考線
       const drawLatitudeGrid = () => {
-        if (simpleLayout) return // 離島面板不顯示緯度線
+        if (simpleLayout) return
 
         ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)'
         ctx.lineWidth = 1
@@ -137,7 +93,6 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         for (let lat = Math.ceil(minLat); lat <= maxLat; lat += 0.5) {
           const y = ((maxLat - lat) / (maxLat - minLat)) * height
 
-          // 整數緯度用實線，半度用虛線
           if (lat % 1 === 0) {
             ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)'
             ctx.setLineDash([])
@@ -151,21 +106,70 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
           ctx.lineTo(width, y)
           ctx.stroke()
 
-          // 整數緯度標籤
           if (lat % 1 === 0) {
             ctx.fillStyle = '#64b5f6'
             ctx.fillText(`${lat}°N`, 8, y - 5)
           }
         }
-        ctx.setLineDash([]) // 重置虛線
+        ctx.setLineDash([])
+      }
+
+      // 繪製時間軸（最右側是 0s，往左是過去）
+      const drawTimeAxis = () => {
+        const timeAxisY = height - 25
+        const waveWidth = width * 0.75
+        const xOffset = width * 0.15
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+        ctx.lineWidth = 1
+        ctx.setLineDash([])
+        ctx.beginPath()
+        ctx.moveTo(xOffset, timeAxisY)
+        ctx.lineTo(xOffset + waveWidth, timeAxisY)
+        ctx.stroke()
+
+        ctx.font = '10px monospace'
+        ctx.fillStyle = '#90caf9'
+        ctx.textAlign = 'center'
+
+        // 時間刻度：0s, -10s, -20s, -30s, -40s, -50s, -60s（共 7 個刻度）
+        const numTicks = 7
+        for (let i = 0; i < numTicks; i++) {
+          const timeValue = -i * (TIME_WINDOW / (numTicks - 1))
+          const x = xOffset + waveWidth - (i / (numTicks - 1)) * waveWidth
+
+          ctx.beginPath()
+          ctx.moveTo(x, timeAxisY)
+          ctx.lineTo(x, timeAxisY + 5)
+          ctx.stroke()
+
+          // 0s 位置顯示當前時間（HH:MM:SS），其他顯示相對時間
+          let label
+          if (timeValue === 0) {
+            const now = new Date()
+            const hours = String(now.getHours()).padStart(2, '0')
+            const minutes = String(now.getMinutes()).padStart(2, '0')
+            const seconds = String(now.getSeconds()).padStart(2, '0')
+            label = `${hours}:${minutes}:${seconds}`
+            ctx.fillStyle = '#4caf50' // 當前時間用綠色
+          } else {
+            label = `${timeValue.toFixed(0)}s`
+            ctx.fillStyle = '#90caf9' // 過去時間用藍色
+          }
+
+          ctx.fillText(label, x, timeAxisY + 17)
+        }
+
+        ctx.textAlign = 'left'
       }
 
       drawLatitudeGrid()
+      drawTimeAxis()
 
       // 繪製各測站波型
-      const waveWidth = width * 0.75 // 波型寬度占 75%
-      const waveHeight = simpleLayout ? 40 : 30 // 離島面板用較大的波形高度允許重疊
-      const xOffset = width * 0.15 // 左側留白 15%
+      const waveWidth = width * 0.75
+      const waveHeight = simpleLayout ? 40 : 30
+      const xOffset = width * 0.15
 
       stations.forEach((stationCode, index) => {
         const station = stationMap[stationCode]
@@ -174,27 +178,20 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         // 計算 Y 位置
         let centerY
         if (simpleLayout) {
-          // 簡單佈局：將測站緊密排列在可用空間內
-          const stationSpacing = waveHeight * 1.0 // 測站間距等於波形高度，允許輕微重疊
-          const topMargin = waveHeight * 1.0 // 頂部留出波形振幅的空間
+          const stationSpacing = waveHeight * 1.0
+          const topMargin = waveHeight * 1.0
           const totalStationsHeight = stationSpacing * (stations.length - 1)
           const bottomMargin = height - topMargin - totalStationsHeight
-
-          // 如果底部空間不足，調整 topMargin
-          const adjustedTopMargin = bottomMargin < waveHeight * 0.8
-            ? topMargin * 0.8
-            : topMargin
-
+          const adjustedTopMargin = bottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
           centerY = adjustedTopMargin + stationSpacing * index
         } else {
-          // 緯度佈局：基於實際緯度
           if (!station.latitude) return
           centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * height
         }
 
         const waveData = waveDataMap[stationCode]
 
-        // 繪製測站基線（灰色虛線）
+        // 繪製測站基線
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
         ctx.lineWidth = 0.5
         ctx.setLineDash([3, 3])
@@ -204,72 +201,79 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         ctx.stroke()
         ctx.setLineDash([])
 
-        // 繪製測站標籤（左側）
+        // 繪製測站標籤
         ctx.fillStyle = waveData ? '#e0e0e0' : '#666'
         ctx.font = '10px monospace'
         ctx.textAlign = 'right'
         ctx.fillText(stationCode, xOffset - 8, centerY + 3)
 
-        // 繪製測站資訊（右側）
+        // 繪製測站資訊
         ctx.textAlign = 'left'
         ctx.font = '9px sans-serif'
         if (station.station_zh) {
           ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 2)
         }
-        if (waveData?.pga) {
+        if (waveData?.lastPga) {
           ctx.fillStyle = '#4caf50'
-          ctx.fillText(`${waveData.pga.toFixed(1)}`, xOffset + waveWidth + 5, centerY + 8)
+          ctx.fillText(`${waveData.lastPga.toFixed(1)}`, xOffset + waveWidth + 5, centerY + 8)
         }
 
-        // 繪製波型（如果有資料）
-        if (!waveData || !waveData.waveform || waveData.waveform.length === 0) return
+        // 繪製波型（基於時間戳的定位）
+        if (!waveData || !waveData.dataPoints || waveData.dataPoints.length === 0) return
 
-        const waveform = waveData.waveform
+        const dataPoints = waveData.dataPoints
 
-        // 正規化波形
-        let min = Infinity, max = -Infinity
-        waveform.forEach(v => {
-          if (v < min) min = v
-          if (v > max) max = v
-        })
-        const range = (max - min) || 1
-
-        // 繪製波形線 - 使用 Path2D 優化效能
-        const path = new Path2D()
-
-        // 根據狀態選擇顏色
-        const now = Date.now()
-        const age = now - (waveData.timestamp || 0)
-        if (age < 2000) {
-          ctx.strokeStyle = '#4caf50' // 活躍：綠色
-        } else if (age < 5000) {
-          ctx.strokeStyle = '#2196f3' // 最近：藍色
-        } else {
-          ctx.strokeStyle = '#ff9800' // 過時：橘色
-        }
-
+        ctx.strokeStyle = '#4caf50'
         ctx.lineWidth = 1.5
         ctx.globalAlpha = 0.9
+        ctx.beginPath()
 
-        waveform.forEach((v, i) => {
-          const x = xOffset + (i / (waveform.length - 1)) * waveWidth
-          const normalizedValue = ((v - min) / range - 0.5) * 2 // -1 到 1
-          const y = centerY - normalizedValue * (waveHeight / 2)
+        let isFirstPoint = true
 
-          if (i === 0) {
-            path.moveTo(x, y)
-          } else {
-            path.lineTo(x, y)
-          }
+        // 遍歷所有數據點，根據時間戳計算位置
+        dataPoints.forEach(point => {
+          const { timestamp, values } = point
+
+          // 計算這個數據點距離當前時間的差值（毫秒）
+          const timeDiff = currentTime - timestamp
+
+          // 如果超過時間窗口，跳過
+          if (timeDiff < 0 || timeDiff > TIME_WINDOW * 1000) return
+
+          // 計算這個數據點在時間軸上的起始位置（秒）
+          const startTimeOffset = timeDiff / 1000 // 轉換為秒
+
+          // 繪製這個數據點的所有採樣值（100 個點 = 1 秒）
+          values.forEach((value, idx) => {
+            // 計算這個採樣點的時間偏移（秒）
+            const sampleTimeOffset = startTimeOffset - (idx / SAMPLE_RATE)
+
+            // 如果超出範圍，跳過
+            if (sampleTimeOffset < 0 || sampleTimeOffset > TIME_WINDOW) return
+
+            // 計算 x 位置：最右側是 0s（當前），往左是過去
+            // sampleTimeOffset = 0 -> x = xOffset + waveWidth（最右側）
+            // sampleTimeOffset = 60 -> x = xOffset（最左側）
+            const x = xOffset + waveWidth * (1 - sampleTimeOffset / TIME_WINDOW)
+
+            // 計算 y 位置（正規化到 ±waveHeight/2）
+            const normalizedValue = value / 10 // 假設數據範圍在 ±10 以內
+            const y = centerY - normalizedValue * (waveHeight / 2)
+
+            if (isFirstPoint) {
+              ctx.moveTo(x, y)
+              isFirstPoint = false
+            } else {
+              ctx.lineTo(x, y)
+            }
+          })
         })
 
-        ctx.stroke(path)
+        ctx.stroke()
         ctx.globalAlpha = 1
-        ctx.textAlign = 'left' // 重置對齊
       })
     }
 
-    // 使用 requestAnimationFrame 進行繪製
     animationFrameId = requestAnimationFrame(draw)
 
     return () => {
@@ -277,7 +281,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         cancelAnimationFrame(animationFrameId)
       }
     }
-  }, [stations, stationMap, waveDataMap, dimensions, minLat, maxLat, simpleLayout])
+  }, [stations, stationMap, waveDataMap, dimensions, minLat, maxLat, simpleLayout, currentTime])
 
   return (
     <div ref={containerRef} className="geographic-wave-panel">
@@ -302,7 +306,8 @@ GeographicWavePanel.propTypes = {
   waveDataMap: PropTypes.object.isRequired,
   latMin: PropTypes.number,
   latMax: PropTypes.number,
-  simpleLayout: PropTypes.bool
+  simpleLayout: PropTypes.bool,
+  currentTime: PropTypes.number.isRequired
 }
 
 function RealtimeWaveform({ targetStations, wavePackets }) {
@@ -310,6 +315,7 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
   const [waveDataMap, setWaveDataMap] = useState({})
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
   const leftColumnRef = useRef(null)
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   // 建立測站快速查找 Map
   useEffect(() => {
@@ -320,45 +326,93 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
     setStationMap(map)
   }, [targetStations])
 
-  // 計算西部面板的緯度範圍，使其與東部對齊
+  // 初始化所有測站的數據結構
+  useEffect(() => {
+    if (targetStations.length === 0) return
+
+    setWaveDataMap(prev => {
+      const updated = { ...prev }
+      targetStations.forEach(station => {
+        if (!updated[station.station]) {
+          updated[station.station] = {
+            dataPoints: [], // 數據點列表：[{timestamp, values}, ...]
+            lastPga: 0
+          }
+        }
+      })
+      return updated
+    })
+  }, [targetStations])
+
+  // 更新當前時間（每 100ms 更新一次，用於重繪波形）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
+
+  // 處理新的波形數據
+  useEffect(() => {
+    if (wavePackets.length === 0) return
+
+    const latestPacket = wavePackets[0]
+    const packetTimestamp = latestPacket.timestamp || Date.now()
+
+    setWaveDataMap(prev => {
+      const updated = { ...prev }
+
+      if (latestPacket.data) {
+        Object.keys(latestPacket.data).forEach(station => {
+          if (!updated[station]) {
+            updated[station] = {
+              dataPoints: [],
+              lastPga: 0
+            }
+          }
+
+          const stationData = updated[station]
+          const waveform = latestPacket.data[station]?.waveform || []
+          const pga = latestPacket.data[station]?.pga || 0
+
+          // 添加新的數據點（帶時間戳）
+          stationData.dataPoints.push({
+            timestamp: packetTimestamp,
+            values: waveform
+          })
+
+          // 清理超過時間窗口的舊數據（保留 60 秒內的數據）
+          const cutoffTime = Date.now() - TIME_WINDOW * 1000
+          stationData.dataPoints = stationData.dataPoints.filter(
+            point => point.timestamp >= cutoffTime
+          )
+
+          stationData.lastPga = pga
+        })
+      }
+
+      return updated
+    })
+  }, [wavePackets])
+
+  // 計算西部面板的緯度範圍
   useEffect(() => {
     const calculateWestLatRange = () => {
       if (!leftColumnRef.current) return
 
       const leftColumnHeight = leftColumnRef.current.clientHeight
-      // 西部面板實際高度 = 左側 column 高度 - 離島面板高度 - gap
       const westPanelHeight = leftColumnHeight - ISLANDS_PANEL_HEIGHT - PANEL_GAP
-
-      // 東部面板高度約等於左側 column 高度
       const eastPanelHeight = leftColumnHeight
-
-      // 計算緯度比例
-      // 東部緯度範圍
-      const eastLatRange = LAT_MAX - EAST_LAT_MIN // 例如 25.4 - 22.0 = 3.4 度
-
-      // 西部應該顯示的緯度範圍（按高度比例縮放）
+      const eastLatRange = LAT_MAX - EAST_LAT_MIN
       const westLatRange = eastLatRange * (westPanelHeight / eastPanelHeight)
-
-      // 西部從 LAT_MAX 往下顯示 westLatRange 度
       const westLatMin = LAT_MAX - westLatRange
 
       setWestLatRange({ min: westLatMin, max: LAT_MAX })
-
-      console.log(`📐 緯度對齊計算:`)
-      console.log(`  左側 column 高度: ${leftColumnHeight}px`)
-      console.log(`  西部面板高度: ${westPanelHeight}px`)
-      console.log(`  東部面板高度: ${eastPanelHeight}px`)
-      console.log(`  高度比例: ${(westPanelHeight / eastPanelHeight).toFixed(3)}`)
-      console.log(`  東部緯度範圍: ${EAST_LAT_MIN}° - ${LAT_MAX}° (${eastLatRange.toFixed(2)}°)`)
-      console.log(`  西部緯度範圍: ${westLatMin.toFixed(2)}° - ${LAT_MAX}° (${westLatRange.toFixed(2)}°)`)
     }
 
     calculateWestLatRange()
-
-    // 監聽窗口大小變化
     window.addEventListener('resize', calculateWestLatRange)
 
-    // 使用 ResizeObserver 監聽 left-column 的高度變化
     const resizeObserver = new ResizeObserver(calculateWestLatRange)
     if (leftColumnRef.current) {
       resizeObserver.observe(leftColumnRef.current)
@@ -370,32 +424,9 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
     }
   }, [])
 
-  // 更新波形資料 Map
-  useEffect(() => {
-    if (wavePackets.length === 0) return
-
-    const latestPacket = wavePackets[0]
-    const newWaveDataMap = {}
-
-    // 從最新的 wave_packet 中提取各測站資料
-    if (latestPacket.data) {
-      Object.keys(latestPacket.data).forEach(station => {
-        newWaveDataMap[station] = {
-          timestamp: Date.now(),
-          pga: latestPacket.data[station]?.pga || 0,
-          waveform: latestPacket.data[station]?.waveform || [],
-          status: 'active'
-        }
-      })
-    }
-
-    setWaveDataMap(prev => ({...prev, ...newWaveDataMap}))
-  }, [wavePackets])
-
   return (
     <div className="realtime-waveform geographic">
       <div className="waveform-grid geographic-grid">
-        {/* 左側 column：西部 + 離島 */}
         <div ref={leftColumnRef} className="left-column">
           <GeographicWavePanel
             title={STATION_GROUPS.west.title}
@@ -404,6 +435,7 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             waveDataMap={waveDataMap}
             latMin={westLatRange.min}
             latMax={westLatRange.max}
+            currentTime={currentTime}
           />
           <GeographicWavePanel
             title={STATION_GROUPS.islands.title}
@@ -411,18 +443,21 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             stationMap={stationMap}
             waveDataMap={waveDataMap}
             simpleLayout={true}
+            currentTime={currentTime}
           />
         </div>
 
-        {/* 右側 column：東部 */}
-        <GeographicWavePanel
-          title={STATION_GROUPS.east.title}
-          stations={STATION_GROUPS.east.stations}
-          stationMap={stationMap}
-          waveDataMap={waveDataMap}
-          latMin={EAST_LAT_MIN}
-          latMax={EAST_LAT_MAX}
-        />
+        <div className="right-column">
+          <GeographicWavePanel
+            title={STATION_GROUPS.east.title}
+            stations={STATION_GROUPS.east.stations}
+            stationMap={stationMap}
+            waveDataMap={waveDataMap}
+            latMin={EAST_LAT_MIN}
+            latMax={EAST_LAT_MAX}
+            currentTime={currentTime}
+          />
+        </div>
       </div>
     </div>
   )

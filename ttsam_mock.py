@@ -146,8 +146,8 @@ def generate_mock_wave():
     station_queues = {station: [] for station in stations}
     station_network_state = {
         station: {
-            "congestion_level": random.uniform(0, 1),  # 0=暢通, 1=嚴重塞車
-            "burst_probability": random.uniform(0.1, 0.4),  # 爆發傳輸機率
+            "congestion_level": random.uniform(0, 0.3),  # 0=暢通, 1=嚴重塞車（大部分測站網路良好）
+            "burst_probability": random.uniform(0.6, 0.9),  # 爆發傳輸機率（提高傳輸機率）
             "accumulated_packets": 0,  # 累積的封包數
             "last_send_time": time.time()
         }
@@ -184,8 +184,8 @@ def generate_mock_wave():
             try:
                 current_time = time.time()
 
-                # 隨機選擇一些測站檢查是否要發送
-                check_stations = random.sample(stations, min(random.randint(5, 15), len(stations)))
+                # 隨機選擇一些測站檢查是否要發送（增加檢查數量以提高響應速度）
+                check_stations = random.sample(stations, min(random.randint(20, 40), len(stations)))
 
                 for station in check_stations:
                     state = station_network_state[station]
@@ -198,36 +198,46 @@ def generate_mock_wave():
 
                     if state["accumulated_packets"] > 0:
                         # 情況 1: 爆發傳輸（累積太多封包後一次送出）
-                        if state["accumulated_packets"] >= random.randint(2, 5):
-                            should_send = random.random() < 0.7  # 70% 機率送出
+                        if state["accumulated_packets"] >= random.randint(1, 3):  # 降低閾值：累積 1-3 個就可能送出
+                            should_send = random.random() < 0.85  # 85% 機率送出（提高傳輸率）
 
                         # 情況 2: 隨機傳輸（網路狀況好轉）
                         elif random.random() < state["burst_probability"]:
                             should_send = True
 
                         # 情況 3: 超時強制傳輸（避免累積太久）
-                        elif time_since_last > 8:
+                        elif time_since_last > 3:  # 縮短超時時間：3 秒就強制送出
                             should_send = True
                             logger.debug(f"⏰ {station} 強制傳輸 ({state['accumulated_packets']} 個累積封包)")
 
                     if should_send and queue:
-                        # 一次送出累積的所有封包
-                        wave_packet = {
-                            "waveid": f"{station}_{int(current_time * 1000)}",
-                            "timestamp": int(current_time * 1000),
-                            "data": {station: queue[0]}  # 只送最新的（模擬覆蓋舊資料）
-                        }
+                        # 一次送出累積的所有封包（延遲補償）
+                        burst_size = len(queue)
 
-                        socketio.emit("wave_packet", wave_packet)
+                        # 依序發送每個累積的封包（從舊到新）
+                        # 使用封包自己記錄的生成時間戳
+                        for packet_with_timestamp in queue:
+                            packet_data = packet_with_timestamp["data"]
+                            packet_timestamp = packet_with_timestamp["timestamp"]
+
+                            wave_packet = {
+                                "waveid": f"{station}_{packet_timestamp}",
+                                "timestamp": packet_timestamp,
+                                "data": {station: packet_data}
+                            }
+
+                            socketio.emit("wave_packet", wave_packet)
 
                         # 清空佇列
-                        burst_size = len(queue)
                         station_queues[station] = []
                         state["accumulated_packets"] = 0
                         state["last_send_time"] = current_time
 
                         if burst_size > 1:
-                            logger.debug(f"💥 {station} burst send: {burst_size} packets accumulated")
+                            # 計算實際延遲時間
+                            first_packet_time = queue[0]["timestamp"] / 1000
+                            delay_seconds = current_time - first_packet_time
+                            logger.debug(f"💥 {station} burst send: {burst_size} packets (delay: {delay_seconds:.1f}s, filling gap)")
 
                 # 隨機短暫休息（100-300ms）模擬非同步傳輸
                 time.sleep(random.uniform(0.1, 0.3))
@@ -244,26 +254,34 @@ def generate_mock_wave():
     while True:
         try:
             packet_count += 1
+            generation_time = time.time()  # 記錄這一輪的生成時間
 
             # 為每個測站生成新的波形資料並加入佇列
             for station in stations:
                 packet = generate_waveform_packet()
-                station_queues[station].append(packet)
+                # 將封包與生成時間一起存入佇列
+                station_queues[station].append({
+                    "data": packet,
+                    "timestamp": int(generation_time * 1000)  # 記錄生成時的時間戳
+                })
                 station_network_state[station]["accumulated_packets"] += 1
 
             # 每 10 秒記錄一次狀態
             if packet_count % 10 == 0:
-                congested_stations = [s for s in stations if station_network_state[s]["accumulated_packets"] > 2]
+                congested_stations = [s for s in stations if station_network_state[s]["accumulated_packets"] > 3]
                 avg_queue = np.mean([station_network_state[s]["accumulated_packets"] for s in stations])
                 logger.info(f"📈 Generated {packet_count} waves | Avg queue: {avg_queue:.1f} | Congested: {len(congested_stations)}/{len(stations)}")
 
-            # 每 20 秒隨機調整網路狀況
+            # 每 20 秒隨機調整網路狀況（只影響少數測站）
             if packet_count % 20 == 0:
-                for station in random.sample(stations, random.randint(5, 15)):
+                # 隨機選擇 2-5 個測站（而非 5-15 個）
+                affected_stations = random.sample(stations, min(random.randint(2, 5), len(stations)))
+                for station in affected_stations:
                     state = station_network_state[station]
-                    state["congestion_level"] = random.uniform(0, 1)
-                    state["burst_probability"] = random.uniform(0.1, 0.5)
-                logger.debug("🔄 Updated network conditions for random stations")
+                    # 大部分時候保持良好網路（0-0.4），偶爾塞車（0.4-0.8）
+                    state["congestion_level"] = random.uniform(0, 0.6)
+                    state["burst_probability"] = random.uniform(0.5, 0.9)  # 保持較高的傳輸機率
+                logger.debug(f"🔄 Updated network conditions for {len(affected_stations)} stations")
 
             # 模擬每秒生成資料
             time.sleep(1.0)
@@ -426,7 +444,8 @@ def start_mock_server():
     logger.info("   - Wave packets: Realistic network congestion simulation 🌐")
     logger.info("     * Each station generates 1 packet/second (100 samples @ 100Hz)")
     logger.info("     * Packets accumulate in queue during congestion")
-    logger.info("     * Burst transmission: 2-5 packets sent together randomly")
+    logger.info("     * Burst transmission: 2-5 packets sent together with correct timestamps")
+    logger.info("     * Delay compensation: backfills missing time periods when burst arrives")
     logger.info("     * Asynchronous delivery: stations send independently")
     logger.info("     * NO predictable update cycle - fully dynamic!")
     logger.info("   - Events: every 10-30s")
