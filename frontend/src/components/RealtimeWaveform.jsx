@@ -64,16 +64,19 @@ const STATION_GROUPS = {
 }
 
 // 緯度範圍設定
-const LAT_MIN = 22.0  // 全台最南（恆春 HEN）
-const LAT_MAX = 25.5  // 顯示範圍最北（留餘裕避免波形被切）
+const LAT_MAX = 25.4  // 顯示範圍最北（留餘裕避免波形被切）
 
-// 西部測站緯度範圍（最南到屏東 SPT 22.677）
-const WEST_LAT_MIN = 22.0
-const WEST_LAT_MAX = 25.5
-
-// 東部測站緯度範圍（最南到恆春 HEN 22.006）
-const EAST_LAT_MIN = 21.0
+// 東部測站緯度範圍（最南延伸到 21.5，讓西部有足夠空間）
+const EAST_LAT_MIN = 21.2
 const EAST_LAT_MAX = 25.4
+
+// 離島面板固定高度（px）
+const ISLANDS_PANEL_HEIGHT = 200
+const PANEL_GAP = 8 // 西部與離島之間的 gap
+
+// 西部測站緯度範圍會動態計算，以對齊東部測站
+// 計算邏輯：西部可用高度 = 東部高度 - 離島高度 - gap
+// 西部緯度範圍 = 東部緯度範圍 * (西部高度 / 東部高度)
 
 function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout }) {
   const canvasRef = useRef(null)
@@ -81,7 +84,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
   // 使用傳入的緯度範圍，或使用預設值
-  const minLat = latMin ?? LAT_MIN
+  const minLat = latMin ?? EAST_LAT_MIN
   const maxLat = latMax ?? LAT_MAX
 
   // 響應式尺寸
@@ -281,6 +284,8 @@ GeographicWavePanel.propTypes = {
 function RealtimeWaveform({ targetStations, wavePackets }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
+  const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
+  const leftColumnRef = useRef(null)
 
   // 建立測站快速查找 Map
   useEffect(() => {
@@ -290,6 +295,56 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
     })
     setStationMap(map)
   }, [targetStations])
+
+  // 計算西部面板的緯度範圍，使其與東部對齊
+  useEffect(() => {
+    const calculateWestLatRange = () => {
+      if (!leftColumnRef.current) return
+
+      const leftColumnHeight = leftColumnRef.current.clientHeight
+      // 西部面板實際高度 = 左側 column 高度 - 離島面板高度 - gap
+      const westPanelHeight = leftColumnHeight - ISLANDS_PANEL_HEIGHT - PANEL_GAP
+
+      // 東部面板高度約等於左側 column 高度
+      const eastPanelHeight = leftColumnHeight
+
+      // 計算緯度比例
+      // 東部緯度範圍
+      const eastLatRange = LAT_MAX - EAST_LAT_MIN // 例如 25.4 - 22.0 = 3.4 度
+
+      // 西部應該顯示的緯度範圍（按高度比例縮放）
+      const westLatRange = eastLatRange * (westPanelHeight / eastPanelHeight)
+
+      // 西部從 LAT_MAX 往下顯示 westLatRange 度
+      const westLatMin = LAT_MAX - westLatRange
+
+      setWestLatRange({ min: westLatMin, max: LAT_MAX })
+
+      console.log(`📐 緯度對齊計算:`)
+      console.log(`  左側 column 高度: ${leftColumnHeight}px`)
+      console.log(`  西部面板高度: ${westPanelHeight}px`)
+      console.log(`  東部面板高度: ${eastPanelHeight}px`)
+      console.log(`  高度比例: ${(westPanelHeight / eastPanelHeight).toFixed(3)}`)
+      console.log(`  東部緯度範圍: ${EAST_LAT_MIN}° - ${LAT_MAX}° (${eastLatRange.toFixed(2)}°)`)
+      console.log(`  西部緯度範圍: ${westLatMin.toFixed(2)}° - ${LAT_MAX}° (${westLatRange.toFixed(2)}°)`)
+    }
+
+    calculateWestLatRange()
+
+    // 監聽窗口大小變化
+    window.addEventListener('resize', calculateWestLatRange)
+
+    // 使用 ResizeObserver 監聽 left-column 的高度變化
+    const resizeObserver = new ResizeObserver(calculateWestLatRange)
+    if (leftColumnRef.current) {
+      resizeObserver.observe(leftColumnRef.current)
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculateWestLatRange)
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   // 更新波形資料 Map
   useEffect(() => {
@@ -317,14 +372,14 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
     <div className="realtime-waveform geographic">
       <div className="waveform-grid geographic-grid">
         {/* 左側 column：西部 + 離島 */}
-        <div className="left-column">
+        <div ref={leftColumnRef} className="left-column">
           <GeographicWavePanel
             title={STATION_GROUPS.west.title}
             stations={STATION_GROUPS.west.stations}
             stationMap={stationMap}
             waveDataMap={waveDataMap}
-            latMin={WEST_LAT_MIN}
-            latMax={WEST_LAT_MAX}
+            latMin={westLatRange.min}
+            latMax={westLatRange.max}
           />
           <GeographicWavePanel
             title={STATION_GROUPS.islands.title}
