@@ -155,10 +155,10 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
   background: var(--color-bg-panel);
   border-right: 1px solid var(--color-border-base);
 }
@@ -225,32 +225,48 @@
    ============================================ */
 .left-panel .section {
   background: var(--color-bg-glass);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--color-border-base);
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 
 /* 調整各區塊高度 */
 .left-panel .events-section {
   flex: 0 0 auto;
-  max-height: 35vh;
+  height: 30vh;
+  min-height: 200px;
+  max-height: 30vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.left-panel .waves-section {
+.left-panel .events-section h2 {
   flex: 0 0 auto;
-  max-height: 25vh;
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.left-panel .events-section .event-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .left-panel .map-section {
   flex: 1;
-  min-height: 300px;
+  min-height: 350px;
   display: flex;
   flex-direction: column;
 }
 
 .left-panel .map-section h2 {
   flex: 0 0 auto;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .left-panel .map-section > div {
@@ -259,11 +275,93 @@
 }
 
 .section h2 {
-  margin: 0 0 var(--spacing-md) 0;
-  font-size: 1.3rem;
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 1.1rem;
   color: var(--color-primary);
   border-bottom: 2px solid var(--color-border-primary);
-  padding-bottom: var(--spacing-xs);
+  padding-bottom: 4px;
+}
+
+/* ============================================
+   波形狀態卡片 (頂部顯示)
+   ============================================ */
+.wave-status-top {
+  margin-bottom: var(--spacing-sm);
+  width: 100%;
+  overflow: hidden;
+}
+
+.wave-status-top .status-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  width: 100%;
+  box-sizing: border-box;
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.wave-status-top .status-card.waiting {
+  background: rgba(255, 167, 38, 0.1);
+  border: 2px solid rgba(255, 167, 38, 0.3);
+}
+
+.wave-status-top .status-card.active {
+  background: rgba(78, 205, 196, 0.1);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+  box-shadow: 0 0 15px rgba(78, 205, 196, 0.2);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(78, 205, 196, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+  }
+}
+
+.wave-status-top .status-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.wave-status-top .status-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wave-status-top .status-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.wave-status-top .status-time {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-info);
+  font-family: monospace;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  line-height: 1.3;
+}
+
+.wave-status-top .status-card.waiting .status-text {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
 }
 
 /* ============================================
@@ -273,20 +371,27 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 基礎卡片樣式 */
 .event-card, .wave-card, .dataset-card {
   background: var(--color-bg-glass-hover);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
   border-left: 4px solid var(--color-danger);
   transition: transform var(--transition-fast),
               box-shadow var(--transition-fast),
               background var(--transition-fast);
   cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-height: fit-content;
 }
 
 .event-card:hover, .wave-card:hover, .dataset-card:hover {
@@ -321,34 +426,45 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.5rem;
+  gap: var(--spacing-xs);
+  min-width: 0;
 }
 
 .event-time, .dataset-time {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--color-primary-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .event-stations, .dataset-type {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   background: rgba(100, 181, 246, 0.2);
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border-radius: var(--radius-sm);
   color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .event-stations-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .station-tag {
   background: rgba(255, 107, 107, 0.2);
   color: var(--color-danger);
-  padding: 0.3rem 0.6rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 500;
 }
 
@@ -400,28 +516,32 @@
    ============================================ */
 .event-list::-webkit-scrollbar,
 .wave-list::-webkit-scrollbar,
-.dataset-list::-webkit-scrollbar {
-  width: 8px;
+.dataset-list::-webkit-scrollbar,
+.left-panel::-webkit-scrollbar {
+  width: 6px;
 }
 
 .event-list::-webkit-scrollbar-track,
 .wave-list::-webkit-scrollbar-track,
-.dataset-list::-webkit-scrollbar-track {
+.dataset-list::-webkit-scrollbar-track,
+.left-panel::-webkit-scrollbar-track {
   background: var(--color-bg-glass);
   border-radius: var(--radius-sm);
 }
 
 .event-list::-webkit-scrollbar-thumb,
 .wave-list::-webkit-scrollbar-thumb,
-.dataset-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+.dataset-list::-webkit-scrollbar-thumb,
+.left-panel::-webkit-scrollbar-thumb {
+  background: rgba(100, 181, 246, 0.4);
   border-radius: var(--radius-sm);
 }
 
 .event-list::-webkit-scrollbar-thumb:hover,
 .wave-list::-webkit-scrollbar-thumb:hover,
-.dataset-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.dataset-list::-webkit-scrollbar-thumb:hover,
+.left-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 181, 246, 0.6);
 }
 
 /* 詳細頁面樣式 */

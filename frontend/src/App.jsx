@@ -8,7 +8,9 @@ import TaiwanMap from './components/TaiwanMap'
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [events, setEvents] = useState([])
+  // eslint-disable-next-line no-unused-vars
   const [wavePackets, setWavePackets] = useState([])
+  const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
 
   // 右側詳細頁面狀態
@@ -66,7 +68,9 @@ function App() {
     // 接收波形資料
     socket.on('wave_packet', (data) => {
       console.log('🌊 Wave packet received:', data.waveid)
-      setWavePackets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆
+      const timestamp = new Date().toLocaleString('zh-TW')
+      setLatestWaveTime(timestamp)
+      setWavePackets(prev => [{...data, timestamp}, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
     })
 
     // 接收地震事件
@@ -100,6 +104,24 @@ function App() {
       <div className="dashboard">
         {/* 左側面板：即時更新列表 */}
         <div className="left-panel">
+          {/* 波形資料狀態 - 放在最上面 */}
+          <div className="wave-status-top">
+            {!latestWaveTime ? (
+              <div className="status-card waiting">
+                <div className="status-icon">⏳</div>
+                <div className="status-text">等待波形資料...</div>
+              </div>
+            ) : (
+              <div className="status-card active">
+                <div className="status-icon">✅</div>
+                <div className="status-text">
+                  <div className="status-label">🌊 波形最新更新</div>
+                  <div className="status-time">{latestWaveTime}</div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 地震事件列表 */}
           <section className="section events-section">
             <h2>📍 地震事件 ({events.length})</h2>
@@ -128,30 +150,6 @@ function App() {
                         <span className="station-tag more">+{event.stations.length - 5}</span>
                       )}
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          {/* 波形資料列表 */}
-          <section className="section waves-section">
-            <h2>🌊 波形資料 ({wavePackets.length})</h2>
-            <div className="wave-list">
-              {wavePackets.length === 0 ? (
-                <p className="empty-message">等待波形資料...</p>
-              ) : (
-                wavePackets.map((wave, idx) => (
-                  <div
-                    key={idx}
-                    className={`wave-card ${selectedType === 'wave' && selectedItem?.waveid === wave.waveid ? 'selected' : ''}`}
-                    onClick={() => {
-                      setSelectedType('wave')
-                      setSelectedItem(wave)
-                    }}
-                  >
-                    <span className="wave-id">{wave.waveid}</span>
-                    <span className="wave-points">{wave.data.length} 點</span>
                   </div>
                 ))
               )}
