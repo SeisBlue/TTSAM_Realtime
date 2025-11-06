@@ -90,7 +90,13 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-left">
-          <h1>🌏 TTSAM 地震預警即時監控</h1>
+          <h1
+            className="app-title clickable"
+            onClick={handleBackToWaveform}
+            title="點擊回到首頁"
+          >
+            🌏 TTSAM 地震預警即時監控
+          </h1>
           <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
             {isConnected ? '🟢 已連接' : '🔴 未連接'}
           </div>

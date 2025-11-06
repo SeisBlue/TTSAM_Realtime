@@ -117,6 +117,23 @@
   font-weight: 600;
 }
 
+/* 可點擊的標題 */
+.app-title.clickable {
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  user-select: none;
+}
+
+.app-title.clickable:hover {
+  color: var(--color-primary-light);
+  transform: translateX(2px);
+  text-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+}
+
+.app-title.clickable:active {
+  transform: translateX(0);
+}
+
 /* 手機尺寸下縮小 header */
 @media (max-width: 768px) {
   .app-header {
