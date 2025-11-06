@@ -104,156 +104,180 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
+
+    // 嘗試使用 GPU 加速的 2D context
+    const ctx = canvas.getContext('2d', {
+      alpha: false,
+      desynchronized: true, // 啟用非同步繪製以提升效能
+      willReadFrequently: false
+    })
+
+    if (!ctx) return
+
     const { width, height } = dimensions
 
-    // 清空畫布
-    ctx.clearRect(0, 0, width, height)
-    ctx.fillStyle = '#0a0e27'
-    ctx.fillRect(0, 0, width, height)
+    // 使用 requestAnimationFrame 來優化繪製
+    let animationFrameId
 
-    // 繪製緯度參考線（簡單佈局時不繪製）
-    const drawLatitudeGrid = () => {
-      if (simpleLayout) return // 離島面板不顯示緯度線
+    const draw = () => {
+      // 清空畫布
+      ctx.clearRect(0, 0, width, height)
+      ctx.fillStyle = '#0a0e27'
+      ctx.fillRect(0, 0, width, height)
 
-      ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)'
-      ctx.lineWidth = 1
-      ctx.font = '11px monospace'
-      ctx.fillStyle = '#64b5f6'
+      // 繪製緯度參考線（簡單佈局時不繪製）
+      const drawLatitudeGrid = () => {
+        if (simpleLayout) return // 離島面板不顯示緯度線
 
-      for (let lat = Math.ceil(minLat); lat <= maxLat; lat += 0.5) {
-        const y = ((maxLat - lat) / (maxLat - minLat)) * height
+        ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)'
+        ctx.lineWidth = 1
+        ctx.font = '11px monospace'
+        ctx.fillStyle = '#64b5f6'
 
-        // 整數緯度用實線，半度用虛線
-        if (lat % 1 === 0) {
-          ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)'
-          ctx.setLineDash([])
-        } else {
-          ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)'
-          ctx.setLineDash([5, 5])
+        for (let lat = Math.ceil(minLat); lat <= maxLat; lat += 0.5) {
+          const y = ((maxLat - lat) / (maxLat - minLat)) * height
+
+          // 整數緯度用實線，半度用虛線
+          if (lat % 1 === 0) {
+            ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)'
+            ctx.setLineDash([])
+          } else {
+            ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)'
+            ctx.setLineDash([5, 5])
+          }
+
+          ctx.beginPath()
+          ctx.moveTo(0, y)
+          ctx.lineTo(width, y)
+          ctx.stroke()
+
+          // 整數緯度標籤
+          if (lat % 1 === 0) {
+            ctx.fillStyle = '#64b5f6'
+            ctx.fillText(`${lat}°N`, 8, y - 5)
+          }
         }
-
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(width, y)
-        ctx.stroke()
-
-        // 整數緯度標籤
-        if (lat % 1 === 0) {
-          ctx.fillStyle = '#64b5f6'
-          ctx.fillText(`${lat}°N`, 8, y - 5)
-        }
+        ctx.setLineDash([]) // 重置虛線
       }
-      ctx.setLineDash([]) // 重置虛線
+
+      drawLatitudeGrid()
+
+      // 繪製各測站波型
+      const waveWidth = width * 0.75 // 波型寬度占 75%
+      const waveHeight = simpleLayout ? 40 : 30 // 離島面板用較大的波形高度允許重疊
+      const xOffset = width * 0.15 // 左側留白 15%
+
+      stations.forEach((stationCode, index) => {
+        const station = stationMap[stationCode]
+        if (!station) return
+
+        // 計算 Y 位置
+        let centerY
+        if (simpleLayout) {
+          // 簡單佈局：將測站緊密排列在可用空間內
+          const stationSpacing = waveHeight * 1.0 // 測站間距等於波形高度，允許輕微重疊
+          const topMargin = waveHeight * 1.0 // 頂部留出波形振幅的空間
+          const totalStationsHeight = stationSpacing * (stations.length - 1)
+          const bottomMargin = height - topMargin - totalStationsHeight
+
+          // 如果底部空間不足，調整 topMargin
+          const adjustedTopMargin = bottomMargin < waveHeight * 0.8
+            ? topMargin * 0.8
+            : topMargin
+
+          centerY = adjustedTopMargin + stationSpacing * index
+        } else {
+          // 緯度佈局：基於實際緯度
+          if (!station.latitude) return
+          centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * height
+        }
+
+        const waveData = waveDataMap[stationCode]
+
+        // 繪製測站基線（灰色虛線）
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+        ctx.lineWidth = 0.5
+        ctx.setLineDash([3, 3])
+        ctx.beginPath()
+        ctx.moveTo(xOffset, centerY)
+        ctx.lineTo(xOffset + waveWidth, centerY)
+        ctx.stroke()
+        ctx.setLineDash([])
+
+        // 繪製測站標籤（左側）
+        ctx.fillStyle = waveData ? '#e0e0e0' : '#666'
+        ctx.font = '10px monospace'
+        ctx.textAlign = 'right'
+        ctx.fillText(stationCode, xOffset - 8, centerY + 3)
+
+        // 繪製測站資訊（右側）
+        ctx.textAlign = 'left'
+        ctx.font = '9px sans-serif'
+        if (station.station_zh) {
+          ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 2)
+        }
+        if (waveData?.pga) {
+          ctx.fillStyle = '#4caf50'
+          ctx.fillText(`${waveData.pga.toFixed(1)}`, xOffset + waveWidth + 5, centerY + 8)
+        }
+
+        // 繪製波型（如果有資料）
+        if (!waveData || !waveData.waveform || waveData.waveform.length === 0) return
+
+        const waveform = waveData.waveform
+
+        // 正規化波形
+        let min = Infinity, max = -Infinity
+        waveform.forEach(v => {
+          if (v < min) min = v
+          if (v > max) max = v
+        })
+        const range = (max - min) || 1
+
+        // 繪製波形線 - 使用 Path2D 優化效能
+        const path = new Path2D()
+
+        // 根據狀態選擇顏色
+        const now = Date.now()
+        const age = now - (waveData.timestamp || 0)
+        if (age < 2000) {
+          ctx.strokeStyle = '#4caf50' // 活躍：綠色
+        } else if (age < 5000) {
+          ctx.strokeStyle = '#2196f3' // 最近：藍色
+        } else {
+          ctx.strokeStyle = '#ff9800' // 過時：橘色
+        }
+
+        ctx.lineWidth = 1.5
+        ctx.globalAlpha = 0.9
+
+        waveform.forEach((v, i) => {
+          const x = xOffset + (i / (waveform.length - 1)) * waveWidth
+          const normalizedValue = ((v - min) / range - 0.5) * 2 // -1 到 1
+          const y = centerY - normalizedValue * (waveHeight / 2)
+
+          if (i === 0) {
+            path.moveTo(x, y)
+          } else {
+            path.lineTo(x, y)
+          }
+        })
+
+        ctx.stroke(path)
+        ctx.globalAlpha = 1
+        ctx.textAlign = 'left' // 重置對齊
+      })
     }
 
-    drawLatitudeGrid()
+    // 使用 requestAnimationFrame 進行繪製
+    animationFrameId = requestAnimationFrame(draw)
 
-    // 繪製各測站波型
-    const waveWidth = width * 0.75 // 波型寬度占 75%
-    const waveHeight = simpleLayout ? 40 : 30 // 離島面板用較大的波形高度允許重疊
-    const xOffset = width * 0.15 // 左側留白 15%
-
-    stations.forEach((stationCode, index) => {
-      const station = stationMap[stationCode]
-      if (!station) return
-
-      // 計算 Y 位置
-      let centerY
-      if (simpleLayout) {
-        // 簡單佈局：將測站緊密排列在可用空間內
-        const stationSpacing = waveHeight * 1.0 // 測站間距等於波形高度，允許輕微重疊
-        const topMargin = waveHeight * 1.0 // 頂部留出波形振幅的空間
-        const totalStationsHeight = stationSpacing * (stations.length - 1)
-        const bottomMargin = height - topMargin - totalStationsHeight
-
-        // 如果底部空間不足，調整 topMargin
-        const adjustedTopMargin = bottomMargin < waveHeight * 0.8
-          ? topMargin * 0.8
-          : topMargin
-
-        centerY = adjustedTopMargin + stationSpacing * index
-      } else {
-        // 緯度佈局：基於實際緯度
-        if (!station.latitude) return
-        centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * height
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
       }
-
-      const waveData = waveDataMap[stationCode]
-
-      // 繪製測站基線（灰色虛線）
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
-      ctx.lineWidth = 0.5
-      ctx.setLineDash([3, 3])
-      ctx.beginPath()
-      ctx.moveTo(xOffset, centerY)
-      ctx.lineTo(xOffset + waveWidth, centerY)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // 繪製測站標籤（左側）
-      ctx.fillStyle = waveData ? '#e0e0e0' : '#666'
-      ctx.font = '10px monospace'
-      ctx.textAlign = 'right'
-      ctx.fillText(stationCode, xOffset - 8, centerY + 3)
-
-      // 繪製測站資訊（右側）
-      ctx.textAlign = 'left'
-      ctx.font = '9px sans-serif'
-      if (station.station_zh) {
-        ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 2)
-      }
-      if (waveData?.pga) {
-        ctx.fillStyle = '#4caf50'
-        ctx.fillText(`${waveData.pga.toFixed(1)}`, xOffset + waveWidth + 5, centerY + 8)
-      }
-
-      // 繪製波型（如果有資料）
-      if (!waveData || !waveData.waveform || waveData.waveform.length === 0) return
-
-      const waveform = waveData.waveform
-
-      // 正規化波形
-      let min = Infinity, max = -Infinity
-      waveform.forEach(v => {
-        if (v < min) min = v
-        if (v > max) max = v
-      })
-      const range = (max - min) || 1
-
-      // 繪製波形線
-      ctx.beginPath()
-
-      // 根據狀態選擇顏色
-      const now = Date.now()
-      const age = now - (waveData.timestamp || 0)
-      if (age < 2000) {
-        ctx.strokeStyle = '#4caf50' // 活躍：綠色
-      } else if (age < 5000) {
-        ctx.strokeStyle = '#2196f3' // 最近：藍色
-      } else {
-        ctx.strokeStyle = '#ff9800' // 過時：橘色
-      }
-
-      ctx.lineWidth = 1.5
-      ctx.globalAlpha = 0.9
-
-      waveform.forEach((v, i) => {
-        const x = xOffset + (i / (waveform.length - 1)) * waveWidth
-        const normalizedValue = ((v - min) / range - 0.5) * 2 // -1 到 1
-        const y = centerY - normalizedValue * (waveHeight / 2)
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
-        }
-      })
-      ctx.stroke()
-      ctx.globalAlpha = 1
-      ctx.textAlign = 'left' // 重置對齊
-    })
-  }, [stations, stationMap, waveDataMap, dimensions])
+    }
+  }, [stations, stationMap, waveDataMap, dimensions, minLat, maxLat, simpleLayout])
 
   return (
     <div ref={containerRef} className="geographic-wave-panel">

@@ -1,13 +1,19 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 
-export default function EventDetail({ event }) {
+export default function EventDetail({ event, onBack }) {
   if (!event) return null
 
   return (
     <div className="detail-container">
       <div className="detail-header">
-        <h2>📍 地震事件詳細資訊</h2>
-        <span className="detail-timestamp">{event.timestamp}</span>
+        <div className="detail-header-left">
+          <h2>📍 地震事件詳細資訊</h2>
+          <span className="detail-timestamp">{event.timestamp}</span>
+        </div>
+        <button className="back-button" onClick={onBack}>
+          ← 回上頁
+        </button>
       </div>
 
       <div className="detail-section">
@@ -39,5 +45,10 @@ export default function EventDetail({ event }) {
       </div>
     </div>
   )
+}
+
+EventDetail.propTypes = {
+  event: PropTypes.object,
+  onBack: PropTypes.func.isRequired
 }
 

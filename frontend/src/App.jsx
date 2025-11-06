@@ -80,6 +80,12 @@ function App() {
     }
   }, [])
 
+  // 回到波形頁面
+  const handleBackToWaveform = () => {
+    setSelectedType(null)
+    setSelectedItem(null)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -157,8 +163,18 @@ function App() {
             />
           ) : (
             <>
-              {selectedType === 'event' && <EventDetail event={selectedItem} />}
-              {selectedType === 'wave' && <WaveDetail wave={selectedItem} />}
+              {selectedType === 'event' && (
+                <EventDetail
+                  event={selectedItem}
+                  onBack={handleBackToWaveform}
+                />
+              )}
+              {selectedType === 'wave' && (
+                <WaveDetail
+                  wave={selectedItem}
+                  onBack={handleBackToWaveform}
+                />
+              )}
             </>
           )}
         </div>

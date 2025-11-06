@@ -1,14 +1,20 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 import WaveCanvas from './WaveCanvas'
 
-export default function WaveDetail({ wave }) {
+export default function WaveDetail({ wave, onBack }) {
   if (!wave) return null
 
   return (
     <div className="detail-container">
       <div className="detail-header">
-        <h2>🌊 波形資料詳細</h2>
-        <span className="detail-id">{wave.waveid}</span>
+        <div className="detail-header-left">
+          <h2>🌊 波形資料詳細</h2>
+          <span className="detail-id">{wave.waveid}</span>
+        </div>
+        <button className="back-button" onClick={onBack}>
+          ← 回上頁
+        </button>
       </div>
 
       <div className="detail-section">
@@ -53,5 +59,10 @@ export default function WaveDetail({ wave }) {
       </div>
     </div>
   )
+}
+
+WaveDetail.propTypes = {
+  wave: PropTypes.object,
+  onBack: PropTypes.func.isRequired
 }
 

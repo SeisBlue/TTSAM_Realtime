@@ -86,6 +86,12 @@
 .geographic-wave-panel canvas {
   display: block;
   flex: 1;
+  /* GPU 加速優化 */
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
 }
 
 /* 響應式調整 */
