@@ -219,9 +219,29 @@
   padding-bottom: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   background: var(--color-bg-panel);
   border-right: 1px solid var(--color-border-base);
+  box-sizing: border-box;
+}
+
+/* 確保左側面板可以正確滾動 */
+.left-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.left-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.left-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.left-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 右側面板 - 自動補滿剩餘空間 */
@@ -231,8 +251,28 @@
   min-width: 0; /* 防止 flex 溢出 */
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   background: var(--color-bg-overlay);
+  box-sizing: border-box;
+}
+
+/* 右側面板滾動條樣式 */
+.right-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.right-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.right-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 平板尺寸 (1024px 以下) */
@@ -297,9 +337,9 @@
 
 /* 調整各區塊高度 */
 .left-panel .events-section {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 150px;
-  max-height: 40vh;
+  max-height: 280px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -319,37 +359,33 @@
 }
 
 .left-panel .map-section {
-  flex: 0 0 auto;
-  height: 500px;
+  flex: 1 1 auto;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
 }
 
-/* 響應式調整 */
-@media (max-height: 900px) {
-  .left-panel .map-section {
-    height: 450px;
-  }
-  .left-panel .events-section {
-    max-height: 35vh;
-  }
+.left-panel .map-section h2 {
+  flex: 0 0 auto;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
+/* 響應式調整 */
 @media (max-height: 800px) {
   .left-panel .map-section {
-    height: 400px;
+    min-height: 350px;
   }
   .left-panel .events-section {
-    max-height: 30vh;
+    max-height: 250px;
   }
 }
 
 @media (max-height: 700px) {
   .left-panel .map-section {
-    height: 350px;
+    min-height: 300px;
   }
   .left-panel .events-section {
-    max-height: 25vh;
+    max-height: 200px;
   }
 }
 

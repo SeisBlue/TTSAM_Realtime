@@ -26,17 +26,18 @@ body {
   margin: 0;
   padding: 0;
   min-width: 320px;
-  min-height: 100vh;
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  position: fixed;
 }
 
 #root {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 h1 {
