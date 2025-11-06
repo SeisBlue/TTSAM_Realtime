@@ -65,14 +65,14 @@ const STATION_GROUPS = {
 
 // 緯度範圍設定
 const LAT_MIN = 22.0  // 全台最南（恆春 HEN）
-const LAT_MAX = 25.4  // 顯示範圍最北（留餘裕避免波形被切）
+const LAT_MAX = 25.5  // 顯示範圍最北（留餘裕避免波形被切）
 
 // 西部測站緯度範圍（最南到屏東 SPT 22.677）
-const WEST_LAT_MIN = 22.5
-const WEST_LAT_MAX = 25.4
+const WEST_LAT_MIN = 22.0
+const WEST_LAT_MAX = 25.5
 
 // 東部測站緯度範圍（最南到恆春 HEN 22.006）
-const EAST_LAT_MIN = 22.0
+const EAST_LAT_MIN = 21.0
 const EAST_LAT_MAX = 25.4
 
 function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout }) {
@@ -148,7 +148,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
 
     // 繪製各測站波型
     const waveWidth = width * 0.75 // 波型寬度占 75%
-    const waveHeight = 30 // 波型最大振幅高度
+    const waveHeight = simpleLayout ? 40 : 30 // 離島面板用較大的波形高度允許重疊
     const xOffset = width * 0.15 // 左側留白 15%
 
     stations.forEach((stationCode, index) => {
@@ -158,9 +158,18 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       // 計算 Y 位置
       let centerY
       if (simpleLayout) {
-        // 簡單佈局：均勻分布測站
-        const spacing = height / (stations.length + 1)
-        centerY = spacing * (index + 1)
+        // 簡單佈局：將測站緊密排列在可用空間內
+        const stationSpacing = waveHeight * 1.0 // 測站間距等於波形高度，允許輕微重疊
+        const topMargin = waveHeight * 1.0 // 頂部留出波形振幅的空間
+        const totalStationsHeight = stationSpacing * (stations.length - 1)
+        const bottomMargin = height - topMargin - totalStationsHeight
+
+        // 如果底部空間不足，調整 topMargin
+        const adjustedTopMargin = bottomMargin < waveHeight * 0.8
+          ? topMargin * 0.8
+          : topMargin
+
+        centerY = adjustedTopMargin + stationSpacing * index
       } else {
         // 緯度佈局：基於實際緯度
         if (!station.latitude) return

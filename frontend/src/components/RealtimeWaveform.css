@@ -38,7 +38,7 @@
 /* 離島測站：佔左側 column 底部固定高度 */
 .left-column > .geographic-wave-panel:last-child {
   flex: 0 0 auto;
-  height: 160px;
+  height: 200px;
 }
 
 /* 東部測站：右側，佔滿整個高度 */
