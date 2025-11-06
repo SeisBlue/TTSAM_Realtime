@@ -2,6 +2,7 @@ cython
 discord
 discord-webhook
 fastapi
+flask-cors
 flask-socketio
 loguru
 matplotlib

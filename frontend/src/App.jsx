@@ -4,11 +4,11 @@ import './App.css'
 import EventDetail from './components/EventDetail'
 import WaveDetail from './components/WaveDetail'
 import TaiwanMap from './components/TaiwanMap'
+import RealtimeWaveform from './components/RealtimeWaveform'
 
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [events, setEvents] = useState([])
-  // eslint-disable-next-line no-unused-vars
   const [wavePackets, setWavePackets] = useState([])
   const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
@@ -19,29 +19,17 @@ function App() {
 
   useEffect(() => {
     // 載入 eew_target 測站資料
-    fetch('/data/eew_target.csv')
-      .then(res => res.text())
-      .then(text => {
-        const lines = text.split('\n').slice(1) // 跳過 header
-        const stations = lines
-          .filter(line => line.trim())
-          .map(line => {
-            const [network, county, station, station_zh, longitude, latitude, elevation] = line.split(',')
-            return {
-              network,
-              county,
-              station,
-              station_zh,
-              longitude: parseFloat(longitude),
-              latitude: parseFloat(latitude),
-              elevation: parseFloat(elevation),
-              status: 'unknown', // unknown, online, warning, offline
-              lastSeen: null,
-              pga: null
-            }
-          })
-        setTargetStations(stations)
-        console.log('📍 Loaded', stations.length, 'target stations')
+    fetch('http://localhost:5001/api/stations')
+      .then(res => res.json())
+      .then(stations => {
+        const stationsWithStatus = stations.map(s => ({
+          ...s,
+          status: 'unknown', // unknown, online, warning, offline
+          lastSeen: null,
+          pga: null
+        }))
+        setTargetStations(stationsWithStatus)
+        console.log('📍 Loaded', stationsWithStatus.length, 'target stations')
       })
       .catch(err => console.error('載入測站資料失敗:', err))
 
@@ -163,10 +151,10 @@ function App() {
         {/* 右側面板：詳細內容 */}
         <div className="right-panel">
           {!selectedType ? (
-            <div className="right-panel-placeholder">
-              <div className="right-panel-placeholder-icon">👈</div>
-              <div>點擊左側項目查看詳細資訊</div>
-            </div>
+            <RealtimeWaveform
+              targetStations={targetStations}
+              wavePackets={wavePackets}
+            />
           ) : (
             <>
               {selectedType === 'event' && <EventDetail event={selectedItem} />}

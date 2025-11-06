@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './TaiwanMap.css'
@@ -59,6 +59,28 @@ function TaiwanMap({ stations }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
+        {/* 象限分界線 - 緯度 24.0° (東西向) */}
+        <Polyline
+          positions={[[24.0, 118.0], [24.0, 122.5]]}
+          pathOptions={{
+            color: '#64b5f6',
+            weight: 2,
+            opacity: 0.4,
+            dashArray: '10, 10'
+          }}
+        />
+
+        {/* 象限分界線 - 經度 121.0° (南北向) */}
+        <Polyline
+          positions={[[21.5, 121.0], [26.5, 121.0]]}
+          pathOptions={{
+            color: '#64b5f6',
+            weight: 2,
+            opacity: 0.4,
+            dashArray: '10, 10'
+          }}
+        />
+
         {/* 測站標記 */}
         {stations.map((station, idx) => {
           if (!station.latitude || !station.longitude) return null
@@ -69,10 +91,10 @@ function TaiwanMap({ stations }) {
             <CircleMarker
               key={idx}
               center={[station.latitude, station.longitude]}
-              radius={6}
+              radius={5}
               pathOptions={{
                 fillColor: color,
-                fillOpacity: 0.8,
+                fillOpacity: 1,
                 color: '#ffffff',
                 weight: 2,
                 opacity: 1
@@ -80,9 +102,10 @@ function TaiwanMap({ stations }) {
             >
               <Tooltip
                 direction="top"
-                offset={[0, -5]}
+                offset={[0, -8]}
                 opacity={0.95}
                 className="station-tooltip-leaflet"
+                permanent={false}
               >
                 <div className="tooltip-content">
                   <div className="tooltip-header">
@@ -108,6 +131,7 @@ function TaiwanMap({ stations }) {
 
       {/* 圖例 */}
       <div className="map-legend">
+        <div className="legend-title">測站狀態</div>
         <div className="legend-item">
           <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
           <span>正常</span>
