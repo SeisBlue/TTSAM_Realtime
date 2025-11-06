@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
 import io from 'socket.io-client'
 import './App.css'
+import EventDetail from './components/EventDetail'
+import WaveDetail from './components/WaveDetail'
+import DatasetDetail from './components/DatasetDetail'
 
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [events, setEvents] = useState([])
   const [wavePackets, setWavePackets] = useState([])
   const [datasets, setDatasets] = useState([])
+
+  // 右側詳細頁面狀態
+  const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
+  const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => {
     // 連接到 Mock Server 的 SocketIO
@@ -69,72 +76,112 @@ function App() {
       </header>
 
       <div className="dashboard">
-        {/* 地震事件列表 */}
-        <section className="section events-section">
-          <h2>📍 地震事件 ({events.length})</h2>
-          <div className="event-list">
-            {events.length === 0 ? (
-              <p className="empty-message">等待地震事件資料...</p>
-            ) : (
-              events.map(event => (
-                <div key={event.id} className="event-card">
-                  <div className="event-header">
-                    <span className="event-time">{event.timestamp}</span>
-                    <span className="event-stations">{event.stations.length} 個測站</span>
+        {/* 左側面板：即時更新列表 */}
+        <div className="left-panel">
+          {/* 地震事件列表 */}
+          <section className="section events-section">
+            <h2>📍 地震事件 ({events.length})</h2>
+            <div className="event-list">
+              {events.length === 0 ? (
+                <p className="empty-message">等待地震事件資料...</p>
+              ) : (
+                events.map(event => (
+                  <div
+                    key={event.id}
+                    className={`event-card ${selectedType === 'event' && selectedItem?.id === event.id ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedType('event')
+                      setSelectedItem(event)
+                    }}
+                  >
+                    <div className="event-header">
+                      <span className="event-time">{event.timestamp}</span>
+                      <span className="event-stations">{event.stations.length} 個測站</span>
+                    </div>
+                    <div className="event-stations-list">
+                      {event.stations.slice(0, 5).map((station, idx) => (
+                        <span key={idx} className="station-tag">{station}</span>
+                      ))}
+                      {event.stations.length > 5 && (
+                        <span className="station-tag more">+{event.stations.length - 5}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="event-stations-list">
-                    {event.stations.slice(0, 5).map((station, idx) => (
-                      <span key={idx} className="station-tag">{station}</span>
-                    ))}
-                    {event.stations.length > 5 && (
-                      <span className="station-tag more">+{event.stations.length - 5}</span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+                ))
+              )}
+            </div>
+          </section>
 
-        {/* 波形資料列表 */}
-        <section className="section waves-section">
-          <h2>🌊 波形資料 ({wavePackets.length})</h2>
-          <div className="wave-list">
-            {wavePackets.length === 0 ? (
-              <p className="empty-message">等待波形資料...</p>
-            ) : (
-              wavePackets.map((wave, idx) => (
-                <div key={idx} className="wave-card">
-                  <span className="wave-id">{wave.waveid}</span>
-                  <span className="wave-points">{wave.data.length} 點</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+          {/* 波形資料列表 */}
+          <section className="section waves-section">
+            <h2>🌊 波形資料 ({wavePackets.length})</h2>
+            <div className="wave-list">
+              {wavePackets.length === 0 ? (
+                <p className="empty-message">等待波形資料...</p>
+              ) : (
+                wavePackets.map((wave, idx) => (
+                  <div
+                    key={idx}
+                    className={`wave-card ${selectedType === 'wave' && selectedItem?.waveid === wave.waveid ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedType('wave')
+                      setSelectedItem(wave)
+                    }}
+                  >
+                    <span className="wave-id">{wave.waveid}</span>
+                    <span className="wave-points">{wave.data.length} 點</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
 
-        {/* 預測資料集列表 */}
-        <section className="section datasets-section">
-          <h2>📊 預測資料集 ({datasets.length})</h2>
-          <div className="dataset-list">
-            {datasets.length === 0 ? (
-              <p className="empty-message">等待預測資料...</p>
-            ) : (
-              datasets.map((dataset, idx) => (
-                <div key={idx} className="dataset-card">
-                  <div className="dataset-header">
-                    <span className="dataset-time">{dataset.timestamp}</span>
-                    <span className="dataset-type">{dataset.model_type}</span>
+          {/* 預測資料集列表 */}
+          <section className="section datasets-section">
+            <h2>📊 預測資料集 ({datasets.length})</h2>
+            <div className="dataset-list">
+              {datasets.length === 0 ? (
+                <p className="empty-message">等待預測資料...</p>
+              ) : (
+                datasets.map((dataset, idx) => (
+                  <div
+                    key={idx}
+                    className={`dataset-card ${selectedType === 'dataset' && selectedItem === dataset ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedType('dataset')
+                      setSelectedItem(dataset)
+                    }}
+                  >
+                    <div className="dataset-header">
+                      <span className="dataset-time">{dataset.timestamp}</span>
+                      <span className="dataset-type">{dataset.model_type}</span>
+                    </div>
+                    <div className="dataset-info">
+                      <span>來源: {dataset.source_stations?.join(', ')}</span>
+                      <span>目標: {dataset.target_names?.length || 0} 個測站</span>
+                    </div>
                   </div>
-                  <div className="dataset-info">
-                    <span>來源: {dataset.source_stations?.join(', ')}</span>
-                    <span>目標: {dataset.target_names?.length || 0} 個測站</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* 右側面板：詳細內容 */}
+        <div className="right-panel">
+          {!selectedType ? (
+            <div className="right-panel-placeholder">
+              <div className="right-panel-placeholder-icon">👈</div>
+              <div>點擊左側項目查看詳細資訊</div>
+            </div>
+          ) : (
+            <>
+              {selectedType === 'event' && <EventDetail event={selectedItem} />}
+              {selectedType === 'wave' && <WaveDetail wave={selectedItem} />}
+              {selectedType === 'dataset' && <DatasetDetail dataset={selectedItem} />}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
