@@ -90,7 +90,7 @@
    ============================================ */
 .app-header {
   background: var(--color-primary-gradient);
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-lg);
   box-shadow: var(--shadow-sm);
   display: flex;
   justify-content: space-between;
@@ -99,9 +99,21 @@
   gap: var(--spacing-sm);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
 .app-header h1 {
   margin: 0;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
@@ -112,14 +124,18 @@
   }
 
   .app-header h1 {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
+  }
+
+  .header-left {
+    gap: var(--spacing-sm);
   }
 }
 
 .connection-status {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 0.3rem 0.8rem;
   border-radius: var(--radius-pill);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
   transition: all var(--transition-normal);
 }
@@ -134,6 +150,50 @@
   background: rgba(255, 71, 87, 0.2);
   border: 1px solid #ff4757;
   color: #ff4757;
+}
+
+/* 波形狀態 - 緊湊型（在 header 中） */
+.wave-status-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  transition: all var(--transition-normal);
+  white-space: nowrap;
+}
+
+.wave-status-compact.waiting {
+  background: rgba(255, 167, 38, 0.2);
+  border: 1px solid rgba(255, 167, 38, 0.4);
+  color: var(--color-warning);
+}
+
+.wave-status-compact.active {
+  background: rgba(78, 205, 196, 0.2);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  color: var(--color-info);
+  animation: pulse-compact 2s ease-in-out infinite;
+}
+
+@keyframes pulse-compact {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(78, 205, 196, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+  }
+}
+
+.wave-status-compact .wave-icon {
+  font-size: 1rem;
+}
+
+.wave-status-compact .wave-text {
+  font-weight: 500;
+  font-family: monospace;
+  font-size: 0.8rem;
 }
 
 /* ============================================
@@ -156,6 +216,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -236,12 +297,12 @@
 
 /* 調整各區塊高度 */
 .left-panel .events-section {
-  flex: 0 0 auto;
-  height: 30vh;
-  min-height: 200px;
-  max-height: 30vh;
+  flex: 1 1 auto;
+  min-height: 150px;
+  max-height: 40vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .left-panel .events-section h2 {
@@ -258,10 +319,38 @@
 }
 
 .left-panel .map-section {
-  flex: 1;
-  min-height: 350px;
+  flex: 0 0 auto;
+  height: 500px;
   display: flex;
   flex-direction: column;
+}
+
+/* 響應式調整 */
+@media (max-height: 900px) {
+  .left-panel .map-section {
+    height: 450px;
+  }
+  .left-panel .events-section {
+    max-height: 35vh;
+  }
+}
+
+@media (max-height: 800px) {
+  .left-panel .map-section {
+    height: 400px;
+  }
+  .left-panel .events-section {
+    max-height: 30vh;
+  }
+}
+
+@media (max-height: 700px) {
+  .left-panel .map-section {
+    height: 350px;
+  }
+  .left-panel .events-section {
+    max-height: 25vh;
+  }
 }
 
 .left-panel .map-section h2 {
@@ -282,87 +371,6 @@
   padding-bottom: 4px;
 }
 
-/* ============================================
-   波形狀態卡片 (頂部顯示)
-   ============================================ */
-.wave-status-top {
-  margin-bottom: var(--spacing-sm);
-  width: 100%;
-  overflow: hidden;
-}
-
-.wave-status-top .status-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  width: 100%;
-  box-sizing: border-box;
-  transition: all var(--transition-normal);
-  overflow: hidden;
-}
-
-.wave-status-top .status-card.waiting {
-  background: rgba(255, 167, 38, 0.1);
-  border: 2px solid rgba(255, 167, 38, 0.3);
-}
-
-.wave-status-top .status-card.active {
-  background: rgba(78, 205, 196, 0.1);
-  border: 2px solid rgba(78, 205, 196, 0.3);
-  box-shadow: 0 0 15px rgba(78, 205, 196, 0.2);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(78, 205, 196, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
-  }
-}
-
-.wave-status-top .status-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.wave-status-top .status-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.wave-status-top .status-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.wave-status-top .status-time {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-info);
-  font-family: monospace;
-  word-break: break-all;
-  overflow-wrap: break-word;
-  line-height: 1.3;
-}
-
-.wave-status-top .status-card.waiting .status-text {
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
-}
 
 /* ============================================
    卡片列表

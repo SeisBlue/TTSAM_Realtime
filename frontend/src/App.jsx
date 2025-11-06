@@ -95,33 +95,30 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🌏 TTSAM 地震預警即時監控</h1>
-        <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '🟢 已連接 Mock Server' : '🔴 未連接'}
+        <div className="header-left">
+          <h1>🌏 TTSAM 地震預警即時監控</h1>
+          <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+            {isConnected ? '🟢 已連接' : '🔴 未連接'}
+          </div>
+        </div>
+        <div className="header-right">
+          {!latestWaveTime ? (
+            <div className="wave-status-compact waiting">
+              <span className="wave-icon">⏳</span>
+              <span className="wave-text">等待波形</span>
+            </div>
+          ) : (
+            <div className="wave-status-compact active">
+              <span className="wave-icon">🌊</span>
+              <span className="wave-text">{latestWaveTime}</span>
+            </div>
+          )}
         </div>
       </header>
 
       <div className="dashboard">
         {/* 左側面板：即時更新列表 */}
         <div className="left-panel">
-          {/* 波形資料狀態 - 放在最上面 */}
-          <div className="wave-status-top">
-            {!latestWaveTime ? (
-              <div className="status-card waiting">
-                <div className="status-icon">⏳</div>
-                <div className="status-text">等待波形資料...</div>
-              </div>
-            ) : (
-              <div className="status-card active">
-                <div className="status-icon">✅</div>
-                <div className="status-text">
-                  <div className="status-label">🌊 波形最新更新</div>
-                  <div className="status-time">{latestWaveTime}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* 地震事件列表 */}
           <section className="section events-section">
             <h2>📍 地震事件 ({events.length})</h2>
