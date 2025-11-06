@@ -373,9 +373,9 @@
 
 
 /* ============================================
-   卡片列表
+   卡片列表（統一樣式）
    ============================================ */
-.event-list, .wave-list, .dataset-list {
+.event-list {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -386,7 +386,7 @@
 }
 
 /* 基礎卡片樣式 */
-.event-card, .wave-card, .dataset-card {
+.event-card {
   background: var(--color-bg-glass-hover);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.8rem;
@@ -402,7 +402,7 @@
   min-height: fit-content;
 }
 
-.event-card:hover, .wave-card:hover, .dataset-card:hover {
+.event-card:hover {
   transform: translateX(4px);
   box-shadow: var(--shadow-md);
   background: var(--color-bg-glass-active);
@@ -415,22 +415,11 @@
   box-shadow: var(--shadow-danger);
 }
 
-.wave-card.selected {
-  background: rgba(78, 205, 196, 0.2);
-  border-left-width: 6px;
-  box-shadow: var(--shadow-info);
-}
-
-.dataset-card.selected {
-  background: rgba(149, 225, 211, 0.2);
-  border-left-width: 6px;
-  box-shadow: var(--shadow-accent);
-}
 
 /* ============================================
    卡片內容元素
    ============================================ */
-.event-header, .dataset-header {
+.event-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -439,7 +428,7 @@
   min-width: 0;
 }
 
-.event-time, .dataset-time {
+.event-time {
   font-size: 0.8rem;
   color: var(--color-primary-light);
   white-space: nowrap;
@@ -449,7 +438,7 @@
   flex-shrink: 1;
 }
 
-.event-stations, .dataset-type {
+.event-stations {
   font-size: 0.75rem;
   background: rgba(100, 181, 246, 0.2);
   padding: 0.2rem 0.4rem;
@@ -481,35 +470,6 @@
   color: var(--color-warning);
 }
 
-.wave-card {
-  border-left-color: var(--color-info);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.wave-id {
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: var(--color-info);
-}
-
-.wave-points {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-}
-
-.dataset-card {
-  border-left-color: var(--color-accent);
-}
-
-.dataset-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-}
 
 .empty-message {
   text-align: center;
@@ -523,32 +483,29 @@
    捲軸樣式
    ============================================ */
 .event-list::-webkit-scrollbar,
-.wave-list::-webkit-scrollbar,
-.dataset-list::-webkit-scrollbar,
-.left-panel::-webkit-scrollbar {
+.left-panel::-webkit-scrollbar,
+.detail-json::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 .event-list::-webkit-scrollbar-track,
-.wave-list::-webkit-scrollbar-track,
-.dataset-list::-webkit-scrollbar-track,
-.left-panel::-webkit-scrollbar-track {
+.left-panel::-webkit-scrollbar-track,
+.detail-json::-webkit-scrollbar-track {
   background: var(--color-bg-glass);
   border-radius: var(--radius-sm);
 }
 
 .event-list::-webkit-scrollbar-thumb,
-.wave-list::-webkit-scrollbar-thumb,
-.dataset-list::-webkit-scrollbar-thumb,
-.left-panel::-webkit-scrollbar-thumb {
+.left-panel::-webkit-scrollbar-thumb,
+.detail-json::-webkit-scrollbar-thumb {
   background: rgba(100, 181, 246, 0.4);
   border-radius: var(--radius-sm);
 }
 
 .event-list::-webkit-scrollbar-thumb:hover,
-.wave-list::-webkit-scrollbar-thumb:hover,
-.dataset-list::-webkit-scrollbar-thumb:hover,
-.left-panel::-webkit-scrollbar-thumb:hover {
+.left-panel::-webkit-scrollbar-thumb:hover,
+.detail-json::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 181, 246, 0.6);
 }
 
@@ -702,20 +659,5 @@
   line-height: 1.5;
   max-height: 400px;
   overflow-y: auto;
-}
-
-.detail-json::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.detail-json::-webkit-scrollbar-track {
-  background: var(--color-bg-glass);
-  border-radius: var(--radius-sm);
-}
-
-.detail-json::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
 }
 
