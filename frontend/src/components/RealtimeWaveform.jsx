@@ -24,11 +24,7 @@ const STATION_GROUPS = {
   islands: {
     title: '離島測站',
     stations: ['PNG', 'KNM', 'MSU']
-  },
-      test_group: {
-    title: '測試群組',
-    stations: ['A009', 'A006', 'A007', 'A013', 'B122']  // 假設B122在北部
-  },
+  }
 }
 
 const LAT_MAX = 25.4
@@ -63,6 +59,24 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
 
   const minLat = latMin ?? EAST_LAT_MIN
   const maxLat = latMax ?? LAT_MAX
+
+  // 調試：檢查測試群組數據
+  useEffect(() => {
+    if (title.includes('測試群組')) {
+      console.log('🔍 測試群組面板:', {
+        title,
+        stations,
+        stationMapKeys: Object.keys(stationMap).length,
+        waveDataMapKeys: Object.keys(waveDataMap).length,
+        // 檢查每個測站是否在 stationMap 中
+        stationsInMap: stations.map(s => ({
+          station: s,
+          inStationMap: !!stationMap[s],
+          hasWaveData: !!waveDataMap[s]
+        }))
+      })
+    }
+  }, [title, stations, stationMap, waveDataMap])
 
   // 響應式尺寸
   useEffect(() => {
@@ -418,20 +432,49 @@ GeographicWavePanel.propTypes = {
   currentTime: PropTypes.number.isRequired
 }
 
-function RealtimeWaveform({ targetStations, wavePackets }) {
+function RealtimeWaveform({ targetStations, wavePackets, selectedStations = [] }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
   const leftColumnRef = useRef(null)
   const [currentTime, setCurrentTime] = useState(Date.now())
 
-  // 建立測站快速查找 Map
+  // 調試：檢查 selectedStations
+  useEffect(() => {
+    console.log('🎯 selectedStations updated:', selectedStations)
+  }, [selectedStations])
+
+  // 建立測站快速查找 Map（包括主要測站 + 所有次要測站）
   useEffect(() => {
     const map = {}
+
+    // 先加入主要測站（eew_target）
     targetStations.forEach(station => {
       map[station.station] = station
     })
-    setStationMap(map)
+
+    // 再載入所有次要測站（site_info）
+    fetch('http://localhost:5001/api/all-stations')
+      .then(response => response.json())
+      .then(stations => {
+        stations.forEach(station => {
+          // 如果不在主要測站中，才加入（避免覆蓋）
+          if (!map[station.station]) {
+            map[station.station] = {
+              ...station,
+              isSecondary: true
+            }
+          }
+        })
+        setStationMap({ ...map })
+        console.log('📍 stationMap updated:', Object.keys(map).length, 'stations (including secondary)')
+      })
+      .catch(err => {
+        console.error('❌ Failed to load all stations:', err)
+        // 降級：只使用主要測站
+        setStationMap(map)
+        console.log('📍 stationMap updated:', Object.keys(map).length, 'stations (primary only)')
+      })
   }, [targetStations])
 
   // 初始化所有測站的數據結構
@@ -625,14 +668,16 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             latMax={EAST_LAT_MAX}
             currentTime={currentTime}
           />
-          <GeographicWavePanel
-            title={STATION_GROUPS.test_group.title}
-            stations={STATION_GROUPS.test_group.stations}
-            stationMap={stationMap}
-            waveDataMap={waveDataMap}
-            simpleLayout={true}
-            currentTime={currentTime}
-          />
+          {selectedStations.length > 0 && (
+            <GeographicWavePanel
+              title={`測試群組 (${selectedStations.length})`}
+              stations={selectedStations}
+              stationMap={stationMap}
+              waveDataMap={waveDataMap}
+              simpleLayout={true}
+              currentTime={currentTime}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -641,7 +686,8 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
 
 RealtimeWaveform.propTypes = {
   targetStations: PropTypes.array.isRequired,
-  wavePackets: PropTypes.array.isRequired
+  wavePackets: PropTypes.array.isRequired,
+  selectedStations: PropTypes.array
 }
 
 export default RealtimeWaveform

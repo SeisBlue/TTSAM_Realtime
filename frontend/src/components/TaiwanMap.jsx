@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -12,10 +13,50 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
-function TaiwanMap({ stations }) {
+function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
+  const [allStations, setAllStations] = useState([]) // 從 site_info.csv 載入的所有測站
+  const [selectedStations, setSelectedStations] = useState(new Set())
+
   // 台灣中心座標
   const center = [23.5, 121.0]
   const zoom = 7
+
+  // 載入所有測站資料（從後端 API）
+  useEffect(() => {
+    fetch('http://localhost:5001/api/all-stations')
+      .then(response => response.json())
+      .then(stations => {
+        // 標記為次要測站
+        const secondaryStations = stations.map(s => ({
+          ...s,
+          isSecondary: true
+        }))
+        setAllStations(secondaryStations)
+        console.log(`📍 Loaded ${secondaryStations.length} secondary stations from backend API`)
+      })
+      .catch(err => {
+        console.error('❌ Failed to load secondary stations from API:', err)
+        // 如果後端 API 失敗，可以降級處理（例如只顯示主要測站）
+        setAllStations([])
+      })
+  }, [])
+
+  // 處理次要測站點擊
+  const handleSecondaryStationClick = (stationCode) => {
+    const newSelected = new Set(selectedStations)
+
+    if (newSelected.has(stationCode)) {
+      newSelected.delete(stationCode)
+    } else {
+      newSelected.add(stationCode)
+    }
+
+    setSelectedStations(newSelected)
+
+    if (onStationSelect) {
+      onStationSelect(Array.from(newSelected))
+    }
+  }
 
   // 狀態顏色
   const getStatusColor = (status) => {
@@ -127,11 +168,92 @@ function TaiwanMap({ stations }) {
             </CircleMarker>
           )
         })}
+
+        {/* 次要測站標記（TSMIP，來自 site_info.csv）- 小圓點 */}
+        {allStations.map((station) => {
+          const { station: stationCode, latitude, longitude } = station
+
+          if (!latitude || !longitude) return null
+
+          const hasData = waveDataMap && waveDataMap[stationCode]
+          const isSelected = selectedStations.has(stationCode)
+
+          // 根據狀態決定顏色
+          let fillColor = '#666' // 預設灰色（無數據）
+          if (isSelected) {
+            fillColor = '#ffc107' // 選中：黃色
+          } else if (hasData) {
+            fillColor = '#4caf50' // 有數據：綠色
+          }
+
+          return (
+            <CircleMarker
+              key={`secondary-${stationCode}`}
+              center={[latitude, longitude]}
+              radius={3} // 小圓點（主要測站是 5）
+              pathOptions={{
+                fillColor: fillColor,
+                fillOpacity: 0.8,
+                color: '#ffffff',
+                weight: 1,
+                opacity: 0.8
+              }}
+              eventHandlers={{
+                click: () => handleSecondaryStationClick(stationCode)
+              }}
+            >
+              <Tooltip
+                direction="top"
+                offset={[0, -5]}
+                opacity={0.9}
+                className="station-tooltip-leaflet secondary"
+                permanent={false}
+              >
+                <div className="tooltip-content">
+                  <div className="tooltip-code">{stationCode}</div>
+                  <div className="tooltip-coords">
+                    {latitude.toFixed(3)}°N, {longitude.toFixed(3)}°E
+                  </div>
+                  {hasData && <div className="tooltip-status" style={{ color: '#4caf50' }}>有波型數據</div>}
+                  {isSelected && <div className="tooltip-status" style={{ color: '#ffc107' }}>已選中</div>}
+                  <div className="tooltip-hint">點擊加入測試群組</div>
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          )
+        })}
       </MapContainer>
+
+      {/* 選中的測站列表面板 */}
+      {selectedStations.size > 0 && (
+        <div className="selected-stations-panel">
+          <h4>測試群組 ({selectedStations.size})</h4>
+          <div className="selected-stations-list">
+            {Array.from(selectedStations).map(station => (
+              <span
+                key={station}
+                className="selected-station-tag"
+                onClick={() => handleSecondaryStationClick(station)}
+              >
+                {station} ×
+              </span>
+            ))}
+          </div>
+          <button
+            className="clear-selection-btn"
+            onClick={() => {
+              setSelectedStations(new Set())
+              if (onStationSelect) onStationSelect([])
+            }}
+          >
+            清空
+          </button>
+        </div>
+      )}
 
       {/* 圖例 */}
       <div className="map-legend">
-        <div className="legend-title">測站狀態</div>
+        <div className="legend-title">主要測站</div>
         <div className="legend-item">
           <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
           <span>正常</span>
@@ -148,9 +270,31 @@ function TaiwanMap({ stations }) {
           <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
           <span>未知</span>
         </div>
+
+        <div className="legend-divider"></div>
+
+        <div className="legend-title">次要測站（TSMIP）</div>
+        <div className="legend-item">
+          <span className="legend-dot small" style={{ backgroundColor: '#4caf50' }}></span>
+          <span>有數據</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-dot small" style={{ backgroundColor: '#ffc107' }}></span>
+          <span>已選中</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
+          <span>無數據</span>
+        </div>
       </div>
     </div>
   )
+}
+
+TaiwanMap.propTypes = {
+  stations: PropTypes.array.isRequired,
+  waveDataMap: PropTypes.object,
+  onStationSelect: PropTypes.func
 }
 
 export default TaiwanMap

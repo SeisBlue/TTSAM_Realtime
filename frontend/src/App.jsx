@@ -25,6 +25,16 @@ function App() {
   const [wavePackets, setWavePackets] = useState([])
   const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
+  const [selectedStations, setSelectedStations] = useState([]) // 用戶選中的測站（用於測試群組）
+
+  // 從最新的 wavePacket 構建 waveDataMap（用於 StationMapOverlay）
+  const latestWaveDataMap = wavePackets.length > 0 && wavePackets[0]?.data
+    ? Object.keys(wavePackets[0].data).reduce((map, seedName) => {
+        const stationCode = extractStationCode(seedName)
+        map[stationCode] = wavePackets[0].data[seedName]
+        return map
+      }, {})
+    : {}
 
   // 右側詳細頁面狀態
   const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
@@ -183,10 +193,14 @@ function App() {
             </div>
           </section>
 
-          {/* 台灣地圖 - 顯示 target 測站 */}
+          {/* 台灣地圖 - 顯示主要測站 + 次要測站（TSMIP）*/}
           <section className="section map-section">
             <h2>🗺️ 測站分布</h2>
-            <TaiwanMap stations={targetStations} />
+            <TaiwanMap
+              stations={targetStations}
+              waveDataMap={latestWaveDataMap}
+              onStationSelect={setSelectedStations}
+            />
           </section>
         </div>
 
@@ -196,6 +210,7 @@ function App() {
             <RealtimeWaveform
               targetStations={targetStations}
               wavePackets={wavePackets}
+              selectedStations={selectedStations}
             />
           ) : (
             <>

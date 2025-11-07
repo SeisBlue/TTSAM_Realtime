@@ -104,6 +104,83 @@
   color: #64748b;
 }
 
+.tooltip-hint {
+  font-size: 9px;
+  color: #ffc107;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* 次要測站 tooltip 樣式 */
+.station-tooltip-leaflet.secondary .tooltip-content {
+  min-width: 120px;
+  padding: 6px 10px;
+}
+
+/* 選中測站面板 */
+.selected-stations-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 250px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.selected-stations-panel h4 {
+  margin: 0 0 8px 0;
+  color: #ffc107;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.selected-stations-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.selected-station-tag {
+  background: #ffc107;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.selected-station-tag:hover {
+  background: #ffb300;
+}
+
+.clear-selection-btn {
+  width: 100%;
+  padding: 6px;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.clear-selection-btn:hover {
+  background: #b71c1c;
+}
+
 /* 圖例樣式 */
 .map-legend {
   position: absolute;
@@ -141,6 +218,18 @@
   border-radius: 50%;
   margin-right: 8px;
   border: 2px solid white;
+}
+
+.legend-dot.small {
+  width: 6px;
+  height: 6px;
+  border-width: 1px;
+}
+
+.legend-divider {
+  height: 1px;
+  background: rgba(100, 181, 246, 0.2);
+  margin: 10px 0;
 }
 
 /* 測站標記加強顯示 */

@@ -37,6 +37,34 @@ except FileNotFoundError:
         {"station": "MOCK3", "station_zh": "模擬站3", "county": "桃園市", "lat": 24.9, "lon": 121.3},
     ]
 
+# ========== Load All Stations from site_info.csv ==========
+all_stations_dict = []
+site_info_file = "data/site_info.csv"
+try:
+    logger.info(f"Loading {site_info_file}...")
+    site_info_df = pd.read_csv(site_info_file)
+
+    # 只取 HLZ 通道且仍在運作的測站（End_time = 2599-12-31）
+    active_stations = site_info_df[
+        (site_info_df['Channel'] == 'HLZ') &
+        (site_info_df['End_time'] == '2599-12-31')
+    ].copy()
+
+    # 去重（同一測站可能有多條記錄）
+    active_stations = active_stations.drop_duplicates(subset=['Station'])
+
+    # 轉換為字典格式
+    all_stations_dict = active_stations[['Station', 'Latitude', 'Longitude']].rename(
+        columns={'Station': 'station', 'Latitude': 'latitude', 'Longitude': 'longitude'}
+    ).to_dict(orient="records")
+
+    logger.success(f"✅ Loaded {len(all_stations_dict)} active stations from {site_info_file}")
+
+except FileNotFoundError:
+    logger.warning(f"❌ {site_info_file} not found, secondary stations will not be available")
+except Exception as e:
+    logger.error(f"❌ Error loading {site_info_file}: {e}")
+
 # ========== Web Routes ==========
 @app.route("/", methods=["GET"])
 def index():
@@ -94,6 +122,16 @@ def get_stations():
         return json.dumps(target_dict, ensure_ascii=False), 200, {'Content-Type': 'application/json; charset=utf-8'}
     except Exception as e:
         logger.error(f"❌ Error getting stations: {e}")
+        return json.dumps({"error": str(e)}), 500, {'Content-Type': 'application/json; charset=utf-8'}
+
+
+@app.route("/api/all-stations")
+def get_all_stations():
+    """API: 取得所有測站列表（包含次要測站，用於地圖顯示）"""
+    try:
+        return json.dumps(all_stations_dict, ensure_ascii=False), 200, {'Content-Type': 'application/json; charset=utf-8'}
+    except Exception as e:
+        logger.error(f"❌ Error getting all stations: {e}")
         return json.dumps({"error": str(e)}), 500, {'Content-Type': 'application/json; charset=utf-8'}
 
 
