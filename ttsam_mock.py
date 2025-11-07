@@ -220,10 +220,12 @@ def generate_mock_wave():
                             packet_data = packet_with_timestamp["data"]
                             packet_timestamp = packet_with_timestamp["timestamp"]
 
+                            # 使用 SEED 格式：SM.{station}.01.HLZ
+                            seed_station = f"SM.{station}.01.HLZ"
                             wave_packet = {
-                                "waveid": f"{station}_{packet_timestamp}",
+                                "waveid": f"{seed_station}_{packet_timestamp}",
                                 "timestamp": packet_timestamp,
-                                "data": {station: packet_data}
+                                "data": {seed_station: packet_data}
                             }
 
                             socketio.emit("wave_packet", wave_packet)

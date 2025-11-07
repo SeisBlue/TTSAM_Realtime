@@ -29,6 +29,40 @@
   overflow: hidden;
 }
 
+/* 右側 column：東部 + 測試群組的容器 */
+.realtime-waveform.geographic .waveform-grid > .right-column {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto; /* 允許垂直捲動 */
+  overflow-x: hidden;
+  /* 捲軸樣式優化 */
+  scrollbar-width: thin;
+  scrollbar-color: #667eea #0a0e27;
+}
+
+/* Webkit 瀏覽器的捲軸樣式 */
+.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar {
+  width: 8px;
+}
+
+.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-track {
+  background: #0a0e27;
+  border-radius: 4px;
+}
+
+.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+
 /* 西部測站：佔左側 column 大部分空間 */
 .left-column > .geographic-wave-panel:first-child {
   flex: 1;
@@ -41,12 +75,24 @@
   height: 200px;
 }
 
-/* 東部測站：右側，佔滿整個高度 */
-.realtime-waveform.geographic .waveform-grid > .geographic-wave-panel {
+/* 東部測站：佔右側 column 大部分空間 */
+.right-column > .geographic-wave-panel:first-child {
+  flex: 1 1 auto;
+  min-height: 400px; /* 最小高度確保內容可見 */
+}
+
+/* 測試群組：佔右側 column 底部固定高度 */
+.right-column > .geographic-wave-panel:last-child {
+  flex: 0 0 auto;
+  height: 300px; /* 測試群組固定高度 */
+}
+
+/* 移除舊的東部測站樣式 */
+/* .realtime-waveform.geographic .waveform-grid > .geographic-wave-panel {
   grid-column: 2;
   grid-row: 1;
   min-height: 0;
-}
+} */
 
 .geographic-wave-panel {
   border: 1px solid #e0e0e0;

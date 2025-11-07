@@ -24,7 +24,11 @@ const STATION_GROUPS = {
   islands: {
     title: '離島測站',
     stations: ['PNG', 'KNM', 'MSU']
-  }
+  },
+      test_group: {
+    title: '測試群組',
+    stations: ['A009', 'A006', 'A007', 'A013', 'B122']  // 假設B122在北部
+  },
 }
 
 const LAT_MAX = 25.4
@@ -36,6 +40,20 @@ const PANEL_GAP = 8
 // 時間軸設定
 const TIME_WINDOW = 60 // 顯示 60 秒的數據（1 分鐘）
 const SAMPLE_RATE = 100 // 100 Hz（每秒 100 個採樣點）
+
+/**
+ * 從 SEED 格式提取測站代碼
+ * 格式：SM.{station}.01.HLZ -> {station}
+ * 例如：SM.F028.01.HLZ -> F028, SM.TAP.01.HLZ -> TAP
+ */
+function extractStationCode(seedName) {
+  if (!seedName) return seedName
+  const parts = seedName.split('.')
+  if (parts.length >= 2) {
+    return parts[1] // 返回第二個部分（測站代碼）
+  }
+  return seedName // 如果格式不符，返回原始名稱
+}
 
 function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, currentTime }) {
   const canvasRef = useRef(null)
@@ -359,21 +377,35 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
     const latestPacket = wavePackets[0]
     const packetTimestamp = latestPacket.timestamp || Date.now()
 
+    console.log('📊 Processing wave packet:', {
+      waveid: latestPacket.waveid,
+      timestamp: packetTimestamp,
+      dataKeys: latestPacket.data ? Object.keys(latestPacket.data) : []
+    })
+
     setWaveDataMap(prev => {
       const updated = { ...prev }
 
       if (latestPacket.data) {
-        Object.keys(latestPacket.data).forEach(station => {
-          if (!updated[station]) {
-            updated[station] = {
+        Object.keys(latestPacket.data).forEach(seedStation => {
+          // 從 SEED 格式提取測站代碼（SM.F028.01.HLZ -> F028）
+          const stationCode = extractStationCode(seedStation)
+
+          console.log(`🔄 Processing station: ${seedStation} -> ${stationCode}`)
+
+          if (!updated[stationCode]) {
+            updated[stationCode] = {
               dataPoints: [],
               lastPga: 0
             }
+            console.log(`✨ Created new station data for: ${stationCode}`)
           }
 
-          const stationData = updated[station]
-          const waveform = latestPacket.data[station]?.waveform || []
-          const pga = latestPacket.data[station]?.pga || 0
+          const stationData = updated[stationCode]
+          const waveform = latestPacket.data[seedStation]?.waveform || []
+          const pga = latestPacket.data[seedStation]?.pga || 0
+
+          console.log(`📈 Waveform data: ${waveform.length} points, PGA: ${pga.toFixed(2)}`)
 
           // 添加新的數據點（帶時間戳）
           stationData.dataPoints.push({
@@ -391,6 +423,7 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
         })
       }
 
+      console.log('📍 Updated waveDataMap stations:', Object.keys(updated))
       return updated
     })
   }, [wavePackets])
@@ -455,6 +488,14 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             waveDataMap={waveDataMap}
             latMin={EAST_LAT_MIN}
             latMax={EAST_LAT_MAX}
+            currentTime={currentTime}
+          />
+          <GeographicWavePanel
+            title={STATION_GROUPS.test_group.title}
+            stations={STATION_GROUPS.test_group.stations}
+            stationMap={stationMap}
+            waveDataMap={waveDataMap}
+            simpleLayout={true}
             currentTime={currentTime}
           />
         </div>

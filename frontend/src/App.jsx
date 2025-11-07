@@ -6,6 +6,19 @@ import WaveDetail from './components/WaveDetail'
 import TaiwanMap from './components/TaiwanMap'
 import RealtimeWaveform from './components/RealtimeWaveform'
 
+/**
+ * 從 SEED 格式提取測站代碼
+ * 格式：SM.{station}.01.HLZ -> {station}
+ */
+function extractStationCode(seedName) {
+  if (!seedName) return seedName
+  const parts = seedName.split('.')
+  if (parts.length >= 2) {
+    return parts[1]
+  }
+  return seedName
+}
+
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [events, setEvents] = useState([])
@@ -39,46 +52,59 @@ function App() {
     })
 
     // 連線事件
-    socket.on('connect', () => {
+    const handleConnect = () => {
       console.log('✅ Connected to Mock Server')
       setIsConnected(true)
-    })
+    }
 
-    socket.on('disconnect', () => {
+    const handleDisconnect = () => {
       console.log('❌ Disconnected from Mock Server')
       setIsConnected(false)
-    })
+    }
 
-    socket.on('connect_init', () => {
+    const handleConnectInit = () => {
       console.log('🔌 Connection initialized')
-    })
+    }
 
     // 接收波形資料
-    socket.on('wave_packet', (data) => {
+    const handleWavePacket = (data) => {
       console.log('🌊 Wave packet received:', data.waveid)
       const timestamp = new Date().toLocaleString('zh-TW')
       setLatestWaveTime(timestamp)
       setWavePackets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
-    })
+    }
 
     // 接收地震事件
-    socket.on('event_data', (data) => {
+    const handleEventData = (data) => {
       console.log('📍 Event data received:', Object.keys(data).length, 'stations')
       const timestamp = new Date().toLocaleString('zh-TW')
+      // 從 SEED 格式提取測站代碼
+      const stationCodes = Object.keys(data).map(seedName => extractStationCode(seedName))
       setEvents(prev => [{
         id: Date.now(),
         timestamp,
-        stations: Object.keys(data),
+        stations: stationCodes,
         data
       }, ...prev].slice(0, 20)) // 保留最新 20 筆
-    })
+    }
 
+    // 註冊事件監聽器
+    socket.on('connect', handleConnect)
+    socket.on('disconnect', handleDisconnect)
+    socket.on('connect_init', handleConnectInit)
+    socket.on('wave_packet', handleWavePacket)
+    socket.on('event_data', handleEventData)
 
     // 清理函式
     return () => {
+      socket.off('connect', handleConnect)
+      socket.off('disconnect', handleDisconnect)
+      socket.off('connect_init', handleConnectInit)
+      socket.off('wave_packet', handleWavePacket)
+      socket.off('event_data', handleEventData)
       socket.disconnect()
     }
-  }, [])
+  }, []) // 空依賴陣列，確保只執行一次
 
   // 回到波形頁面
   const handleBackToWaveform = () => {
