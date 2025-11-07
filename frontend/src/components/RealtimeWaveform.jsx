@@ -242,20 +242,17 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
           ctx.fillText(`±${waveData.displayScale.toFixed(2)}`, xOffset + waveWidth + 5, centerY + 11)
         }
 
-        // 繪製波型（基於時間戳的定位）
+        // 繪製波型（每個數據包內部連線，數據包之間不連線）
         if (!waveData || !waveData.dataPoints || waveData.dataPoints.length === 0) return
 
         const dataPoints = waveData.dataPoints
         const displayScale = waveData.displayScale || 1.0 // 動態縮放因子
 
         ctx.strokeStyle = '#4caf50'
-        ctx.lineWidth = 3.5
+        ctx.lineWidth = 5.2
         ctx.globalAlpha = 0.9
-        ctx.beginPath()
 
-        let isFirstPoint = true
-
-        // 遍歷所有數據點，根據時間戳計算位置
+        // 遍歷每個數據包，在包內部連線
         dataPoints.forEach(point => {
           const { timestamp, values } = point
 
@@ -268,6 +265,10 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
           // 計算這個數據點在時間軸上的起始位置（秒）
           const startTimeOffset = timeDiff / 1000 // 轉換為秒
 
+          // 開始新的路徑（每個數據包獨立）
+          ctx.beginPath()
+          let hasFirstPoint = false
+
           // 繪製這個數據點的所有採樣值（100 個點 = 1 秒）
           values.forEach((value, idx) => {
             // 計算這個採樣點的時間偏移（秒）
@@ -277,12 +278,9 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
             if (sampleTimeOffset < 0 || sampleTimeOffset > TIME_WINDOW) return
 
             // 計算 x 位置：最右側是 0s（當前），往左是過去
-            // sampleTimeOffset = 0 -> x = xOffset + waveWidth（最右側）
-            // sampleTimeOffset = 60 -> x = xOffset（最左側）
             const x = xOffset + waveWidth * (1 - sampleTimeOffset / TIME_WINDOW)
 
             // 使用動態縮放因子 normalize 數據
-            // displayScale 會根據訊號強度自動調整，背景雜訊時小（放大顯示），大地震時大（壓縮顯示）
             const normalizedValue = value / displayScale
 
             // 限制在 ±1 範圍內，避免極端值爆格
@@ -291,16 +289,18 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
             // 計算 y 位置（正規化到 ±waveHeight/2）
             const y = centerY - clampedValue * (waveHeight / 2)
 
-            if (isFirstPoint) {
+            if (!hasFirstPoint) {
               ctx.moveTo(x, y)
-              isFirstPoint = false
+              hasFirstPoint = true
             } else {
               ctx.lineTo(x, y)
             }
           })
+
+          // 繪製這個數據包的路徑
+          ctx.stroke()
         })
 
-        ctx.stroke()
         ctx.globalAlpha = 1
       })
     }
@@ -457,11 +457,22 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
 
             // 動態縮放因子：背景雜訊時放大，大振幅時壓縮
-            // 使用對數縮放避免爆格
-            const baseScale = Math.max(rms * 3, maxAbs * 0.8, 0.1) // 至少顯示 ±0.1
+            // 使用 RMS*8 讓背景雜訊更明顯，但大振幅時壓縮避免爆格
+            const baseScale = Math.max(rms * 8, maxAbs * 0.6, 0.05) // 至少顯示 ±0.05
             stationData.displayScale = baseScale
             stationData.rms = rms
             stationData.maxAbs = maxAbs
+
+            // 調試輸出（每 5 秒輸出一次，只顯示前 3 個測站）
+            if (!window._lastScaleLog || Date.now() - window._lastScaleLog > 5000) {
+              const debugStations = Object.keys(updated).slice(0, 3)
+              if (debugStations.includes(stationCode)) {
+                console.log(`📊 ${stationCode}: RMS=${rms.toFixed(3)}, Max=${maxAbs.toFixed(3)}, Scale=${baseScale.toFixed(3)}`)
+              }
+              if (debugStations.indexOf(stationCode) === debugStations.length - 1) {
+                window._lastScaleLog = Date.now()
+              }
+            }
           } else {
             stationData.displayScale = 1.0
             stationData.rms = 0
