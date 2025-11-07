@@ -18,13 +18,25 @@ import torch.nn as nn
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
+from flask_cors import CORS
 from loguru import logger
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
 import xarray as xr
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+# HTTP API 的 CORS
+CORS(app, resources={
+    r"/api/*": {"origins": "*"},
+    r"/get_file_content": {"origins": "*"}
+})
+
+# SocketIO 的 CORS（獨立處理 WebSocket）
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode='threading'  # 明確指定非同步模式
+)
 
 # 共享物件
 manager = multiprocessing.Manager()
@@ -168,9 +180,14 @@ def dataset_emitter():
 
 
 def web_server():
-    threading.Thread(target=wave_emitter).start()
-    threading.Thread(target=event_emitter).start()
-    threading.Thread(target=dataset_emitter).start()
+    """啟動 Web Server 與 SocketIO"""
+    logger.info("Starting web server...")
+
+    # 啟動背景資料發送執行緒
+    threading.Thread(target=wave_emitter, daemon=True).start()
+    threading.Thread(target=event_emitter, daemon=True).start()
+    threading.Thread(target=dataset_emitter, daemon=True).start()
+
 
     if args.web:
         # 開啟 web server
@@ -1364,7 +1381,7 @@ if __name__ == "__main__":
     parser.add_argument("--discord", action="store_true", help="connect to discord bot")
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
-    parser.add_argument("--port", type=int, default=5000, help="web server port")
+    parser.add_argument("--port", type=int, default=5001, help="web server port")
     parser.add_argument(
         "--test-env", action="store_true", help="test environment, inst_id = 255"
     )
