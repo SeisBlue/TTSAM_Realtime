@@ -38,7 +38,7 @@ const ISLANDS_PANEL_HEIGHT = 200
 const PANEL_GAP = 8
 
 // 時間軸設定
-const TIME_WINDOW = 60 // 顯示 60 秒的數據（1 分鐘）
+const TIME_WINDOW = 30 // 顯示 30 秒的數據（半分鐘）
 const SAMPLE_RATE = 100 // 100 Hz（每秒 100 個採樣點）
 
 /**
@@ -150,7 +150,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         ctx.fillStyle = '#90caf9'
         ctx.textAlign = 'center'
 
-        // 時間刻度：0s, -10s, -20s, -30s, -40s, -50s, -60s（共 7 個刻度）
+        // 時間刻度：0s, -5s, -10s, -15s, -20s, -25s, -30s（共 7 個刻度）
         const numTicks = 7
         for (let i = 0; i < numTicks; i++) {
           const timeValue = -i * (TIME_WINDOW / (numTicks - 1))
@@ -249,7 +249,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         const displayScale = waveData.displayScale || 1.0 // 動態縮放因子
 
         ctx.strokeStyle = '#4caf50'
-        ctx.lineWidth = 5.2
+        ctx.lineWidth = 1.2
         ctx.globalAlpha = 0.9
 
         // 遍歷每個數據包，在包內部連線
@@ -426,7 +426,7 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
             values: waveform
           })
 
-          // 清理超過時間窗口的舊數據（保留 60 秒內的數據）
+          // 清理超過時間窗口的舊數據（保留 30 秒內的數據）
           const cutoffTime = Date.now() - TIME_WINDOW * 1000
           stationData.dataPoints = stationData.dataPoints.filter(
             point => point.timestamp >= cutoffTime
