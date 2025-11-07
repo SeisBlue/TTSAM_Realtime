@@ -59,6 +59,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const [hoveredStation, setHoveredStation] = useState(null)
 
   const minLat = latMin ?? EAST_LAT_MIN
   const maxLat = latMax ?? LAT_MAX
@@ -75,6 +76,63 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
     window.addEventListener('resize', updateSize)
     return () => window.removeEventListener('resize', updateSize)
   }, [])
+
+  // 滑鼠移動事件處理
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const handleMouseMove = (e) => {
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      // 計算滑鼠在哪個測站的範圍內
+      const { height } = dimensions
+      const waveHeight = simpleLayout ? 40 : 30
+      const hoverThreshold = waveHeight / 2 + 5 // 懸停檢測範圍（±半高度 + 5px 容差）
+
+      let foundStation = null
+
+      stations.forEach((stationCode, index) => {
+        const station = stationMap[stationCode]
+        if (!station) return
+
+        // 計算測站的 Y 位置（與繪製邏輯相同）
+        let centerY
+        if (simpleLayout) {
+          const stationSpacing = waveHeight * 1.0
+          const topMargin = waveHeight * 1.0
+          const totalStationsHeight = stationSpacing * (stations.length - 1)
+          const bottomMargin = height - topMargin - totalStationsHeight
+          const adjustedTopMargin = bottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
+          centerY = adjustedTopMargin + stationSpacing * index
+        } else {
+          if (!station.latitude) return
+          centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * height
+        }
+
+        // 檢查滑鼠是否在測站範圍內
+        if (Math.abs(y - centerY) < hoverThreshold) {
+          foundStation = stationCode
+        }
+      })
+
+      setHoveredStation(foundStation)
+    }
+
+    const handleMouseLeave = () => {
+      setHoveredStation(null)
+    }
+
+    canvas.addEventListener('mousemove', handleMouseMove)
+    canvas.addEventListener('mouseleave', handleMouseLeave)
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove)
+      canvas.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [dimensions, stations, stationMap, simpleLayout, minLat, maxLat])
 
   // 繪製波型
   useEffect(() => {
@@ -208,10 +266,11 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         }
 
         const waveData = waveDataMap[stationCode]
+        const isHovered = hoveredStation === stationCode
 
         // 繪製測站基線
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
-        ctx.lineWidth = 0.5
+        ctx.strokeStyle = isHovered ? 'rgba(255, 193, 7, 0.3)' : 'rgba(255, 255, 255, 0.1)'
+        ctx.lineWidth = isHovered ? 1 : 0.5
         ctx.setLineDash([3, 3])
         ctx.beginPath()
         ctx.moveTo(xOffset, centerY)
@@ -219,26 +278,37 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         ctx.stroke()
         ctx.setLineDash([])
 
-        // 繪製測站標籤
-        ctx.fillStyle = waveData ? '#e0e0e0' : '#666'
-        ctx.font = '10px monospace'
+        // 繪製測站標籤（懸停時高亮）
+        if (isHovered) {
+          ctx.fillStyle = '#ffc107' // 懸停時用黃色
+          ctx.font = 'bold 11px monospace'
+        } else {
+          ctx.fillStyle = waveData ? '#e0e0e0' : '#666'
+          ctx.font = '10px monospace'
+        }
         ctx.textAlign = 'right'
         ctx.fillText(stationCode, xOffset - 8, centerY + 3)
 
         // 繪製測站資訊
         ctx.textAlign = 'left'
-        ctx.font = '9px sans-serif'
+        if (isHovered) {
+          ctx.font = 'bold 10px sans-serif'
+          ctx.fillStyle = '#ffc107'
+        } else {
+          ctx.font = '9px sans-serif'
+          ctx.fillStyle = '#e0e0e0'
+        }
         if (station.station_zh) {
           ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 8)
         }
         if (waveData?.lastPga) {
-          ctx.fillStyle = '#4caf50'
+          ctx.fillStyle = isHovered ? '#ffc107' : '#4caf50'
           ctx.fillText(`PGA: ${waveData.lastPga.toFixed(2)}`, xOffset + waveWidth + 5, centerY + 2)
         }
         // 顯示動態縮放範圍（用於調試）
         if (waveData?.displayScale) {
-          ctx.fillStyle = '#90caf9'
-          ctx.font = '8px monospace'
+          ctx.fillStyle = isHovered ? '#ffc107' : '#90caf9'
+          ctx.font = isHovered ? 'bold 9px monospace' : '8px monospace'
           ctx.fillText(`±${waveData.displayScale.toFixed(2)}`, xOffset + waveWidth + 5, centerY + 11)
         }
 
@@ -248,9 +318,16 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         const dataPoints = waveData.dataPoints
         const displayScale = waveData.displayScale || 1.0 // 動態縮放因子
 
-        ctx.strokeStyle = '#4caf50'
-        ctx.lineWidth = 1.2
-        ctx.globalAlpha = 0.9
+        // 懸停時高亮波型
+        if (isHovered) {
+          ctx.strokeStyle = '#ffc107' // 黃色高亮
+          ctx.lineWidth = 2.0
+          ctx.globalAlpha = 1.0
+        } else {
+          ctx.strokeStyle = '#4caf50' // 綠色正常
+          ctx.lineWidth = 1.2
+          ctx.globalAlpha = 0.9
+        }
 
         // 遍歷每個數據包，在包內部連線
         dataPoints.forEach(point => {
@@ -312,7 +389,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         cancelAnimationFrame(animationFrameId)
       }
     }
-  }, [stations, stationMap, waveDataMap, dimensions, minLat, maxLat, simpleLayout, currentTime])
+  }, [stations, stationMap, waveDataMap, dimensions, minLat, maxLat, simpleLayout, currentTime, hoveredStation])
 
   return (
     <div ref={containerRef} className="geographic-wave-panel">
