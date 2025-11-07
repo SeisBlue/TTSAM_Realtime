@@ -28,7 +28,7 @@ function ZoomWatcher({ onZoomChange }) {
   return null
 }
 
-function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
+function TaiwanMap({ stations, onStationSelect }) {
   const [allStations, setAllStations] = useState([]) // 從 site_info.csv 載入的所有測站
   const [selectedStations, setSelectedStations] = useState(new Set())
   const [currentZoom, setCurrentZoom] = useState(7)
@@ -111,24 +111,22 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
   // 根據縮放層級過濾次要測站（優化性能）
   const visibleSecondaryStations = useMemo(() => {
     // 縮放層級 < 8：不顯示次要測站
-    // 縮放層級 8-9：只顯示有數據或已選中的
-    // 縮放層級 >= 10：顯示所有
+    // 縮放層級 8-9：只顯示已選中的（移除有數據判斷，避免實時更新）
+    // 縮放層級 >= 10：顯示所有，但限制最大數量
+
+    const MAX_STATIONS = 300 // 最大渲染數量，避免卡頓
 
     if (currentZoom < 8) {
       // 只顯示已選中的測站
       return allStations.filter(s => selectedStations.has(s.station))
     } else if (currentZoom < 10) {
-      // 顯示有數據或已選中的測站
-      return allStations.filter(s => {
-        const hasData = waveDataMap && waveDataMap[s.station]
-        const isSelected = selectedStations.has(s.station)
-        return hasData || isSelected
-      })
+      // 只顯示已選中的測站（不再根據 waveDataMap 過濾，避免實時更新）
+      return allStations.filter(s => selectedStations.has(s.station))
     } else {
-      // 顯示所有測站
-      return allStations
+      // 顯示所有測站，但限制數量
+      return allStations.slice(0, MAX_STATIONS)
     }
-  }, [allStations, currentZoom, waveDataMap, selectedStations])
+  }, [allStations, currentZoom, selectedStations]) // 移除 waveDataMap 依賴
 
   return (
     <div className="taiwan-map-container">
@@ -223,16 +221,10 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
 
           if (!latitude || !longitude) return null
 
-          const hasData = waveDataMap && waveDataMap[stationCode]
           const isSelected = selectedStations.has(stationCode)
 
-          // 根據狀態決定顏色
-          let fillColor = '#666' // 預設灰色（無數據）
-          if (isSelected) {
-            fillColor = '#ffc107' // 選中：黃色
-          } else if (hasData) {
-            fillColor = '#4caf50' // 有數據：綠色
-          }
+          // 簡化顏色邏輯：只區分選中/未選中（移除 hasData 判斷，避免實時更新）
+          const fillColor = isSelected ? '#ffc107' : '#666' // 選中：黃色 / 未選中：灰色
 
           return (
             <CircleMarker
@@ -262,7 +254,6 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
                   <div className="tooltip-coords">
                     {latitude.toFixed(3)}°N, {longitude.toFixed(3)}°E
                   </div>
-                  {hasData && <div className="tooltip-status" style={{ color: '#4caf50' }}>有波型數據</div>}
                   {isSelected && <div className="tooltip-status" style={{ color: '#ffc107' }}>已選中</div>}
                   <div className="tooltip-hint">點擊加入測試群組</div>
                 </div>
@@ -338,16 +329,12 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
 
         <div className="legend-title">次要測站（TSMIP）</div>
         <div className="legend-item">
-          <span className="legend-dot small" style={{ backgroundColor: '#4caf50' }}></span>
-          <span>有數據</span>
-        </div>
-        <div className="legend-item">
           <span className="legend-dot small" style={{ backgroundColor: '#ffc107' }}></span>
           <span>已選中</span>
         </div>
         <div className="legend-item">
           <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
-          <span>無數據</span>
+          <span>未選中</span>
         </div>
       </div>
     </div>
@@ -356,7 +343,6 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
 
 TaiwanMap.propTypes = {
   stations: PropTypes.array.isRequired,
-  waveDataMap: PropTypes.object,
   onStationSelect: PropTypes.func
 }
 
