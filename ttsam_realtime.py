@@ -145,20 +145,50 @@ def connect_earthworm():
 
 def wave_emitter():
     while True:
-        wave = wave_queue.get()
-        wave_id = join_id_from_dict(wave, order="NSLC")
+        try:
+            wave = wave_queue.get()
+            wave_id = join_id_from_dict(wave, order="NSLC")
 
-        if "Z" not in wave_id:
+            if "Z" not in wave_id:
+                continue
+
+            wave["waveid"] = wave_id
+
+            # 計算 PGA (Peak Ground Acceleration)
+            waveform_data = wave["data"]
+
+            # 確保 waveform_data 是可序列化的格式
+            if isinstance(waveform_data, np.ndarray):
+                waveform_list = waveform_data.tolist()
+                pga = float(np.max(np.abs(waveform_data)))
+            elif isinstance(waveform_data, list):
+                waveform_list = waveform_data
+                pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
+            else:
+                logger.warning(f"Unknown waveform data type: {type(waveform_data)}")
+                continue
+
+            # 生成時間戳
+            timestamp = int(time.time() * 1000)  # 毫秒時間戳
+
+            # 使用與前端一致的 SEED 格式：data 是一個 dict，key 是 SEED station name
+            wave_packet = {
+                "waveid": f"{wave_id}_{timestamp}",
+                "timestamp": timestamp,
+                "data": {
+                    wave_id: {
+                        "waveform": waveform_list,
+                        "pga": pga,
+                        "status": "active"
+                    }
+                }
+            }
+
+            socketio.emit("wave_packet", wave_packet)
+
+        except Exception as e:
+            logger.error(f"Error in wave_emitter: {e}")
             continue
-
-        wave["waveid"] = wave_id
-
-        wave_packet = {
-            "waveid": wave_id,
-            "data": wave["data"].tolist(),
-        }
-
-        socketio.emit("wave_packet", wave_packet)
 
 
 def event_emitter():
