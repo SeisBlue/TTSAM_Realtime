@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import PropTypes from 'prop-types'
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './TaiwanMap.css'
@@ -13,9 +13,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
+// 監聽地圖縮放層級
+function ZoomWatcher({ onZoomChange }) {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom())
+    }
+  })
+
+  useEffect(() => {
+    onZoomChange(map.getZoom())
+  }, [map, onZoomChange])
+
+  return null
+}
+
 function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
   const [allStations, setAllStations] = useState([]) // 從 site_info.csv 載入的所有測站
   const [selectedStations, setSelectedStations] = useState(new Set())
+  const [currentZoom, setCurrentZoom] = useState(7)
 
   // 台灣中心座標
   const center = [23.5, 121.0]
@@ -26,13 +42,20 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
     fetch('http://localhost:5001/api/all-stations')
       .then(response => response.json())
       .then(stations => {
-        // 標記為次要測站
-        const secondaryStations = stations.map(s => ({
-          ...s,
-          isSecondary: true
-        }))
-        setAllStations(secondaryStations)
-        console.log(`📍 Loaded ${secondaryStations.length} secondary stations from backend API`)
+        // 去重：每個測站代碼只保留第一筆記錄（同一測站可能有多個通道）
+        const uniqueStations = new Map()
+        stations.forEach(s => {
+          if (!uniqueStations.has(s.station)) {
+            uniqueStations.set(s.station, {
+              ...s,
+              isSecondary: true
+            })
+          }
+        })
+
+        const deduplicatedStations = Array.from(uniqueStations.values())
+        setAllStations(deduplicatedStations)
+        console.log(`📍 Loaded ${deduplicatedStations.length} unique secondary stations (from ${stations.length} total records)`)
       })
       .catch(err => {
         console.error('❌ Failed to load secondary stations from API:', err)
@@ -85,6 +108,28 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
     }, 200)
   }, [])
 
+  // 根據縮放層級過濾次要測站（優化性能）
+  const visibleSecondaryStations = useMemo(() => {
+    // 縮放層級 < 8：不顯示次要測站
+    // 縮放層級 8-9：只顯示有數據或已選中的
+    // 縮放層級 >= 10：顯示所有
+
+    if (currentZoom < 8) {
+      // 只顯示已選中的測站
+      return allStations.filter(s => selectedStations.has(s.station))
+    } else if (currentZoom < 10) {
+      // 顯示有數據或已選中的測站
+      return allStations.filter(s => {
+        const hasData = waveDataMap && waveDataMap[s.station]
+        const isSelected = selectedStations.has(s.station)
+        return hasData || isSelected
+      })
+    } else {
+      // 顯示所有測站
+      return allStations
+    }
+  }, [allStations, currentZoom, waveDataMap, selectedStations])
+
   return (
     <div className="taiwan-map-container">
       <MapContainer
@@ -94,6 +139,9 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
         zoomControl={true}
         attributionControl={false}
       >
+        {/* 監聽縮放層級 */}
+        <ZoomWatcher onZoomChange={setCurrentZoom} />
+
         {/* 黑白色系地圖圖層 - CartoDB Dark Matter */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -170,7 +218,7 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
         })}
 
         {/* 次要測站標記（TSMIP，來自 site_info.csv）- 小圓點 */}
-        {allStations.map((station) => {
+        {visibleSecondaryStations.map((station) => {
           const { station: stationCode, latitude, longitude } = station
 
           if (!latitude || !longitude) return null
@@ -248,6 +296,21 @@ function TaiwanMap({ stations, waveDataMap, onStationSelect }) {
           >
             清空
           </button>
+        </div>
+      )}
+
+      {/* 縮放層級提示 */}
+      {currentZoom < 8 && (
+        <div className="zoom-hint">
+          <span>🔍 放大地圖可查看次要測站</span>
+        </div>
+      )}
+      {currentZoom >= 8 && currentZoom < 10 && (
+        <div className="zoom-hint">
+          <span>🔍 繼續放大可查看所有測站</span>
+          <span className="zoom-hint-detail">
+            (目前顯示: {visibleSecondaryStations.length} / {allStations.length})
+          </span>
         </div>
       )}
 
