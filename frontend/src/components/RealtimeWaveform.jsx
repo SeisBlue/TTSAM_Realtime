@@ -229,20 +229,27 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         ctx.textAlign = 'left'
         ctx.font = '9px sans-serif'
         if (station.station_zh) {
-          ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 2)
+          ctx.fillText(station.station_zh, xOffset + waveWidth + 5, centerY - 8)
         }
         if (waveData?.lastPga) {
           ctx.fillStyle = '#4caf50'
-          ctx.fillText(`${waveData.lastPga.toFixed(1)}`, xOffset + waveWidth + 5, centerY + 8)
+          ctx.fillText(`PGA: ${waveData.lastPga.toFixed(2)}`, xOffset + waveWidth + 5, centerY + 2)
+        }
+        // 顯示動態縮放範圍（用於調試）
+        if (waveData?.displayScale) {
+          ctx.fillStyle = '#90caf9'
+          ctx.font = '8px monospace'
+          ctx.fillText(`±${waveData.displayScale.toFixed(2)}`, xOffset + waveWidth + 5, centerY + 11)
         }
 
         // 繪製波型（基於時間戳的定位）
         if (!waveData || !waveData.dataPoints || waveData.dataPoints.length === 0) return
 
         const dataPoints = waveData.dataPoints
+        const displayScale = waveData.displayScale || 1.0 // 動態縮放因子
 
         ctx.strokeStyle = '#4caf50'
-        ctx.lineWidth = 1.5
+        ctx.lineWidth = 3.5
         ctx.globalAlpha = 0.9
         ctx.beginPath()
 
@@ -274,9 +281,15 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
             // sampleTimeOffset = 60 -> x = xOffset（最左側）
             const x = xOffset + waveWidth * (1 - sampleTimeOffset / TIME_WINDOW)
 
+            // 使用動態縮放因子 normalize 數據
+            // displayScale 會根據訊號強度自動調整，背景雜訊時小（放大顯示），大地震時大（壓縮顯示）
+            const normalizedValue = value / displayScale
+
+            // 限制在 ±1 範圍內，避免極端值爆格
+            const clampedValue = Math.max(-1, Math.min(1, normalizedValue))
+
             // 計算 y 位置（正規化到 ±waveHeight/2）
-            const normalizedValue = value / 10 // 假設數據範圍在 ±10 以內
-            const y = centerY - normalizedValue * (waveHeight / 2)
+            const y = centerY - clampedValue * (waveHeight / 2)
 
             if (isFirstPoint) {
               ctx.moveTo(x, y)
@@ -420,6 +433,40 @@ function RealtimeWaveform({ targetStations, wavePackets }) {
           )
 
           stationData.lastPga = pga
+
+          // 計算動態縮放範圍（用於 normalize 顯示）
+          // 使用最近 10 秒的數據計算 RMS 和 最大振幅
+          const recentCutoff = Date.now() - 10 * 1000 // 最近 10 秒
+          const recentPoints = stationData.dataPoints.filter(
+            point => point.timestamp >= recentCutoff
+          )
+
+          if (recentPoints.length > 0) {
+            let sumSquares = 0
+            let maxAbs = 0
+            let count = 0
+
+            recentPoints.forEach(point => {
+              point.values.forEach(value => {
+                sumSquares += value * value
+                maxAbs = Math.max(maxAbs, Math.abs(value))
+                count++
+              })
+            })
+
+            const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
+
+            // 動態縮放因子：背景雜訊時放大，大振幅時壓縮
+            // 使用對數縮放避免爆格
+            const baseScale = Math.max(rms * 3, maxAbs * 0.8, 0.1) // 至少顯示 ±0.1
+            stationData.displayScale = baseScale
+            stationData.rms = rms
+            stationData.maxAbs = maxAbs
+          } else {
+            stationData.displayScale = 1.0
+            stationData.rms = 0
+            stationData.maxAbs = 0
+          }
         })
       }
 
