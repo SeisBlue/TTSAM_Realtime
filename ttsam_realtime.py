@@ -56,9 +56,9 @@ def index():
         for f in os.listdir(report_log_dir):
             file_path = os.path.join(report_log_dir, f)
             if (
-                f.startswith("report")
-                and f.endswith(".log")
-                and os.path.isfile(file_path)
+                    f.startswith("report")
+                    and f.endswith(".log")
+                    and os.path.isfile(file_path)
             ):
                 files.append(f)
         files.sort(
@@ -92,6 +92,18 @@ def get_file_content():
 
     except Exception as e:
         return str(e), 500
+
+
+@app.route("/api/stations")
+def get_stations():
+    """API: 取得測站列表（JSON格式）"""
+    try:
+        return json.dumps(target_dict, ensure_ascii=False), 200, {
+            'Content-Type': 'application/json; charset=utf-8'}
+    except Exception as e:
+        logger.error(f"Error getting stations: {e}")
+        return json.dumps({"error": str(e)}), 500, {
+            'Content-Type': 'application/json; charset=utf-8'}
 
 
 @app.route("/trace")
@@ -231,7 +243,7 @@ def time_array_init(sample_rate, buffer_time, start_time, end_time, data_length)
 
 def slide_array(array, data):
     array = np.append(array, data)
-    return array[data.size :]
+    return array[data.size:]
 
 
 def earthworm_wave_listener():
@@ -554,8 +566,8 @@ def dataset_batch(dataset, batch_size=25):
 
         for i in range(0, len(dataset["target"]), batch_size):
             # 迭代 25 站的 target
-            batch["target"] = dataset["target"][i : i + batch_size]
-            batch["target_name"] = dataset["target_name"][i : i + batch_size]
+            batch["target"] = dataset["target"][i: i + batch_size]
+            batch["target_name"] = dataset["target_name"][i: i + batch_size]
 
             yield batch
 
@@ -807,11 +819,11 @@ class LambdaLayer(nn.Module):
 
 class MLP(nn.Module):
     def __init__(
-        self,
-        input_shape,
-        dims=(500, 300, 200, 150),
-        activation=nn.ReLU(),
-        last_activation=None,
+            self,
+            input_shape,
+            dims=(500, 300, 200, 150),
+            activation=nn.ReLU(),
+            last_activation=None,
     ):
         super(MLP, self).__init__()
         if last_activation is None:
@@ -848,13 +860,13 @@ class CNN(nn.Module):
     """
 
     def __init__(
-        self,
-        input_shape=(-1, 6000, 3),
-        activation=nn.ReLU(),
-        downsample=1,
-        mlp_input=11665,
-        mlp_dims=(500, 300, 200, 150),
-        eps=1e-8,
+            self,
+            input_shape=(-1, 6000, 3),
+            activation=nn.ReLU(),
+            downsample=1,
+            mlp_input=11665,
+            mlp_dims=(500, 300, 200, 150),
+            eps=1e-8,
     ):
         super(CNN, self).__init__()
         self.input_shape = input_shape
@@ -866,14 +878,14 @@ class CNN(nn.Module):
 
         self.lambda_layer_1 = LambdaLayer(
             lambda t: t
-            / (
-                torch.max(
-                    torch.max(torch.abs(t), dim=1, keepdim=True).values,
-                    dim=2,
-                    keepdim=True,
-                ).values
-                + self.eps
-            )
+                      / (
+                              torch.max(
+                                  torch.max(torch.abs(t), dim=1, keepdim=True).values,
+                                  dim=2,
+                                  keepdim=True,
+                              ).values
+                              + self.eps
+                      )
         )
         self.unsqueeze_layer1 = LambdaLayer(lambda t: torch.unsqueeze(t, dim=1))
         self.lambda_layer_2 = LambdaLayer(
@@ -881,7 +893,7 @@ class CNN(nn.Module):
                 torch.max(torch.max(torch.abs(t), dim=1).values, dim=1).values
                 + self.eps
             )
-            / 100
+                      / 100
         )
         self.unsqueeze_layer2 = LambdaLayer(lambda t: torch.unsqueeze(t, dim=1))
         self.conv2d1 = nn.Sequential(
@@ -930,10 +942,10 @@ class PositionEmbeddingVs30(nn.Module):
     """
 
     def __init__(
-        self,
-        wavelengths=((5, 30), (110, 123), (0.01, 5000), (100, 1600)),
-        emb_dim=500,
-        **kwargs,
+            self,
+            wavelengths=((5, 30), (110, 123), (0.01, 5000), (100, 1600)),
+            emb_dim=500,
+            **kwargs,
     ):
         super(PositionEmbeddingVs30, self).__init__(**kwargs)
         # Format: [(min_lat, max_lat), (min_lon, max_lon), (min_depth, max_depth)]
@@ -951,32 +963,32 @@ class PositionEmbeddingVs30(nn.Module):
         vs30_dim = emb_dim // 10
 
         self.lat_coeff = (
-            2
-            * np.pi
-            * 1.0
-            / min_lat
-            * ((min_lat / max_lat) ** (np.arange(lat_dim) / lat_dim))
+                2
+                * np.pi
+                * 1.0
+                / min_lat
+                * ((min_lat / max_lat) ** (np.arange(lat_dim) / lat_dim))
         )
         self.lon_coeff = (
-            2
-            * np.pi
-            * 1.0
-            / min_lon
-            * ((min_lon / max_lon) ** (np.arange(lon_dim) / lon_dim))
+                2
+                * np.pi
+                * 1.0
+                / min_lon
+                * ((min_lon / max_lon) ** (np.arange(lon_dim) / lon_dim))
         )
         self.depth_coeff = (
-            2
-            * np.pi
-            * 1.0
-            / min_depth
-            * ((min_depth / max_depth) ** (np.arange(depth_dim) / depth_dim))
+                2
+                * np.pi
+                * 1.0
+                / min_depth
+                * ((min_depth / max_depth) ** (np.arange(depth_dim) / depth_dim))
         )
         self.vs30_coeff = (
-            2
-            * np.pi
-            * 1.0
-            / min_vs30
-            * ((min_vs30 / max_vs30) ** (np.arange(vs30_dim) / vs30_dim))
+                2
+                * np.pi
+                * 1.0
+                / min_vs30
+                * ((min_vs30 / max_vs30) ** (np.arange(vs30_dim) / vs30_dim))
         )
 
         lat_sin_mask = np.arange(emb_dim) % 5 == 0
@@ -999,13 +1011,14 @@ class PositionEmbeddingVs30(nn.Module):
         self.mask[lon_cos_mask] = 2 * lat_dim + lon_dim + np.arange(lon_dim)
         self.mask[depth_sin_mask] = 2 * lat_dim + 2 * lon_dim + np.arange(depth_dim)
         self.mask[depth_cos_mask] = (
-            2 * lat_dim + 2 * lon_dim + depth_dim + np.arange(depth_dim)
+                2 * lat_dim + 2 * lon_dim + depth_dim + np.arange(depth_dim)
         )
         self.mask[vs30_sin_mask] = (
-            2 * lat_dim + 2 * lon_dim + 2 * depth_dim + np.arange(vs30_dim)
+                2 * lat_dim + 2 * lon_dim + 2 * depth_dim + np.arange(vs30_dim)
         )
         self.mask[vs30_cos_mask] = (
-            2 * lat_dim + 2 * lon_dim + 2 * depth_dim + vs30_dim + np.arange(vs30_dim)
+                2 * lat_dim + 2 * lon_dim + 2 * depth_dim + vs30_dim + np.arange(
+            vs30_dim)
         )
         self.mask = self.mask.astype("int32")
 
@@ -1041,13 +1054,13 @@ class PositionEmbeddingVs30(nn.Module):
 
 class TransformerEncoder(nn.Module):
     def __init__(
-        self,
-        d_model=150,
-        nhead=10,
-        batch_first=True,
-        activation="gelu",
-        dropout=0.0,
-        dim_feedforward=1000,
+            self,
+            d_model=150,
+            nhead=10,
+            batch_first=True,
+            activation="gelu",
+            dropout=0.0,
+            dim_feedforward=1000,
     ):
         super(TransformerEncoder, self).__init__()
 
@@ -1086,16 +1099,16 @@ class MDN(nn.Module):
 
 class FullModel(nn.Module):
     def __init__(
-        self,
-        model_cnn,
-        model_position,
-        model_transformer,
-        model_mlp,
-        model_mdn,
-        max_station=25,
-        pga_targets=15,
-        emb_dim=150,
-        data_length=6000,
+            self,
+            model_cnn,
+            model_position,
+            model_transformer,
+            model_mlp,
+            model_mdn,
+            max_station=25,
+            pga_targets=15,
+            emb_dim=150,
+            data_length=6000,
     ):
         super(FullModel, self).__init__()
         self.data_length = data_length
@@ -1150,7 +1163,7 @@ class FullModel(nn.Module):
         transformer_input = torch.cat((add_pe_cnn_output, pga_pos_emb_output), dim=1)
         transformer_output = self.model_Transformer(transformer_input, pad_mask)
 
-        mlp_input = transformer_output[:, -self.pga_targets :, :].to(device)
+        mlp_input = transformer_output[:, -self.pga_targets:, :].to(device)
         mlp_output = self.model_mlp(mlp_input)
         weight, sigma, mu = self.model_MDN(mlp_output)
 
@@ -1230,7 +1243,7 @@ def reporter():
                 new_alarm_county[county] = intensity
 
             elif convert_intensity(intensity) > convert_intensity(
-                past_alarm_county[county]
+                    past_alarm_county[county]
             ):
                 new_alarm_county[county] = intensity
 
@@ -1242,8 +1255,8 @@ def reporter():
             sys.stdout.flush()
 
             with open(
-                f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
-                "a",
+                    f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
+                    "a",
             ) as f:
                 f.write(format_report + "\n")
 
