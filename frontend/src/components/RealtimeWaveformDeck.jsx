@@ -35,29 +35,25 @@ function isTSMIPStation(stationCode) {
  * 將 PGA (gal) 轉換為台灣震度級數
  * 此函式為後端 Python `calculate_intensity` 邏輯的直接 JavaScript 轉譯，
  * 以確保前後端計算標準完全一致。
- * @param {number} pga - PGA 值，單位為 gal (cm/s²)。
+ * @param {number} pga - PGA 值，單位為 gal (m/s²)。
  */
 function pgaToIntensity(pga) {
   if (pga <= 0) {
     return "0";
   }
 
-  // 後端 pga_level 的單位是 m/s^2，所以先將 gal 轉換
-  // 1 gal = 0.01 m/s^2
-  const pga_ms2 = pga * 0.01;
-
   // 後端使用的 pga_level 陣列 (單位: m/s^2)
-  const pga_level_ms2 = [1e-5, 0.008, 0.025, 0.080, 0.250, 0.80, 1.4, 2.5, 4.4, 8.0];
+  const pga_level = [1e-5, 0.008, 0.025, 0.080, 0.250, 0.80, 1.4, 2.5, 4.4, 8.0];
   const intensity_label = ["0", "1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"];
 
   // 後端使用 log10 進行比較，前端在此完全複製此行為
-  const log_pga = Math.log10(pga_ms2);
+  const log_pga = Math.log10(pga);
 
   // 模擬 Python 的 bisect.bisect
   let intensity_index = 0;
-  for (let i = 0; i < pga_level_ms2.length; i++) {
+  for (let i = 0; i < pga_level.length; i++) {
     // 直接比較 log 值
-    if (log_pga >= Math.log10(pga_level_ms2[i])) {
+    if (log_pga >= Math.log10(pga_level[i])) {
       intensity_index = i;
     } else {
       break;
@@ -925,7 +921,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
       </div>
       <div ref={panelRef} className="waveform-panel-container" style={{ flex: 1, overflow: 'hidden' }}>
         <GeographicWavePanel
-          title={`全台測站 ${useNearestTSMIP ? '(智能替換)' : ''}`}
+          title={`全台 PWS 參考點 ${useNearestTSMIP ? '(TSMIP 替換)' : ''}`}
           stations={displayStations}
           stationMap={stationMap}
           waveDataMap={waveDataMap}
