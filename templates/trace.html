@@ -95,14 +95,17 @@
     });
 
     socket.on('wave_packet', function (msg) {
+        // 新的 API 結構：msg.data 是一個物件，key 是測站 SEED ID
+        // 遍歷所有測站資料
+        for (const [stationId, stationData] of Object.entries(msg.data)) {
+            if (!traces.has(stationId)) {
+                createChart(stationId);
+            }
 
-        if (!traces.has(msg.waveid)) {
-            createChart(msg.waveid);
+            // 從新的 API 結構中取得波形資料
+            let waveformData = stationData.waveform || stationData;
+            updateChart(stationId, waveformData);
         }
-
-        let data = msg.data
-        updateChart(msg.waveid, data);
-
     });
 </script>
 </html>
