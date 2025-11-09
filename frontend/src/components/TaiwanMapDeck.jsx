@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import { Map } from 'react-map-gl/maplibre'
 import DeckGL from '@deck.gl/react'
@@ -18,37 +18,9 @@ const INITIAL_VIEW_STATE = {
 }
 
 function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities = {} }) {
-  const [allStations, setAllStations] = useState([])
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
   const [hoverInfo, setHoverInfo] = useState(null)
   const [isLegendExpanded, setIsLegendExpanded] = useState(false) // 圖例預設摺疊
-
-  // 載入所有測站資料（從後端 API）
-  useEffect(() => {
-    fetch('http://localhost:5001/api/all-stations')
-      .then(response => response.json())
-      .then(stations => {
-        // 去重：每個測站代碼只保留第一筆記錄
-        const uniqueStations = new Map()
-        stations.forEach(s => {
-          if (!uniqueStations.has(s.station)) {
-            uniqueStations.set(s.station, {
-              ...s,
-              isSecondary: true
-            })
-          }
-        })
-
-        const deduplicatedStations = Array.from(uniqueStations.values())
-        setAllStations(deduplicatedStations)
-        console.log(`📍 Deck.gl: Loaded ${deduplicatedStations.length} unique secondary stations`)
-      })
-      .catch(err => {
-        console.error('❌ Failed to load secondary stations:', err)
-        setAllStations([])
-      })
-  }, [])
-
 
   // 主要測站圖層（eew_target）
   const primaryStationsLayer = useMemo(() => {
@@ -103,94 +75,13 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
     })
   }, [stations, stationReplacements, stationIntensities])
 
-  // 次要測站圖層（TSMIP）
-  const secondaryStationsLayer = useMemo(() => {
-    const data = allStations.map(s => ({
-      ...s,
-      coordinates: [s.longitude, s.latitude],
-      isSecondary: true
-    }))
-
-    return new ScatterplotLayer({
-      id: 'secondary-stations',
-      data,
-      pickable: true,
-      opacity: 0.6,
-      stroked: true,
-      filled: true,
-      radiusScale: 1,
-      radiusMinPixels: 3,
-      radiusMaxPixels: 5,
-      lineWidthMinPixels: 1,
-      getPosition: d => d.coordinates,
-      getFillColor: [102, 102, 102], // 統一灰色
-      getLineColor: [255, 255, 255],
-      onHover: info => setHoverInfo(info.object ? info : null),
-      updateTriggers: {
-        getData: [allStations]
-      }
-    })
-  }, [allStations])
-
-  // 替換測站圖層（只在啟用智能替換時顯示）
-  const replacementStationsLayer = useMemo(() => {
-    // 過濾出有替換的測站
-    const replacedStations = stations
-      .filter(s => stationReplacements[s.station])
-      .map(s => {
-        const replacement = stationReplacements[s.station]
-        const replacementStationCode = replacement.replacementStation
-        const intensityData = stationIntensities[replacementStationCode]
-
-        return {
-          ...s,
-          station: replacementStationCode, // 顯示替換後的測站代碼
-          coordinates: [replacement.coordinates.lon, replacement.coordinates.lat],
-          isReplacedStation: true,
-          originalStation: s.station,
-          replacementInfo: replacement,
-          intensityData: intensityData
-        }
-      })
-
-    // 如果沒有替換的測站，返回 null
-    if (replacedStations.length === 0) {
-      return null
-    }
-
-    return new ScatterplotLayer({
-      id: 'replacement-stations',
-      data: replacedStations,
-      pickable: true,
-      opacity: 1,
-      stroked: true,
-      filled: true,
-      radiusScale: 1,
-      radiusMinPixels: 6,
-      radiusMaxPixels: 10,
-      lineWidthMinPixels: 2,
-      getPosition: d => d.coordinates,
-      getFillColor: d => {
-        // 使用震度顏色，如果沒有則使用紫色
-        if (d.intensityData && d.intensityData.color) {
-          return d.intensityData.color
-        }
-        return [168, 85, 247] // #a855f7 紫色（無數據時）
-      },
-      getLineColor: [168, 85, 247, 200],
-      onHover: info => setHoverInfo(info.object ? info : null),
-      updateTriggers: {
-        getData: [stationReplacements],
-        getFillColor: [stationIntensities]
-      }
-    })
-  }, [stations, stationReplacements, stationIntensities])
-
-  const layers = [secondaryStationsLayer, primaryStationsLayer, replacementStationsLayer].filter(Boolean)
+  const layers = [primaryStationsLayer]
 
   return (
     <div className="taiwan-map-deck-container">
       <DeckGL
+        width="100%"
+        height="100%"
         viewState={viewState}
         onViewStateChange={({ viewState }) => setViewState(viewState)}
         controller={true}
@@ -211,88 +102,42 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
           }}
         >
           <div className="tooltip-content">
-            {hoverInfo.object.isReplacedStation ? (
-              // 替換測站（紫色）的 tooltip
-              <>
-                <div className="tooltip-name" style={{ color: '#a855f7' }}>
-                  🔄 {hoverInfo.object.station}
-                </div>
-                <div className="tooltip-code" style={{ fontSize: '12px', opacity: 0.8 }}>
-                  替換自: {hoverInfo.object.originalStation}
-                </div>
+            <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
+            <div className="tooltip-code">{hoverInfo.object.station}</div>
 
-                {/* 顯示震度信息 */}
-                {hoverInfo.object.intensityData && (
-                  <div style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    marginTop: '4px',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
-                  }}>
-                    震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
-                  </div>
-                )}
-
-                <div className="tooltip-coords">
-                  {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
-                </div>
-                {hoverInfo.object.replacementInfo && (
-                  <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '4px' }}>
-                    距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
-                  </div>
-                )}
-              </>
-            ) : !hoverInfo.object.isSecondary ? (
-              // 原始主要測站的 tooltip
-              <>
-                <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
-                <div className="tooltip-code">{hoverInfo.object.station}</div>
-
-                {/* 顯示震度信息 */}
-                {hoverInfo.object.intensityData && (
-                  <div style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    marginTop: '4px',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
-                  }}>
-                    震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
-                  </div>
-                )}
-
-                {/* 顯示替換信息（但測站本身在原位置） */}
-                {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
-                  <div className="tooltip-replacement" style={{
-                    color: '#a855f7',
-                    fontSize: '12px',
-                    marginTop: '4px',
-                    borderTop: '1px solid rgba(168, 85, 247, 0.3)',
-                    paddingTop: '4px'
-                  }}>
-                    <div>🔄 已替換為: <strong>{hoverInfo.object.replacementInfo.replacementStation}</strong></div>
-                    <div style={{ fontSize: '11px', opacity: 0.8 }}>
-                      距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
-                    </div>
-                  </div>
-                )}
-
-                <div className="tooltip-coords">
-                  {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
-                </div>
-              </>
-            ) : (
-              // 次要測站（TSMIP）的 tooltip
-              <>
-                <div className="tooltip-code">{hoverInfo.object.station}</div>
-                <div className="tooltip-coords">
-                  {hoverInfo.object.latitude.toFixed(3)}°N, {hoverInfo.object.longitude.toFixed(3)}°E
-                </div>
-              </>
+            {/* 顯示震度信息 */}
+            {hoverInfo.object.intensityData && (
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 'bold',
+                marginTop: '4px',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
+              }}>
+                震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
+              </div>
             )}
+
+            {/* 顯示替換信息（但測站本身在原位置） */}
+            {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
+              <div className="tooltip-replacement" style={{
+                color: '#4CAF50',
+                fontSize: '12px',
+                marginTop: '4px',
+                borderTop: '1px solid rgba(76, 175, 80, 0.3)',
+                paddingTop: '4px'
+              }}>
+                <div>🔄 數據來源: <strong>{hoverInfo.object.replacementInfo.replacementStation}</strong></div>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                  距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
+                </div>
+              </div>
+            )}
+
+            <div className="tooltip-coords">
+              {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
+            </div>
           </div>
         </div>
       )}
@@ -355,14 +200,6 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
               <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
               <span>未知/無數據</span>
             </div>
-
-            <div className="legend-divider"></div>
-
-            <div className="legend-title">次要測站（TSMIP）</div>
-            <div className="legend-item">
-              <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
-              <span>參考測站</span>
-            </div>
           </>
         )}
       </div>
@@ -370,7 +207,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
       {/* 性能指示器 */}
       <div className="performance-badge">
         <span>⚡ WebGL 加速</span>
-        <span className="station-count">{allStations.length + stations.length} 測站</span>
+        <span className="station-count">{stations.length} 測站</span>
       </div>
     </div>
   )
@@ -383,4 +220,3 @@ TaiwanMapDeck.propTypes = {
 }
 
 export default TaiwanMapDeck
-
