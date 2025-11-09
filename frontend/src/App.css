@@ -486,6 +486,40 @@
   box-shadow: var(--shadow-danger);
 }
 
+/* 歷史報告樣式 */
+.event-card.historical {
+  border-left-color: var(--color-info);
+  background: rgba(78, 205, 196, 0.1);
+}
+
+.event-card.historical:hover {
+  background: rgba(78, 205, 196, 0.15);
+}
+
+/* 即時報告樣式 */
+.event-card.realtime {
+  border-left-color: var(--color-danger);
+  background: rgba(255, 107, 107, 0.1);
+  animation: realtime-pulse 2s ease-in-out infinite;
+}
+
+.event-card.realtime:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+@keyframes realtime-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 107, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+  }
+}
+
+.report-type-indicator {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+}
 
 /* ============================================
    卡片內容元素
@@ -627,6 +661,15 @@
   background: rgba(100, 181, 246, 0.1);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
+}
+
+.historical-indicator {
+  font-size: 0.85rem;
+  color: var(--color-warning);
+  background: rgba(255, 167, 38, 0.1);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 167, 38, 0.3);
 }
 
 /* 回上頁按鈕 */
@@ -774,3 +817,61 @@
   overflow-y: auto;
 }
 
+/* 歷史報告選擇器 */
+.detail-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.historical-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.historical-selector label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.historical-selector select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-glass);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  min-width: 200px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.historical-selector select:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-glass-hover);
+}
+
+.historical-selector select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+.historical-selector select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  font-size: 0.85rem;
+  color: var(--color-info);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

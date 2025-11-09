@@ -134,6 +134,39 @@ def get_all_stations():
             'Content-Type': 'application/json; charset=utf-8'}
 
 
+@app.route("/api/reports")
+def get_reports():
+    """API: 取得歷史預測報告列表（JSON格式）"""
+    try:
+        report_log_dir = "logs/report"
+        files = []
+        if os.path.exists(report_log_dir):
+            for f in os.listdir(report_log_dir):
+                file_path = os.path.join(report_log_dir, f)
+                if (
+                        f.startswith("report")
+                        and f.endswith(".log")
+                        and os.path.isfile(file_path)
+                ):
+                    # 獲取文件修改時間
+                    mtime = os.path.getmtime(file_path)
+                    files.append({
+                        "filename": f,
+                        "timestamp": mtime,
+                        "datetime": datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    })
+
+        # 按時間倒序排列
+        files.sort(key=lambda x: x['timestamp'], reverse=True)
+
+        return json.dumps(files, ensure_ascii=False), 200, {
+            'Content-Type': 'application/json; charset=utf-8'}
+    except Exception as e:
+        logger.error(f"Error getting reports: {e}")
+        return json.dumps({"error": str(e)}), 500, {
+            'Content-Type': 'application/json; charset=utf-8'}
+
+
 @app.route("/api/find-nearest-station")
 def find_nearest_station():
     """API: 根據經緯度查找最近的測站
