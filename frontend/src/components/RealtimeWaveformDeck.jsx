@@ -838,7 +838,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
             e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'
           }}
         >
-          {useNearestTSMIP ? '✅ 智能替換已啟用' : '🔄 啟用智能替換'}
+          {useNearestTSMIP ? '✅ TSMIP 已啟用' : '🔄 替換 TSMIP 測站'}
         </button>
         <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '13px' }}>
           {useNearestTSMIP
