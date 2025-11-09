@@ -22,12 +22,9 @@ function getIntensityColor(intensity) {
 }
 
 export default function ReportDetail({ report, onBack, targetStations, onSelectReport, reports }) {
-  const [historicalReports, setHistoricalReports] = React.useState([])
   const [selectedHistoricalReport, setSelectedHistoricalReport] = React.useState(null)
   const [historicalReportData, setHistoricalReportData] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
-  const [filteredReports, setFilteredReports] = React.useState([])
-  const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [historicalPredictions, setHistoricalPredictions] = React.useState([])
   const [selectedPredictionIndex, setSelectedPredictionIndex] = React.useState(-1)
 
@@ -35,44 +32,17 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
   const currentReport = selectedHistoricalReport ? historicalReportData : report
   const currentData = selectedHistoricalReport && selectedPredictionIndex >= 0 ? historicalPredictions[selectedPredictionIndex] : currentReport?.data || {}
 
-  // 載入歷史報告列表
-  React.useEffect(() => {
-    fetch('http://localhost:5001/api/reports')
-      .then(res => res.json())
-      .then(reports => {
-        setHistoricalReports(reports)
-      })
-      .catch(err => console.error('載入歷史報告失敗:', err))
-  }, [])
-
   // 當 report prop 改變時，重置歷史報告相關狀態
   React.useEffect(() => {
     setSelectedHistoricalReport(null)
     setHistoricalReportData(null)
-    setCurrentIndex(-1)
     setHistoricalPredictions([])
     setSelectedPredictionIndex(-1)
-  }, [report])
-
-  // 篩選與當前事件相關的歷史報告（同一天）
-  React.useEffect(() => {
-    if (historicalReports.length > 0 && currentReport?.timestamp) {
-      const currentDate = currentReport.timestamp.split('_')[0]; // 提取日期部分，如 '2025-10-15'
-      const filtered = historicalReports.filter(r => r.datetime.startsWith(currentDate));
-      setFilteredReports(filtered);
-      // 如果只有一個檔案且未選擇歷史報告，自動載入
-      if (filtered.length === 1 && !selectedHistoricalReport) {
-        loadHistoricalReport(filtered[0].filename);
-      }
-      // 更新當前索引
-      if (selectedHistoricalReport) {
-        const index = filtered.findIndex(r => r.filename === selectedHistoricalReport);
-        setCurrentIndex(index);
-      } else {
-        setCurrentIndex(-1);
-      }
+    // 如果是歷史報告，自動載入檔案內容
+    if (report?.isHistorical && report?.filename) {
+      loadHistoricalReport(report.filename)
     }
-  }, [historicalReports, currentReport?.timestamp, selectedHistoricalReport]);
+  }, [report])
 
   // 載入歷史報告內容
   const loadHistoricalReport = async (filename) => {
@@ -105,28 +75,9 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
   const clearHistoricalSelection = () => {
     setSelectedHistoricalReport(null)
     setHistoricalReportData(null)
-    setCurrentIndex(-1)
     setHistoricalPredictions([])
     setSelectedPredictionIndex(-1)
   }
-
-  // 切換到上一個歷史報告
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      loadHistoricalReport(filteredReports[newIndex].filename);
-    }
-  };
-
-  // 切換到下一個歷史報告
-  const goToNext = () => {
-    if (currentIndex < filteredReports.length - 1 && currentIndex !== -1) {
-      const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      loadHistoricalReport(filteredReports[newIndex].filename);
-    }
-  };
 
   // 鍵盤事件處理
   React.useEffect(() => {
@@ -188,57 +139,28 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         </div>
         <div className="detail-header-right">
           {/* 歷史報告選擇器 */}
-          {report.isHistorical && filteredReports.length > 0 && (
+          {report.isHistorical && selectedHistoricalReport && (
             <div className="historical-selector">
-              <label htmlFor="historical-reports">歷史報告：</label>
-              {selectedHistoricalReport ? (
-                <select
-                  id="historical-reports"
-                  value={selectedPredictionIndex}
-                  onChange={(e) => {
-                    if (e.target.value === 'switch') {
-                      clearHistoricalSelection();
-                    } else {
-                      setSelectedPredictionIndex(parseInt(e.target.value));
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <option value="switch">選擇預測...</option>
-                  {historicalPredictions.map((pred, idx) => (
-                    <option key={idx} value={idx}>
-                      預測 {idx + 1}: {pred.report_time || 'N/A'}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  id="historical-reports"
-                  value={selectedHistoricalReport || ''}
-                  onChange={(e) => {
-                    const filename = e.target.value;
-                    if (filename) {
-                      const index = filteredReports.findIndex(r => r.filename === filename);
-                      setCurrentIndex(index);
-                      loadHistoricalReport(filename);
-                    } else {
-                      clearHistoricalSelection();
-                    }
-                  }}
-                  disabled={loading}
-                >
-                <option value="">選擇歷史報告...</option>
-                {filteredReports.map(report => (
-                  <option key={report.filename} value={report.filename}>
-                    {report.datetime} - {report.filename}
+              <label htmlFor="historical-reports">預測：</label>
+              <select
+                id="historical-reports"
+                value={selectedPredictionIndex}
+                onChange={(e) => {
+                  if (e.target.value === 'switch') {
+                    clearHistoricalSelection();
+                  } else {
+                    setSelectedPredictionIndex(parseInt(e.target.value));
+                  }
+                }}
+                disabled={loading}
+              >
+                <option value="switch">選擇預測...</option>
+                {historicalPredictions.map((pred, idx) => (
+                  <option key={idx} value={idx}>
+                    預測 {idx + 1}: {pred.report_time || 'N/A'}
                   </option>
                 ))}
               </select>
-              )}
-              <div className="navigation-buttons">
-                <button onClick={goToPrevious} disabled={currentIndex <= 0 || filteredReports.length === 0}>↑</button>
-                <button onClick={goToNext} disabled={currentIndex >= filteredReports.length - 1 || currentIndex === -1}>↓</button>
-              </div>
               {loading && <span className="loading-indicator">載入中...</span>}
             </div>
           )}

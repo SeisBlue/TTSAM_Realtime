@@ -51,7 +51,8 @@ function App() {
             id: `historical_${file.filename}_${Date.now()}`,
             timestamp: file.datetime,
             data: latestData,
-            isHistorical: true
+            isHistorical: true,
+            filename: file.filename
           })
         } catch (err) {
           console.error(`載入歷史報告 ${file.filename} 失敗:`, err)
