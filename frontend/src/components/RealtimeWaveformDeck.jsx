@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import PropTypes from 'prop-types'
 import DeckGL from '@deck.gl/react'
 import { OrthographicView } from '@deck.gl/core'
@@ -60,26 +60,27 @@ function extractStationCode(seedName) {
 }
 
 /**
- * DeckGL 波形面板組件
+ * DeckGL 波形面板組件 - 使用 memo 優化
  */
-function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, currentTime, panelWidth, panelHeight }) {
+const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight, renderTrigger }) {
   const [hoveredStation] = useState(null) // TODO: Implement hover interaction
 
   const minLat = latMin ?? EAST_LAT_MIN
   const maxLat = latMax ?? LAT_MAX
 
-  // 計算波形路徑數據（使用 PathLayer）
+  // 計算波形路徑數據（使用 PathLayer）- 優化版本
   const waveformLayers = useMemo(() => {
-    const layers = []
     const waveWidth = panelWidth * 0.75
     const waveHeight = simpleLayout ? 40 : 30
     const xOffset = panelWidth * 0.15
+    const now = Date.now() // 使用靜態時間點，避免依賴 currentTime
 
+    // 預計算所有測站的 Y 位置
+    const stationPositions = new Map()
     stations.forEach((stationCode, index) => {
       const station = stationMap[stationCode]
       if (!station) return
 
-      // 計算 Y 位置
       let centerY
       if (simpleLayout) {
         const stationSpacing = waveHeight * 1.0
@@ -92,77 +93,115 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         if (!station.latitude) return
         centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * panelHeight
       }
+      stationPositions.set(stationCode, centerY)
+    })
 
-      const waveData = waveDataMap[stationCode]
+    // 合併所有基線到單個數據集
+    const baselineData = []
+    const waveformData = []
+
+    stations.forEach((stationCode) => {
+      const centerY = stationPositions.get(stationCode)
+      if (centerY === undefined) return
+
       const isHovered = hoveredStation === stationCode
+      const waveData = waveDataMap[stationCode]
 
-      // 基線路徑
-      layers.push(new PathLayer({
-        id: `baseline-${stationCode}`,
-        data: [{
-          path: [[xOffset, centerY], [xOffset + waveWidth, centerY]],
-          color: isHovered ? [255, 193, 7, 76] : [255, 255, 255, 26]
-        }],
-        getPath: d => d.path,
-        getColor: d => d.color,
-        widthMinPixels: isHovered ? 1 : 0.5,
-        getDashArray: [3, 3]
-      }))
+      // 添加基線
+      baselineData.push({
+        path: [[xOffset, centerY], [xOffset + waveWidth, centerY]],
+        color: isHovered ? [255, 193, 7, 76] : [255, 255, 255, 26],
+        width: isHovered ? 1 : 0.5
+      })
 
-      // 波形路徑
-      if (waveData && waveData.dataPoints && waveData.dataPoints.length > 0) {
+      // 處理波形數據
+      if (waveData?.dataPoints?.length > 0) {
         const displayScale = waveData.displayScale || 1.0
-        const paths = []
 
         waveData.dataPoints.forEach(point => {
           const { timestamp, values } = point
-          const timeDiff = currentTime - timestamp
+          const timeDiff = now - timestamp
 
           if (timeDiff < 0 || timeDiff > TIME_WINDOW * 1000) return
 
           const startTimeOffset = timeDiff / 1000
           const pathPoints = []
 
-          values.forEach((value, idx) => {
+          // 優化：使用 for 循環代替 forEach，減少函數調用開銷
+          const len = values.length
+          for (let idx = 0; idx < len; idx++) {
             const sampleTimeOffset = startTimeOffset - (idx / SAMPLE_RATE)
-            if (sampleTimeOffset < 0 || sampleTimeOffset > TIME_WINDOW) return
+            if (sampleTimeOffset < 0 || sampleTimeOffset > TIME_WINDOW) continue
 
             const x = xOffset + waveWidth * (1 - sampleTimeOffset / TIME_WINDOW)
-            const normalizedValue = value / displayScale
+            const normalizedValue = values[idx] / displayScale
             const clampedValue = Math.max(-1, Math.min(1, normalizedValue))
             const y = centerY - clampedValue * (waveHeight / 2)
 
             pathPoints.push([x, y])
-          })
+          }
 
           if (pathPoints.length > 1) {
-            paths.push({
+            waveformData.push({
               path: pathPoints,
-              color: isHovered ? [255, 193, 7, 255] : [76, 175, 80, 230]
+              color: isHovered ? [255, 193, 7, 255] : [76, 175, 80, 230],
+              width: isHovered ? 2.0 : 1.2
             })
           }
         })
-
-        if (paths.length > 0) {
-          layers.push(new PathLayer({
-            id: `waveform-${stationCode}`,
-            data: paths,
-            getPath: d => d.path,
-            getColor: d => d.color,
-            widthMinPixels: isHovered ? 2.0 : 1.2,
-            jointRounded: true,
-            capRounded: true
-          }))
-        }
       }
     })
 
-    return layers
-  }, [stations, stationMap, waveDataMap, currentTime, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
-
-  // 文字標籤圖層
-  const labelLayers = useMemo(() => {
+    // 使用單個 PathLayer 繪製所有基線
     const layers = []
+
+    console.log(`[Wave Debug ${title}] Baselines: ${baselineData.length}, Waveforms: ${waveformData.length}`)
+    console.log(`[Wave Debug ${title}] Panel size: ${panelWidth}x${panelHeight}`)
+    if (waveformData.length > 0) {
+      console.log(`[Wave Debug ${title}] First waveform path length:`, waveformData[0].path.length)
+      console.log(`[Wave Debug ${title}] First waveform sample points:`, waveformData[0].path.slice(0, 3))
+    }
+
+    if (baselineData.length > 0) {
+      layers.push(new PathLayer({
+        id: 'baselines',
+        data: baselineData,
+        getPath: d => d.path,
+        getColor: d => d.color,
+        getWidth: d => d.width,
+        widthMinPixels: 0.5,
+        getDashArray: [3, 3],
+        updateTriggers: {
+          getColor: hoveredStation,
+          getWidth: hoveredStation
+        }
+      }))
+    }
+
+    // 使用單個 PathLayer 繪製所有波形
+    if (waveformData.length > 0) {
+      layers.push(new PathLayer({
+        id: 'waveforms',
+        data: waveformData,
+        getPath: d => d.path,
+        getColor: d => d.color,
+        getWidth: d => d.width,
+        widthMinPixels: 1.2,
+        jointRounded: false, // 關閉圓角以提升性能
+        capRounded: false,
+        updateTriggers: {
+          getColor: hoveredStation,
+          getWidth: hoveredStation,
+          getPath: waveDataMap // 當波形數據變化時更新
+        }
+      }))
+    }
+
+    return layers
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, renderTrigger])
+
+  // 文字標籤圖層 - 優化版本
+  const labelLayers = useMemo(() => {
     const waveWidth = panelWidth * 0.75
     const waveHeight = simpleLayout ? 40 : 30
     const xOffset = panelWidth * 0.15
@@ -237,7 +276,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       }
     })
 
-    // 時間軸標籤
+    // 時間軸標籤 - 使用靜態標籤避免頻繁更新
     const timeAxisY = panelHeight - 25
     const timeWaveWidth = panelWidth * 0.75
     const timeXOffset = panelWidth * 0.15
@@ -250,11 +289,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       let label
       let color
       if (timeValue === 0) {
-        const now = new Date()
-        const hours = String(now.getHours()).padStart(2, '0')
-        const minutes = String(now.getMinutes()).padStart(2, '0')
-        const seconds = String(now.getSeconds()).padStart(2, '0')
-        label = `${hours}:${minutes}:${seconds}`
+        label = 'NOW' // 使用靜態標籤代替實時時間
         color = [76, 175, 80]
       } else {
         label = `${timeValue.toFixed(0)}s`
@@ -271,7 +306,7 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       })
     }
 
-    layers.push(new TextLayer({
+    return [new TextLayer({
       id: 'labels',
       data: labels,
       getPosition: d => d.position,
@@ -281,11 +316,14 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
       getTextAnchor: d => d.anchor,
       getAlignmentBaseline: d => d.alignmentBaseline,
       fontFamily: 'monospace',
-      fontWeight: 'normal'
-    }))
-
-    return layers
-  }, [stations, stationMap, waveDataMap, currentTime, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
+      fontWeight: 'normal',
+      updateTriggers: {
+        getColor: [hoveredStation, waveDataMap],
+        getSize: hoveredStation,
+        getText: waveDataMap
+      }
+    })]
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
 
   // 緯度網格線
   const gridLayers = useMemo(() => {
@@ -367,13 +405,18 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
 
   const views = new OrthographicView({
     id: 'ortho',
-    controller: false,
-    flipY: false // 不翻转Y轴，使用top-left原点
+    controller: false
   })
 
+  // 確保尺寸有效
+  const validWidth = Math.max(panelWidth, 100)
+  const validHeight = Math.max(panelHeight, 100)
+
+  console.log(`[DeckGL ${title}] Rendering with size: ${validWidth}x${validHeight}, Layers: ${allLayers.length}`)
+
   // 使用左上角为原点的坐标系统
-  const initialViewState = {
-    target: [panelWidth / 2, panelHeight / 2, 0],
+  const viewState = {
+    target: [validWidth / 2, validHeight / 2, 0],
     zoom: 0
   }
 
@@ -383,31 +426,47 @@ function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin,
         <h3>{title}</h3>
         <span className="station-count">{stations.length} 站</span>
       </div>
-      <div className="deckgl-container" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <DeckGL
-          views={views}
-          initialViewState={initialViewState}
-          viewState={{
-            target: [panelWidth / 2, panelHeight / 2, 0],
-            zoom: 0
-          }}
-          layers={allLayers}
-          width={panelWidth}
-          height={panelHeight}
-          style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}
-          controller={false}
-          parameters={{
-            clearColor: [0.04, 0.055, 0.153, 1]
-          }}
-          getTooltip={({ object }) => object && object.station && {
-            text: object.station,
-            style: { background: 'rgba(0, 0, 0, 0.8)', color: '#fff' }
-          }}
-        />
+      <div className="deckgl-container" style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#0a0e27' }}>
+        {validWidth > 0 && validHeight > 0 ? (
+          <DeckGL
+            views={views}
+            viewState={viewState}
+            layers={allLayers}
+            width={validWidth}
+            height={validHeight}
+            controller={false}
+            getCursor={() => 'default'}
+          />
+        ) : (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            color: 'rgba(255, 255, 255, 0.5)',
+            fontSize: '14px'
+          }}>
+            等待容器尺寸...
+          </div>
+        )}
       </div>
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // 自定義比較函數：只在關鍵屬性變化時重新渲染
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.stations === nextProps.stations &&
+    prevProps.stationMap === nextProps.stationMap &&
+    prevProps.waveDataMap === nextProps.waveDataMap &&
+    prevProps.latMin === nextProps.latMin &&
+    prevProps.latMax === nextProps.latMax &&
+    prevProps.simpleLayout === nextProps.simpleLayout &&
+    prevProps.panelWidth === nextProps.panelWidth &&
+    prevProps.panelHeight === nextProps.panelHeight
+    // 注意：不比較 currentTime，因為它會在 useMemo 內部使用 Date.now()
+  )
+})
 
 GeographicWavePanel.propTypes = {
   title: PropTypes.string.isRequired,
@@ -417,9 +476,9 @@ GeographicWavePanel.propTypes = {
   latMin: PropTypes.number,
   latMax: PropTypes.number,
   simpleLayout: PropTypes.bool,
-  currentTime: PropTypes.number.isRequired,
   panelWidth: PropTypes.number.isRequired,
-  panelHeight: PropTypes.number.isRequired
+  panelHeight: PropTypes.number.isRequired,
+  renderTrigger: PropTypes.number
 }
 
 function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = [] }) {
@@ -428,8 +487,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
   const [useNearestTSMIP, setUseNearestTSMIP] = useState(false) // 是否啟用自動尋找最近 TSMIP 測站
   const [nearestStationCache, setNearestStationCache] = useState({}) // 緩存最近測站的映射
+  const [renderTrigger, setRenderTrigger] = useState(0) // 添加渲染觸發器
   const leftColumnRef = useRef(null)
-  const [currentTime, setCurrentTime] = useState(Date.now())
   const [dimensions, setDimensions] = useState({
     westWidth: 800,
     westHeight: 600,
@@ -544,11 +603,11 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
     })
   }, [targetStations])
 
-  // 更新當前時間
+  // 定期觸發波形更新以實現滾動效果
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(Date.now())
-    }, 100)
+      setRenderTrigger(prev => prev + 1)
+    }, 1000) // 每秒更新一次
     return () => clearInterval(interval)
   }, [])
 
@@ -767,9 +826,9 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
             waveDataMap={waveDataMap}
             latMin={westLatRange.min}
             latMax={westLatRange.max}
-            currentTime={currentTime}
             panelWidth={dimensions.westWidth}
             panelHeight={dimensions.westHeight}
+            renderTrigger={renderTrigger}
           />
           <GeographicWavePanel
             title={displayStations.islands.title}
@@ -777,9 +836,9 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
             stationMap={stationMap}
             waveDataMap={waveDataMap}
             simpleLayout={true}
-            currentTime={currentTime}
             panelWidth={dimensions.islandsWidth}
             panelHeight={dimensions.islandsHeight}
+            renderTrigger={renderTrigger}
           />
         </div>
 
@@ -791,9 +850,9 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
             waveDataMap={waveDataMap}
             latMin={EAST_LAT_MIN}
             latMax={EAST_LAT_MAX}
-            currentTime={currentTime}
             panelWidth={dimensions.eastWidth}
             panelHeight={dimensions.eastHeight}
+            renderTrigger={renderTrigger}
           />
           {selectedStations.length > 0 && (
             <GeographicWavePanel
@@ -802,9 +861,9 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
               stationMap={stationMap}
               waveDataMap={waveDataMap}
               simpleLayout={true}
-              currentTime={currentTime}
               panelWidth={dimensions.selectedWidth}
               panelHeight={dimensions.selectedHeight}
+              renderTrigger={renderTrigger}
             />
           )}
         </div>
