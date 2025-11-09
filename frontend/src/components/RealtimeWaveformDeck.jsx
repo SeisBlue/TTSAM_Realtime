@@ -41,6 +41,13 @@ const TIME_WINDOW = 30 // 顯示 30 秒的數據
 const SAMPLE_RATE = 100 // 100 Hz
 
 /**
+ * 檢查測站是否為 TSMIP 格式 (Axxx, Bxxx, Cxxx)
+ */
+function isTSMIPStation(stationCode) {
+  return /^[ABC]\d{3}$/.test(stationCode)
+}
+
+/**
  * 從 SEED 格式提取測站代碼
  */
 function extractStationCode(seedName) {
@@ -419,6 +426,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
+  const [useNearestTSMIP, setUseNearestTSMIP] = useState(false) // 是否啟用自動尋找最近 TSMIP 測站
+  const [nearestStationCache, setNearestStationCache] = useState({}) // 緩存最近測站的映射
   const leftColumnRef = useRef(null)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [dimensions, setDimensions] = useState({
@@ -460,6 +469,62 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
         console.log('📍 [Deck] stationMap updated:', Object.keys(map).length, 'stations (primary only)')
       })
   }, [targetStations])
+
+  // 當啟用自動替換時，為每個 CWASN 測站查找最近的 TSMIP 測站
+  useEffect(() => {
+    if (!useNearestTSMIP) {
+      setNearestStationCache({})
+      return
+    }
+
+    const fetchNearestStations = async () => {
+      const cache = {}
+
+      for (const station of targetStations) {
+        const stationCode = station.station
+
+        // 如果已經是 TSMIP 格式，跳過
+        if (isTSMIPStation(stationCode)) {
+          continue
+        }
+
+        // 如果沒有經緯度，跳過
+        if (!station.latitude || !station.longitude) {
+          continue
+        }
+
+        try {
+          const response = await fetch(
+            `http://localhost:5001/api/find-nearest-station?lat=${station.latitude}&lon=${station.longitude}&exclude_pattern=CWASN&max_count=1`
+          )
+
+          if (response.ok) {
+            const nearestStations = await response.json()
+            if (nearestStations && nearestStations.length > 0) {
+              const nearest = nearestStations[0]
+              cache[stationCode] = {
+                originalStation: stationCode,
+                replacementStation: nearest.station,
+                distance: nearest.distance_km,
+                coordinates: {
+                  lat: nearest.latitude,
+                  lon: nearest.longitude
+                }
+              }
+              console.log(`🔄 [替換] ${stationCode} → ${nearest.station} (距離: ${nearest.distance_km} km)`)
+            }
+          }
+        } catch (error) {
+          console.error(`❌ 無法為 ${stationCode} 查找最近測站:`, error)
+        }
+      }
+
+      setNearestStationCache(cache)
+      console.log('✅ 最近測站映射已建立:', Object.keys(cache).length, '個替換')
+    }
+
+    fetchNearestStations()
+  }, [useNearestTSMIP, targetStations])
 
   // 初始化所有測站的數據結構
   useEffect(() => {
@@ -622,13 +687,82 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
     }
   }, [])
 
+  // 根據模式動態計算顯示的測站列表
+  const displayStations = useMemo(() => {
+    if (!useNearestTSMIP || Object.keys(nearestStationCache).length === 0) {
+      return STATION_GROUPS
+    }
+
+    // 替換模式：將 CWASN 測站替換為最近的 TSMIP 測站
+    const replaceStations = (stations) => {
+      return stations.map(stationCode => {
+        const replacement = nearestStationCache[stationCode]
+        return replacement ? replacement.replacementStation : stationCode
+      })
+    }
+
+    return {
+      east: {
+        title: `東部測站 ${useNearestTSMIP ? '(智能替換)' : ''}`,
+        stations: replaceStations(STATION_GROUPS.east.stations)
+      },
+      west: {
+        title: `西部測站 ${useNearestTSMIP ? '(智能替換)' : ''}`,
+        stations: replaceStations(STATION_GROUPS.west.stations)
+      },
+      islands: {
+        title: `離島測站 ${useNearestTSMIP ? '(智能替換)' : ''}`,
+        stations: replaceStations(STATION_GROUPS.islands.stations)
+      }
+    }
+  }, [useNearestTSMIP, nearestStationCache])
+
   return (
     <div className="realtime-waveform geographic">
+      <div className="waveform-controls" style={{
+        padding: '10px 20px',
+        background: 'rgba(255, 255, 255, 0.05)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '15px'
+      }}>
+        <button
+          onClick={() => setUseNearestTSMIP(!useNearestTSMIP)}
+          style={{
+            padding: '8px 16px',
+            background: useNearestTSMIP ? '#4CAF50' : '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-1px)'
+            e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'
+          }}
+        >
+          {useNearestTSMIP ? '✅ 智能替換已啟用' : '🔄 啟用智能替換'}
+        </button>
+        <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '13px' }}>
+          {useNearestTSMIP
+            ? `自動將無資料的 CWASN 測站替換為最近的 TSMIP 測站 (已替換 ${Object.keys(nearestStationCache).length} 個測站)`
+            : '使用原始 CWASN 測站配置'}
+        </span>
+      </div>
       <div className="waveform-grid geographic-grid">
         <div ref={leftColumnRef} className="left-column">
           <GeographicWavePanel
-            title={STATION_GROUPS.west.title}
-            stations={STATION_GROUPS.west.stations}
+            title={displayStations.west.title}
+            stations={displayStations.west.stations}
             stationMap={stationMap}
             waveDataMap={waveDataMap}
             latMin={westLatRange.min}
@@ -638,8 +772,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
             panelHeight={dimensions.westHeight}
           />
           <GeographicWavePanel
-            title={STATION_GROUPS.islands.title}
-            stations={STATION_GROUPS.islands.stations}
+            title={displayStations.islands.title}
+            stations={displayStations.islands.stations}
             stationMap={stationMap}
             waveDataMap={waveDataMap}
             simpleLayout={true}
@@ -651,8 +785,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
 
         <div className="right-column">
           <GeographicWavePanel
-            title={STATION_GROUPS.east.title}
-            stations={STATION_GROUPS.east.stations}
+            title={displayStations.east.title}
+            stations={displayStations.east.stations}
             stationMap={stationMap}
             waveDataMap={waveDataMap}
             latMin={EAST_LAT_MIN}

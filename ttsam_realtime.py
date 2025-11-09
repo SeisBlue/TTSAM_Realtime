@@ -130,6 +130,81 @@ def get_all_stations():
             'Content-Type': 'application/json; charset=utf-8'}
 
 
+@app.route("/api/find-nearest-station")
+def find_nearest_station():
+    """API: 根據經緯度查找最近的測站
+    參數:
+        lat: 緯度
+        lon: 經度
+        exclude_pattern: 排除的測站格式 (可選，例如 "CWASN" 排除非 Axxx/Bxxx/Cxxx 格式)
+        max_count: 返回最近的 N 個測站 (預設 1)
+    """
+    try:
+        lat = float(request.args.get('lat'))
+        lon = float(request.args.get('lon'))
+        exclude_pattern = request.args.get('exclude_pattern', None)
+        max_count = int(request.args.get('max_count', 1))
+
+        if not all_stations_dict:
+            return json.dumps({"error": "No stations available"}), 404, {
+                'Content-Type': 'application/json; charset=utf-8'}
+
+        # 過濾測站
+        filtered_stations = all_stations_dict
+        if exclude_pattern == "CWASN":
+            # 只保留 TSMIP 格式測站 (Axxx, Bxxx, Cxxx)
+            import re
+            tsmip_pattern = re.compile(r'^[ABC]\d{3}$')
+            filtered_stations = [
+                s for s in all_stations_dict
+                if tsmip_pattern.match(s.get('station', ''))
+            ]
+
+        if not filtered_stations:
+            return json.dumps({"error": "No matching stations found"}), 404, {
+                'Content-Type': 'application/json; charset=utf-8'}
+
+        # 計算距離並排序
+        def haversine_distance(lat1, lon1, lat2, lon2):
+            """計算兩點間的距離（公里）"""
+            from math import radians, cos, sin, asin, sqrt
+            lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+            dlon = lon2 - lon1
+            dlat = lat2 - lat1
+            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+            c = 2 * asin(sqrt(a))
+            km = 6371 * c
+            return km
+
+        stations_with_distance = []
+        for station in filtered_stations:
+            station_lat = station.get('latitude')
+            station_lon = station.get('longitude')
+            if station_lat is not None and station_lon is not None:
+                distance = haversine_distance(lat, lon, station_lat, station_lon)
+                stations_with_distance.append({
+                    **station,
+                    'distance_km': round(distance, 2)
+                })
+
+        # 按距離排序
+        stations_with_distance.sort(key=lambda x: x['distance_km'])
+
+        # 返回最近的 N 個測站
+        result = stations_with_distance[:max_count]
+
+        return json.dumps(result, ensure_ascii=False), 200, {
+            'Content-Type': 'application/json; charset=utf-8'}
+
+    except ValueError as e:
+        return json.dumps({"error": f"Invalid parameters: {str(e)}"}), 400, {
+            'Content-Type': 'application/json; charset=utf-8'}
+    except Exception as e:
+        logger.error(f"Error finding nearest station: {e}")
+        return json.dumps({"error": str(e)}), 500, {
+            'Content-Type': 'application/json; charset=utf-8'}
+
+
 @app.route("/trace")
 def trace_page():
     return render_template("trace.html")
