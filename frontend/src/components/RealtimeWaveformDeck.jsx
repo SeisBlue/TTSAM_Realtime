@@ -481,7 +481,7 @@ GeographicWavePanel.propTypes = {
   renderTrigger: PropTypes.number
 }
 
-function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = [], socket }) {
+function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = [], socket, onReplacementUpdate }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
@@ -580,10 +580,15 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
 
       setNearestStationCache(cache)
       console.log('✅ 最近測站映射已建立:', Object.keys(cache).length, '個替換')
+
+      // 通知父組件替換信息已更新
+      if (onReplacementUpdate) {
+        onReplacementUpdate(cache)
+      }
     }
 
     fetchNearestStations()
-  }, [useNearestTSMIP, targetStations])
+  }, [useNearestTSMIP, targetStations, onReplacementUpdate])
 
   // 初始化所有測站的數據結構
   useEffect(() => {
@@ -906,7 +911,8 @@ RealtimeWaveformDeck.propTypes = {
   targetStations: PropTypes.array.isRequired,
   wavePackets: PropTypes.array.isRequired,
   selectedStations: PropTypes.array,
-  socket: PropTypes.object
+  socket: PropTypes.object,
+  onReplacementUpdate: PropTypes.func
 }
 
 export default RealtimeWaveformDeck

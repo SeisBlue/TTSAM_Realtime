@@ -17,7 +17,7 @@ const INITIAL_VIEW_STATE = {
   bearing: 0
 }
 
-function TaiwanMapDeck({ stations, onStationSelect }) {
+function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) {
   const [allStations, setAllStations] = useState([])
   const [selectedStations, setSelectedStations] = useState(new Set())
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
@@ -71,11 +71,21 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
 
   // 主要測站圖層（eew_target）
   const primaryStationsLayer = useMemo(() => {
-    const data = stations.map(s => ({
-      ...s,
-      coordinates: [s.longitude, s.latitude],
-      isPrimary: true
-    }))
+    const data = stations.map(s => {
+      const replacement = stationReplacements[s.station]
+
+      // 如果有替換，使用替換後的座標
+      const coordinates = replacement
+        ? [replacement.coordinates.lon, replacement.coordinates.lat]
+        : [s.longitude, s.latitude]
+
+      return {
+        ...s,
+        coordinates,
+        isReplaced: !!replacement,
+        replacementInfo: replacement
+      }
+    })
 
     return new ScatterplotLayer({
       id: 'primary-stations',
@@ -90,6 +100,11 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
       lineWidthMinPixels: 2,
       getPosition: d => d.coordinates,
       getFillColor: d => {
+        // 如果是替換的測站，使用特殊顏色（紫色）
+        if (d.isReplaced) {
+          return [168, 85, 247] // #a855f7 紫色表示替換
+        }
+
         // 根據狀態決定顏色
         switch (d.status) {
           case 'online': return [34, 197, 94]  // #22c55e
@@ -98,14 +113,16 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
           default: return [148, 163, 184]       // #94a3b8
         }
       },
-      getLineColor: [255, 255, 255],
+      getLineColor: d => d.isReplaced ? [168, 85, 247] : [255, 255, 255],
       onClick: handleStationClick,
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
-        getFillColor: [stations]
+        getFillColor: [stations, stationReplacements],
+        getLineColor: [stationReplacements],
+        getPosition: [stationReplacements]
       }
     })
-  }, [stations, handleStationClick])
+  }, [stations, stationReplacements, handleStationClick])
 
   // 次要測站圖層（TSMIP）
   const secondaryStationsLayer = useMemo(() => {
@@ -167,12 +184,29 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
           }}
         >
           <div className="tooltip-content">
-            {hoverInfo.object.isPrimary ? (
+            {hoverInfo.object.isPrimary || hoverInfo.object.station_zh ? (
               <>
                 <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
                 <div className="tooltip-code">{hoverInfo.object.station}</div>
+
+                {/* 顯示替換信息 */}
+                {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
+                  <div className="tooltip-replacement" style={{
+                    color: '#a855f7',
+                    fontSize: '12px',
+                    marginTop: '4px',
+                    borderTop: '1px solid rgba(168, 85, 247, 0.3)',
+                    paddingTop: '4px'
+                  }}>
+                    <div>🔄 已替換為: <strong>{hoverInfo.object.replacementInfo.replacementStation}</strong></div>
+                    <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                      距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
+                    </div>
+                  </div>
+                )}
+
                 <div className="tooltip-coords">
-                  {hoverInfo.object.latitude.toFixed(3)}°N, {hoverInfo.object.longitude.toFixed(3)}°E
+                  {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
                 </div>
               </>
             ) : (
@@ -227,6 +261,10 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
       <div className="map-legend">
         <div className="legend-title">主要測站</div>
         <div className="legend-item">
+          <span className="legend-dot" style={{ backgroundColor: '#a855f7' }}></span>
+          <span>已替換 (顯示替換後位置)</span>
+        </div>
+        <div className="legend-item">
           <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
           <span>正常</span>
         </div>
@@ -267,7 +305,8 @@ function TaiwanMapDeck({ stations, onStationSelect }) {
 
 TaiwanMapDeck.propTypes = {
   stations: PropTypes.array.isRequired,
-  onStationSelect: PropTypes.func
+  onStationSelect: PropTypes.func,
+  stationReplacements: PropTypes.object
 }
 
 export default TaiwanMapDeck

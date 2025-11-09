@@ -27,6 +27,7 @@ function App() {
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
   const [selectedStations, setSelectedStations] = useState([]) // 用戶選中的測站（用於測試群組）
   const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
+  const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
 
   // 從最新的 wavePacket 構建 waveDataMap（用於 StationMapOverlay）
   const latestWaveDataMap = wavePackets.length > 0 && wavePackets[0]?.data
@@ -203,6 +204,7 @@ function App() {
             <TaiwanMap
               stations={targetStations}
               onStationSelect={setSelectedStations}
+              stationReplacements={stationReplacements}
             />
           </section>
         </div>
@@ -215,6 +217,7 @@ function App() {
               wavePackets={wavePackets}
               selectedStations={selectedStations}
               socket={socket}
+              onReplacementUpdate={setStationReplacements}
             />
           ) : (
             <>
