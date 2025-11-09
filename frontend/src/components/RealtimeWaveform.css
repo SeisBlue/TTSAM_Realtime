@@ -7,92 +7,16 @@
   box-sizing: border-box;
 }
 
-.realtime-waveform.geographic .waveform-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
-  gap: 8px;
-  height: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* 左側 column：西部 + 離島的容器 */
-.realtime-waveform.geographic .waveform-grid > .left-column {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* 右側 column：東部 + 測試群組的容器 */
-.realtime-waveform.geographic .waveform-grid > .right-column {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-  overflow-y: auto; /* 允許垂直捲動 */
-  overflow-x: hidden;
-  /* 捲軸樣式優化 */
-  scrollbar-width: thin;
-  scrollbar-color: #667eea #0a0e27;
-}
-
-/* Webkit 瀏覽器的捲軸樣式 */
-.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar {
-  width: 8px;
-}
-
-.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-track {
-  background: #0a0e27;
-  border-radius: 4px;
-}
-
-.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 4px;
-}
-
-.realtime-waveform.geographic .waveform-grid > .right-column::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
-}
-
-/* 西部測站：佔左側 column 大部分空間 */
-.left-column > .geographic-wave-panel:first-child {
+/* 單一面板容器 */
+.realtime-waveform .waveform-panel-container {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  padding: 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
-
-/* 離島測站：佔左側 column 底部固定高度 */
-.left-column > .geographic-wave-panel:last-child {
-  flex: 0 0 auto;
-  height: 200px;
-}
-
-/* 東部測站：佔右側 column 大部分空間 */
-.right-column > .geographic-wave-panel:first-child {
-  flex: 1 1 auto;
-  min-height: 400px; /* 最小高度確保內容可見 */
-}
-
-/* 測試群組：佔右側 column 底部固定高度 */
-.right-column > .geographic-wave-panel:last-child {
-  flex: 0 0 auto;
-  height: 300px; /* 測試群組固定高度 */
-}
-
-/* 移除舊的東部測站樣式 */
-/* .realtime-waveform.geographic .waveform-grid > .geographic-wave-panel {
-  grid-column: 2;
-  grid-row: 1;
-  min-height: 0;
-} */
 
 .geographic-wave-panel {
   border: 1px solid #e0e0e0;
@@ -103,6 +27,8 @@
   overflow: hidden;
   box-sizing: border-box;
   min-height: 0;
+  height: 100%;
+  width: 100%;
 }
 
 .geographic-wave-panel .panel-header {
@@ -129,17 +55,6 @@
   border-radius: 12px;
 }
 
-.geographic-wave-panel canvas {
-  display: block;
-  flex: 1;
-  /* GPU 加速優化 */
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  -webkit-transform: translateZ(0);
-}
-
 /* DeckGL 容器样式：确保正确定位和渲染 */
 .geographic-wave-panel .deckgl-container {
   flex: 1;
@@ -158,36 +73,15 @@
   height: 100% !important;
 }
 
-/* DeckGL canvas 强制相对定位 */
+/* DeckGL canvas 强制相对定位并启用 GPU 加速 */
 .geographic-wave-panel .deckgl-container canvas {
   position: absolute !important;
   left: 0 !important;
   top: 0 !important;
-}
-
-/* 響應式調整 */
-@media (max-width: 1200px) {
-  .realtime-waveform.geographic .waveform-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    padding: 8px;
-    gap: 8px;
-  }
-
-  /* 小螢幕時改為垂直排列 */
-  .realtime-waveform.geographic .waveform-grid > .left-column {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .realtime-waveform.geographic .waveform-grid > .geographic-wave-panel {
-    grid-column: 1;
-    grid-row: auto;
-    min-height: 300px;
-  }
-
-  .left-column > .geographic-wave-panel:last-child {
-    height: 150px;
-  }
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
 }
 

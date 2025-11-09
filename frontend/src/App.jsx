@@ -29,15 +29,6 @@ function App() {
   const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
   const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
 
-  // 從最新的 wavePacket 構建 waveDataMap（用於 StationMapOverlay）
-  const latestWaveDataMap = wavePackets.length > 0 && wavePackets[0]?.data
-    ? Object.keys(wavePackets[0].data).reduce((map, seedName) => {
-        const stationCode = extractStationCode(seedName)
-        map[stationCode] = wavePackets[0].data[seedName]
-        return map
-      }, {})
-    : {}
-
   // 右側詳細頁面狀態
   const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
   const [selectedItem, setSelectedItem] = useState(null)
@@ -213,9 +204,7 @@ function App() {
         <div className="right-panel">
           {!selectedType ? (
             <RealtimeWaveform
-              targetStations={targetStations}
               wavePackets={wavePackets}
-              selectedStations={selectedStations}
               socket={socket}
               onReplacementUpdate={setStationReplacements}
             />
