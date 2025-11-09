@@ -3,6 +3,7 @@ import io from 'socket.io-client'
 import './App.css'
 import EventDetail from './components/EventDetail'
 import WaveDetail from './components/WaveDetail'
+import ReportDetail from './components/ReportDetail'
 import TaiwanMap from './components/TaiwanMapDeck'
 import RealtimeWaveform from './components/RealtimeWaveformDeck'
 
@@ -28,6 +29,7 @@ function App() {
   const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
   const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
   const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
+  const [reports, setReports] = useState([]) // 預測報告數據
 
   // 右側詳細頁面狀態
   const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
@@ -94,12 +96,24 @@ function App() {
       }, ...prev].slice(0, 20)) // 保留最新 20 筆
     }
 
+    // 接收預測報告
+    const handleReportData = (data) => {
+      console.log('📊 Report data received:', data)
+      const timestamp = new Date().toLocaleString('zh-TW')
+      setReports(prev => [{
+        id: Date.now(),
+        timestamp,
+        data
+      }, ...prev].slice(0, 20)) // 保留最新 20 筆
+    }
+
     // 註冊事件監聽器
     socket.on('connect', handleConnect)
     socket.on('disconnect', handleDisconnect)
     socket.on('connect_init', handleConnectInit)
     socket.on('wave_packet', handleWavePacket)
     socket.on('event_data', handleEventData)
+    socket.on('report_data', handleReportData)
 
     // 清理函式
     return () => {
@@ -108,6 +122,7 @@ function App() {
       socket.off('connect_init', handleConnectInit)
       socket.off('wave_packet', handleWavePacket)
       socket.off('event_data', handleEventData)
+      socket.off('report_data', handleReportData)
       socket.disconnect()
     }
   }, []) // 空依賴陣列，確保只執行一次
@@ -155,32 +170,32 @@ function App() {
       <div className="dashboard">
         {/* 左側面板：即時更新列表 */}
         <div className="left-panel">
-          {/* 地震事件列表 */}
+          {/* 預測報告列表 */}
           <section className="section events-section">
-            <h2>📍 觸發事件 ({events.length})</h2>
+            <h2>📊 預測報告 ({reports.length})</h2>
             <div className="event-list">
-              {events.length === 0 ? (
-                <p className="empty-message">等待觸發事件資料...</p>
+              {reports.length === 0 ? (
+                <p className="empty-message">等待預測報告資料...</p>
               ) : (
-                events.map(event => (
+                reports.map(report => (
                   <div
-                    key={event.id}
-                    className={`event-card ${selectedType === 'event' && selectedItem?.id === event.id ? 'selected' : ''}`}
+                    key={report.id}
+                    className={`event-card ${selectedType === 'report' && selectedItem?.id === report.id ? 'selected' : ''}`}
                     onClick={() => {
-                      setSelectedType('event')
-                      setSelectedItem(event)
+                      setSelectedType('report')
+                      setSelectedItem(report)
                     }}
                   >
                     <div className="event-header">
-                      <span className="event-time">{event.timestamp}</span>
-                      <span className="event-stations">{event.stations.length} 個測站</span>
+                      <span className="event-time">{report.timestamp}</span>
+                      <span className="event-stations">{report.data.picks || 0} 個測站觸發</span>
                     </div>
                     <div className="event-stations-list">
-                      {event.stations.slice(0, 5).map((station, idx) => (
+                      {report.data.alarm && report.data.alarm.slice(0, 5).map((station, idx) => (
                         <span key={idx} className="station-tag">{station}</span>
                       ))}
-                      {event.stations.length > 5 && (
-                        <span className="station-tag more">+{event.stations.length - 5}</span>
+                      {report.data.alarm && report.data.alarm.length > 5 && (
+                        <span className="station-tag more">+{report.data.alarm.length - 5}</span>
                       )}
                     </div>
                   </div>
@@ -220,6 +235,12 @@ function App() {
               {selectedType === 'wave' && (
                 <WaveDetail
                   wave={selectedItem}
+                  onBack={handleBackToWaveform}
+                />
+              )}
+              {selectedType === 'report' && (
+                <ReportDetail
+                  report={selectedItem}
                   onBack={handleBackToWaveform}
                 />
               )}

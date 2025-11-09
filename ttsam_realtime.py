@@ -360,6 +360,15 @@ def dataset_emitter():
         socketio.emit("dataset_data", dataset_data)
 
 
+def report_emitter():
+    while True:
+        report_data = report_queue.get()
+        if not report_data:
+            continue
+
+        socketio.emit("report_data", report_data)
+
+
 def web_server():
     """啟動 Web Server 與 SocketIO"""
     logger.info("Starting web server...")
@@ -368,6 +377,7 @@ def web_server():
     threading.Thread(target=wave_emitter, daemon=True).start()
     threading.Thread(target=event_emitter, daemon=True).start()
     threading.Thread(target=dataset_emitter, daemon=True).start()
+    threading.Thread(target=report_emitter, daemon=True).start()
 
 
     if args.web:
