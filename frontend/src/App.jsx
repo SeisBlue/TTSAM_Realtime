@@ -26,6 +26,7 @@ function App() {
   const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
   const [selectedStations, setSelectedStations] = useState([]) // 用戶選中的測站（用於測試群組）
+  const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
 
   // 從最新的 wavePacket 構建 waveDataMap（用於 StationMapOverlay）
   const latestWaveDataMap = wavePackets.length > 0 && wavePackets[0]?.data
@@ -60,6 +61,9 @@ function App() {
     const socket = io('http://localhost:5001', {
       transports: ['websocket', 'polling']
     })
+
+    // 保存 socket 實例
+    setSocket(socket)
 
     // 連線事件
     const handleConnect = () => {
@@ -210,6 +214,7 @@ function App() {
               targetStations={targetStations}
               wavePackets={wavePackets}
               selectedStations={selectedStations}
+              socket={socket}
             />
           ) : (
             <>

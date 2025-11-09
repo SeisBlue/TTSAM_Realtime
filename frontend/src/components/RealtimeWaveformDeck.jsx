@@ -481,7 +481,7 @@ GeographicWavePanel.propTypes = {
   renderTrigger: PropTypes.number
 }
 
-function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = [] }) {
+function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = [], socket }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [westLatRange, setWestLatRange] = useState({ min: EAST_LAT_MIN, max: LAT_MAX })
@@ -776,6 +776,36 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
     }
   }, [useNearestTSMIP, nearestStationCache])
 
+  // 自動訂閱當前顯示的測站
+  useEffect(() => {
+    if (!socket || !socket.connected) {
+      console.log('⏳ Socket not ready for subscription')
+      return
+    }
+
+    // 收集所有正在顯示的測站
+    const allVisibleStations = [
+      ...displayStations.east.stations,
+      ...displayStations.west.stations,
+      ...displayStations.islands.stations
+    ]
+
+    // 發送訂閱請求
+    socket.emit('subscribe_stations', {
+      stations: allVisibleStations
+    })
+
+    console.log('📡 Subscribed to', allVisibleStations.length, 'stations:', allVisibleStations.slice(0, 10), '...')
+
+    // 清理函數：組件卸載時取消訂閱
+    return () => {
+      if (socket && socket.connected) {
+        socket.emit('subscribe_stations', { stations: [] })
+        console.log('📡 Unsubscribed from all stations')
+      }
+    }
+  }, [socket, displayStations])
+
   return (
     <div className="realtime-waveform geographic">
       <div className="waveform-controls" style={{
@@ -875,7 +905,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
 RealtimeWaveformDeck.propTypes = {
   targetStations: PropTypes.array.isRequired,
   wavePackets: PropTypes.array.isRequired,
-  selectedStations: PropTypes.array
+  selectedStations: PropTypes.array,
+  socket: PropTypes.object
 }
 
 export default RealtimeWaveformDeck

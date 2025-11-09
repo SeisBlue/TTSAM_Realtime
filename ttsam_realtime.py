@@ -55,6 +55,9 @@ discord_queue = manager.Queue()
 wave_endt = manager.Value("d", 0)
 wave_speed_count = manager.Value("i", 0)
 
+# 訂閱管理：追蹤每個客戶端訂閱的測站
+subscribed_stations = {}  # {session_id: set(station_codes)}
+
 """
 Web Server
 """
@@ -230,9 +233,34 @@ def connect_earthworm():
     socketio.emit("connect_init")
 
 
+@socketio.on("subscribe_stations")
+def handle_subscribe_stations(data):
+    """處理前端訂閱測站請求"""
+    session_id = request.sid
+    stations = data.get("stations", [])
+
+    if stations:
+        subscribed_stations[session_id] = set(stations)
+        logger.info(f"📡 Client {session_id[:8]} subscribed to {len(stations)} stations")
+    else:
+        # 清空訂閱
+        if session_id in subscribed_stations:
+            del subscribed_stations[session_id]
+        logger.info(f"📡 Client {session_id[:8]} unsubscribed from all stations")
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    """客戶端斷線時清理訂閱"""
+    session_id = request.sid
+    if session_id in subscribed_stations:
+        del subscribed_stations[session_id]
+        logger.info(f"🔌 Client {session_id[:8]} disconnected, subscription removed")
+
+
 def wave_emitter():
-    """批量收集並發送波形數據，避免逐個發送造成波形缺失"""
-    batch_interval = 1.0  # 每 1 秒批量發送一次
+    """按需推送波形數據 - 只發送被訂閱的測站，提高更新頻率"""
+    batch_interval = 0.2  # 每 0.2 秒批量發送一次（提高更新頻率）
     last_send_time = time.time()
 
     while True:
@@ -244,7 +272,7 @@ def wave_emitter():
             while current_time - last_send_time < batch_interval:
                 try:
                     # 使用 timeout 避免阻塞
-                    wave = wave_queue.get(timeout=0.1)
+                    wave = wave_queue.get(timeout=0.05)
                     wave_id = join_id_from_dict(wave, order="NSLC")
 
                     if "Z" not in wave_id:
@@ -277,18 +305,34 @@ def wave_emitter():
 
                 current_time = time.time()
 
-            # 如果有數據，批量發送
-            if wave_batch:
-                timestamp = int(time.time() * 1000)  # 毫秒時間戳
+            # 如果有數據且有客戶端訂閱
+            if wave_batch and subscribed_stations:
+                # 收集所有被訂閱的測站
+                all_subscribed = set()
+                for stations_set in subscribed_stations.values():
+                    all_subscribed.update(stations_set)
 
-                wave_packet = {
-                    "waveid": f"batch_{timestamp}",
-                    "timestamp": timestamp,
-                    "data": wave_batch
-                }
+                # 只發送被訂閱的測站數據
+                filtered_batch = {}
+                for wave_id, wave_data in wave_batch.items():
+                    # 從 SEED 格式提取測站代碼：SM.TAP.01.HLZ -> TAP
+                    station_code = wave_id.split('.')[1] if '.' in wave_id else wave_id
 
-                socketio.emit("wave_packet", wave_packet)
-                logger.debug(f"📦 Batch sent: {len(wave_batch)} stations at {timestamp}")
+                    if station_code in all_subscribed:
+                        filtered_batch[wave_id] = wave_data
+
+                # 發送過濾後的數據
+                if filtered_batch:
+                    timestamp = int(time.time() * 1000)  # 毫秒時間戳
+
+                    wave_packet = {
+                        "waveid": f"batch_{timestamp}",
+                        "timestamp": timestamp,
+                        "data": filtered_batch
+                    }
+
+                    socketio.emit("wave_packet", wave_packet)
+                    logger.debug(f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations (filtered by subscription)")
 
             last_send_time = current_time
 
