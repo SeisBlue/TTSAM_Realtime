@@ -55,17 +55,17 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
     const data = stations.map(s => {
       const replacement = stationReplacements[s.station]
 
-      // 如果有替換，使用替換後的座標；否則使用原始座標
-      const coordinates = replacement
-        ? [replacement.coordinates.lon, replacement.coordinates.lat]
-        : [s.longitude, s.latitude]
+      // 統一使用原始座標顯示測站
+      const coordinates = [s.longitude, s.latitude]
 
       return {
         ...s,
         coordinates,
         isReplaced: !!replacement,
         replacementInfo: replacement,
-        originalCoordinates: [s.longitude, s.latitude]
+        replacementCoordinates: replacement
+          ? [replacement.coordinates.lon, replacement.coordinates.lat]
+          : null
       }
     })
 
@@ -82,12 +82,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
       lineWidthMinPixels: 2,
       getPosition: d => d.coordinates,
       getFillColor: d => {
-        // 如果是替換的測站，使用特殊顏色（紫色）
-        if (d.isReplaced) {
-          return [168, 85, 247] // #a855f7 紫色表示替換
-        }
-
-        // 根據狀態決定顏色
+        // 根據狀態決定顏色（移除替換顏色邏輯）
         switch (d.status) {
           case 'online': return [34, 197, 94]  // #22c55e
           case 'warning': return [245, 158, 11] // #f59e0b
@@ -95,12 +90,11 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
           default: return [148, 163, 184]       // #94a3b8
         }
       },
-      getLineColor: d => d.isReplaced ? [168, 85, 247] : [255, 255, 255],
+      getLineColor: [255, 255, 255],
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
-        getFillColor: [stations, stationReplacements],
-        getLineColor: [stationReplacements],
-        getPosition: [stationReplacements]
+        getFillColor: [stations],
+        getPosition: [stations]
       }
     })
   }, [stations, stationReplacements])
@@ -134,7 +128,50 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
     })
   }, [allStations])
 
-  const layers = [secondaryStationsLayer, primaryStationsLayer]
+  // 替換測站圖層（只在啟用智能替換時顯示）
+  const replacementStationsLayer = useMemo(() => {
+    // 過濾出有替換的測站
+    const replacedStations = stations
+      .filter(s => stationReplacements[s.station])
+      .map(s => {
+        const replacement = stationReplacements[s.station]
+        return {
+          ...s,
+          station: replacement.replacementStation, // 顯示替換後的測站代碼
+          coordinates: [replacement.coordinates.lon, replacement.coordinates.lat],
+          isReplacedStation: true,
+          originalStation: s.station,
+          replacementInfo: replacement
+        }
+      })
+
+    // 如果沒有替換的測站，返回 null
+    if (replacedStations.length === 0) {
+      return null
+    }
+
+    return new ScatterplotLayer({
+      id: 'replacement-stations',
+      data: replacedStations,
+      pickable: true,
+      opacity: 1,
+      stroked: true,
+      filled: true,
+      radiusScale: 1,
+      radiusMinPixels: 6,
+      radiusMaxPixels: 10,
+      lineWidthMinPixels: 2,
+      getPosition: d => d.coordinates,
+      getFillColor: [168, 85, 247], // #a855f7 紫色
+      getLineColor: [168, 85, 247, 200],
+      onHover: info => setHoverInfo(info.object ? info : null),
+      updateTriggers: {
+        getData: [stationReplacements]
+      }
+    })
+  }, [stations, stationReplacements])
+
+  const layers = [secondaryStationsLayer, primaryStationsLayer, replacementStationsLayer].filter(Boolean)
 
   return (
     <div className="taiwan-map-deck-container">
@@ -159,12 +196,31 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
           }}
         >
           <div className="tooltip-content">
-            {!hoverInfo.object.isSecondary ? (
+            {hoverInfo.object.isReplacedStation ? (
+              // 替換測站（紫色）的 tooltip
+              <>
+                <div className="tooltip-name" style={{ color: '#a855f7' }}>
+                  🔄 {hoverInfo.object.station}
+                </div>
+                <div className="tooltip-code" style={{ fontSize: '12px', opacity: 0.8 }}>
+                  替換自: {hoverInfo.object.originalStation}
+                </div>
+                <div className="tooltip-coords">
+                  {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
+                </div>
+                {hoverInfo.object.replacementInfo && (
+                  <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '4px' }}>
+                    距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
+                  </div>
+                )}
+              </>
+            ) : !hoverInfo.object.isSecondary ? (
+              // 原始主要測站的 tooltip
               <>
                 <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
                 <div className="tooltip-code">{hoverInfo.object.station}</div>
 
-                {/* 顯示替換信息 */}
+                {/* 顯示替換信息（但測站本身在原位置） */}
                 {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
                   <div className="tooltip-replacement" style={{
                     color: '#a855f7',
@@ -185,6 +241,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
                 </div>
               </>
             ) : (
+              // 次要測站（TSMIP）的 tooltip
               <>
                 <div className="tooltip-code">{hoverInfo.object.station}</div>
                 <div className="tooltip-coords">
