@@ -55,6 +55,7 @@ discord_queue = manager.Queue()
 wave_endt = manager.Value("d", 0)
 wave_speed_count = manager.Value("i", 0)
 
+
 # 訂閱管理：追蹤每個客戶端訂閱的測站
 subscribed_stations = {}  # {session_id: set(station_codes)}
 
@@ -258,81 +259,80 @@ def handle_disconnect():
         logger.info(f"🔌 Client {session_id[:8]} disconnected, subscription removed")
 
 
+def _process_wave_data(wave, is_realtime=False):
+    """處理單個波形數據，提取並格式化"""
+    waveform_data = wave["data"]
+
+    if isinstance(waveform_data, np.ndarray):
+        waveform_list = waveform_data.tolist()
+        pga = float(np.max(np.abs(waveform_data)))
+    elif isinstance(waveform_data, list):
+        waveform_list = waveform_data
+        pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
+    else:
+        return None
+
+    return {
+        "waveform": waveform_list,
+        "pga": pga,
+        "status": "active",
+        "startt": wave.get("startt", 0),
+        "endt": wave.get("endt", 0),
+        "samprate": wave.get("samprate", 100),
+        "is_realtime": is_realtime
+    }
+
+
 def wave_emitter():
-    """按需推送波形數據 - 只發送被訂閱的測站，提高更新頻率"""
-    batch_interval = 0.5  # 每 0.2 秒批量發送一次（提高更新頻率）
+    """按需推送波形數據 - 只發送被訂閱的測站"""
+    batch_interval = 0.5
     last_send_time = time.time()
 
     while True:
         try:
-            wave_batch = {}  # 存儲本批次的波形數據
+            wave_batch = {}
             current_time = time.time()
 
             # 收集一定時間內的所有波形數據
             while current_time - last_send_time < batch_interval:
                 try:
-                    # 使用 timeout 避免阻塞
                     wave = wave_queue.get(timeout=0.05)
                     wave_id = join_id_from_dict(wave, order="NSLC")
 
                     if "Z" not in wave_id:
                         continue
 
-                    # 計算 PGA (Peak Ground Acceleration)
-                    waveform_data = wave["data"]
-
-                    # 確保 waveform_data 是可序列化的格式
-                    if isinstance(waveform_data, np.ndarray):
-                        waveform_list = waveform_data.tolist()
-                        pga = float(np.max(np.abs(waveform_data)))
-                    elif isinstance(waveform_data, list):
-                        waveform_list = waveform_data
-                        pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
-                    else:
-                        logger.warning(f"Unknown waveform data type: {type(waveform_data)}")
-                        continue
-
-                    # 添加到批次中
-                    wave_batch[wave_id] = {
-                        "waveform": waveform_list,
-                        "pga": pga,
-                        "status": "active"
-                    }
+                    # 處理波形數據
+                    processed = _process_wave_data(wave, is_realtime=False)
+                    if processed:
+                        wave_batch[wave_id] = processed
 
                 except:
-                    # Queue 為空或超時，繼續等待
                     pass
 
                 current_time = time.time()
 
-            # 如果有數據且有客戶端訂閱
+            # 發送數據
             if wave_batch and subscribed_stations:
-                # 收集所有被訂閱的測站
                 all_subscribed = set()
                 for stations_set in subscribed_stations.values():
                     all_subscribed.update(stations_set)
 
-                # 只發送被訂閱的測站數據
                 filtered_batch = {}
                 for wave_id, wave_data in wave_batch.items():
-                    # 從 SEED 格式提取測站代碼：SM.TAP.01.HLZ -> TAP
                     station_code = wave_id.split('.')[1] if '.' in wave_id else wave_id
-
                     if station_code in all_subscribed:
                         filtered_batch[wave_id] = wave_data
 
-                # 發送過濾後的數據
                 if filtered_batch:
-                    timestamp = int(time.time() * 1000)  # 毫秒時間戳
-
+                    timestamp = int(time.time() * 1000)
                     wave_packet = {
                         "waveid": f"batch_{timestamp}",
                         "timestamp": timestamp,
                         "data": filtered_batch
                     }
-
                     socketio.emit("wave_packet", wave_packet)
-                    logger.debug(f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations (filtered by subscription)")
+                    logger.debug(f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations")
 
             last_send_time = current_time
 
@@ -482,6 +482,7 @@ def earthworm_wave_listener():
                 )
             wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
             wave_speed_count.value += 1
+
         except Exception as e:
             logger.error("earthworm_wave_process error", e)
 
@@ -898,7 +899,7 @@ def loading_animation(pick_threshold):
         delay = time.time() - wave_endt.value
 
         delta = time.time() - start_time
-        wave_process_rate = wave_speed_count.value / delta
+        wave_process_rate = wave_speed_count.value / delta if delta > 0 else 0
 
         # 顯示目前的 loading 字符
         sys.stdout.write(

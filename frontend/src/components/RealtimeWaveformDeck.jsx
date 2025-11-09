@@ -58,6 +58,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     const waveHeight = simpleLayout ? 60 : 45 // 增加波形高度：從 40/30 增加到 60/45
     const xOffset = panelWidth * 0.15
     const now = Date.now() // 使用靜態時間點，避免依賴 currentTime
+    const bottomMargin = 60  // 為時間軸留出底部空間
 
     // 預計算所有測站的 Y 位置
     const stationPositions = new Map()
@@ -70,12 +71,14 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
         const stationSpacing = waveHeight * 1.0
         const topMargin = waveHeight * 1.0
         const totalStationsHeight = stationSpacing * (stations.length - 1)
-        const bottomMargin = panelHeight - topMargin - totalStationsHeight
-        const adjustedTopMargin = bottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
+        const availableBottomMargin = panelHeight - bottomMargin - topMargin - totalStationsHeight
+        const adjustedTopMargin = availableBottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
         centerY = adjustedTopMargin + stationSpacing * index
       } else {
         if (!station.latitude) return
-        centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * panelHeight
+        // 調整為可用高度（扣除底部時間軸空間）
+        const availableHeight = panelHeight - bottomMargin
+        centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * availableHeight
       }
       stationPositions.set(stationCode, centerY)
     })
@@ -103,18 +106,33 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
         const displayScale = waveData.displayScale || 1.0
 
         waveData.dataPoints.forEach(point => {
-          const { timestamp, values } = point
+          const { timestamp, endTimestamp, values, samprate, isGap } = point
+
+          // 跳過斷點標記
+          if (isGap) {
+            // 可以選擇在這裡繪製斷點指示器（未來功能）
+            return
+          }
+
           const timeDiff = now - timestamp
+          const endTimeDiff = endTimestamp ? now - endTimestamp : timeDiff
 
-          if (timeDiff < 0 || timeDiff > TIME_WINDOW * 1000) return
+          // 如果整個數據段都在時間窗口之外，跳過
+          if (endTimeDiff > TIME_WINDOW * 1000 || timeDiff < 0) return
 
-          const startTimeOffset = timeDiff / 1000
           const pathPoints = []
 
-          // 優化：使用 for 循環代替 forEach，減少函數調用開銷
+          // 使用實際的採樣率和時間戳
+          const effectiveSamprate = samprate || SAMPLE_RATE
           const len = values.length
+
+          // 優化：使用 for 循環代替 forEach，減少函數調用開銷
           for (let idx = 0; idx < len; idx++) {
-            const sampleTimeOffset = startTimeOffset - (idx / SAMPLE_RATE)
+            // 計算這個樣本點的實際時間
+            const sampleTime = timestamp + (idx / effectiveSamprate) * 1000  // 毫秒
+            const sampleTimeDiff = now - sampleTime
+            const sampleTimeOffset = sampleTimeDiff / 1000  // 轉換為秒
+
             if (sampleTimeOffset < 0 || sampleTimeOffset > TIME_WINDOW) continue
 
             const x = xOffset + waveWidth * (1 - sampleTimeOffset / TIME_WINDOW)
@@ -189,6 +207,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     const waveWidth = panelWidth * 0.75
     const waveHeight = simpleLayout ? 60 : 45 // 增加波形高度：從 40/30 增加到 60/45
     const xOffset = panelWidth * 0.15
+    const bottomMargin = 60  // 為時間軸留出底部空間
 
     const labels = []
 
@@ -202,12 +221,14 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
         const stationSpacing = waveHeight * 1.0
         const topMargin = waveHeight * 1.0
         const totalStationsHeight = stationSpacing * (stations.length - 1)
-        const bottomMargin = panelHeight - topMargin - totalStationsHeight
-        const adjustedTopMargin = bottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
+        const availableBottomMargin = panelHeight - bottomMargin - topMargin - totalStationsHeight
+        const adjustedTopMargin = availableBottomMargin < waveHeight * 0.8 ? topMargin * 0.8 : topMargin
         centerY = adjustedTopMargin + stationSpacing * index
       } else {
         if (!station.latitude) return
-        centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * panelHeight
+        // 調整為可用高度（扣除底部時間軸空間）
+        const availableHeight = panelHeight - bottomMargin
+        centerY = ((maxLat - station.latitude) / (maxLat - minLat)) * availableHeight
       }
 
       const waveData = waveDataMap[stationCode]
@@ -260,11 +281,12 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       }
     })
 
-    // 時間軸標籤 - 使用靜態標籤避免頻繁更新
-    const timeAxisY = panelHeight - 25
+    // 時間軸標籤 - 顯示實際時間和相對時間差
+    const timeAxisY = panelHeight - 50  // 增加底部空間，從 25 改為 50
     const timeWaveWidth = panelWidth * 0.75
     const timeXOffset = panelWidth * 0.15
     const numTicks = 7
+    const now = new Date()
 
     for (let i = 0; i < numTicks; i++) {
       const timeValue = -i * (TIME_WINDOW / (numTicks - 1))
@@ -273,18 +295,25 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       let label
       let color
       if (timeValue === 0) {
-        label = 'NOW' // 使用靜態標籤代替實時時間
-        color = [76, 175, 80]
+        // 最右側：顯示當前實際時間（時:分:秒）
+        label = now.toLocaleTimeString('zh-TW', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })
+        color = [76, 175, 80, 255]  // 綠色，完全不透明
       } else {
+        // 其他位置：顯示相對時間差
         label = `${timeValue.toFixed(0)}s`
-        color = [144, 202, 249]
+        color = [144, 202, 249, 255]  // 藍色，完全不透明
       }
 
       labels.push({
-        position: [x, timeAxisY + 17],
+        position: [x, timeAxisY + 8],  // 調整文字位置，更靠近軸線
         text: label,
         color: color,
-        size: 10,
+        size: 12,  // 增大字體從 10 到 12
         anchor: 'middle',
         alignmentBaseline: 'center'
       })
@@ -304,10 +333,10 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       updateTriggers: {
         getColor: [hoveredStation, waveDataMap],
         getSize: hoveredStation,
-        getText: waveDataMap
+        getText: [waveDataMap, renderTrigger] // 添加 renderTrigger 以更新時間顯示
       }
     })]
-  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, renderTrigger])
 
   // 緯度網格線
   const gridLayers = useMemo(() => {
@@ -358,21 +387,21 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
 
   // 時間軸線
   const timeAxisLayer = useMemo(() => {
-    const timeAxisY = panelHeight - 25
+    const timeAxisY = panelHeight - 50  // 與標籤位置一致，從 25 改為 50
     const axisWaveWidth = panelWidth * 0.75
     const axisXOffset = panelWidth * 0.15
 
     const lines = [{
       path: [[axisXOffset, timeAxisY], [axisXOffset + axisWaveWidth, timeAxisY]],
-      color: [255, 255, 255, 76]
+      color: [255, 255, 255, 128]  // 增加不透明度，更清晰
     }]
 
     const numTicks = 7
     for (let i = 0; i < numTicks; i++) {
       const x = axisXOffset + axisWaveWidth - (i / (numTicks - 1)) * axisWaveWidth
       lines.push({
-        path: [[x, timeAxisY], [x, timeAxisY + 5]],
-        color: [255, 255, 255, 76]
+        path: [[x, timeAxisY - 5], [x, timeAxisY + 5]],  // 刻度線更長，從 5 改為 ±5
+        color: [255, 255, 255, 128]
       })
     }
 
@@ -381,7 +410,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       data: lines,
       getPath: d => d.path,
       getColor: d => d.color,
-      widthMinPixels: 1
+      widthMinPixels: 1.5  // 增加線條寬度
     })
   }, [panelWidth, panelHeight])
 
@@ -605,7 +634,6 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
     if (wavePackets.length === 0) return
 
     const latestPacket = wavePackets[0]
-    const packetTimestamp = latestPacket.timestamp || Date.now()
 
     setWaveDataMap(prev => {
       const updated = { ...prev }
@@ -617,19 +645,61 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
           if (!updated[stationCode]) {
             updated[stationCode] = {
               dataPoints: [],
-              lastPga: 0
+              lastPga: 0,
+              lastEndTime: null  // 追蹤上一個封包的結束時間
             }
           }
 
           const stationData = updated[stationCode]
-          const waveform = latestPacket.data[seedStation]?.waveform || []
-          const pga = latestPacket.data[seedStation]?.pga || 0
+          const wavePacketData = latestPacket.data[seedStation]
+          const waveform = wavePacketData?.waveform || []
+          const pga = wavePacketData?.pga || 0
+          const startt = wavePacketData?.startt  // Earthworm 波形起始時間（秒）
+          const endt = wavePacketData?.endt      // Earthworm 波形結束時間（秒）
+          const samprate = wavePacketData?.samprate || 100
 
+          // 使用 Earthworm 的實際時間戳，如果沒有則退回到系統時間
+          const packetStartTime = startt ? startt * 1000 : Date.now()  // 轉換為毫秒
+          const packetEndTime = endt ? endt * 1000 : Date.now()
+
+          // 檢測時間斷點（gap）
+          let hasGap = false
+          if (stationData.lastEndTime !== null && startt) {
+            const timeDiff = Math.abs(startt - stationData.lastEndTime)
+            const expectedInterval = 1.0 / samprate  // 預期的時間間隔
+
+            // 如果時間差超過 2 個採樣間隔，視為斷點
+            if (timeDiff > expectedInterval * 2) {
+              hasGap = true
+              console.warn(`⚠️ Time gap detected for ${stationCode}: ${timeDiff.toFixed(3)}s (expected ~${expectedInterval.toFixed(3)}s)`)
+            }
+          }
+
+          // 如果有斷點，插入一個空數據點來標記斷點
+          if (hasGap && stationData.dataPoints.length > 0) {
+            stationData.dataPoints.push({
+              timestamp: stationData.lastEndTime * 1000,  // 使用上一個封包的結束時間
+              endTimestamp: packetStartTime,
+              values: [],  // 空數組表示這是一個斷點
+              isGap: true
+            })
+          }
+
+          // 添加新的波形數據點
           stationData.dataPoints.push({
-            timestamp: packetTimestamp,
-            values: waveform
+            timestamp: packetStartTime,
+            endTimestamp: packetEndTime,
+            values: waveform,
+            samprate: samprate,
+            isGap: false
           })
 
+          // 更新最後的結束時間
+          if (endt) {
+            stationData.lastEndTime = endt
+          }
+
+          // 清理超過時間窗口的數據
           const cutoffTime = Date.now() - TIME_WINDOW * 1000
           stationData.dataPoints = stationData.dataPoints.filter(
             point => point.timestamp >= cutoffTime
@@ -637,10 +707,10 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
 
           stationData.lastPga = pga
 
-          // 動態縮放
+          // 動態縮放（只計算非斷點的數據）
           const recentCutoff = Date.now() - 10 * 1000
           const recentPoints = stationData.dataPoints.filter(
-            point => point.timestamp >= recentCutoff
+            point => point.timestamp >= recentCutoff && !point.isGap
           )
 
           if (recentPoints.length > 0) {
