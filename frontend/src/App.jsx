@@ -25,7 +25,6 @@ function App() {
   const [wavePackets, setWavePackets] = useState([])
   const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
-  const [selectedStations, setSelectedStations] = useState([]) // 用戶選中的測站（用於測試群組）
   const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
   const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
 
@@ -194,7 +193,6 @@ function App() {
             <h2>🗺️ 測站分布</h2>
             <TaiwanMap
               stations={targetStations}
-              onStationSelect={setSelectedStations}
               stationReplacements={stationReplacements}
             />
           </section>

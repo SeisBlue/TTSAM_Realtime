@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import { Map } from 'react-map-gl/maplibre'
 import DeckGL from '@deck.gl/react'
@@ -17,9 +17,8 @@ const INITIAL_VIEW_STATE = {
   bearing: 0
 }
 
-function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) {
+function TaiwanMapDeck({ stations, stationReplacements = {} }) {
   const [allStations, setAllStations] = useState([])
-  const [selectedStations, setSelectedStations] = useState(new Set())
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
   const [hoverInfo, setHoverInfo] = useState(null)
   const [isLegendExpanded, setIsLegendExpanded] = useState(false) // 圖例預設摺疊
@@ -50,32 +49,13 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
       })
   }, [])
 
-  // 處理測站點擊
-  const handleStationClick = useCallback((info) => {
-    if (!info.object) return
-
-    const stationCode = info.object.station
-    const newSelected = new Set(selectedStations)
-
-    if (newSelected.has(stationCode)) {
-      newSelected.delete(stationCode)
-    } else {
-      newSelected.add(stationCode)
-    }
-
-    setSelectedStations(newSelected)
-
-    if (onStationSelect) {
-      onStationSelect(Array.from(newSelected))
-    }
-  }, [selectedStations, onStationSelect])
 
   // 主要測站圖層（eew_target）
   const primaryStationsLayer = useMemo(() => {
     const data = stations.map(s => {
       const replacement = stationReplacements[s.station]
 
-      // 如果有替換，使用替換後的座標
+      // 如果有替換，使用替換後的座標；否則使用原始座標
       const coordinates = replacement
         ? [replacement.coordinates.lon, replacement.coordinates.lat]
         : [s.longitude, s.latitude]
@@ -84,7 +64,8 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
         ...s,
         coordinates,
         isReplaced: !!replacement,
-        replacementInfo: replacement
+        replacementInfo: replacement,
+        originalCoordinates: [s.longitude, s.latitude]
       }
     })
 
@@ -115,7 +96,6 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
         }
       },
       getLineColor: d => d.isReplaced ? [168, 85, 247] : [255, 255, 255],
-      onClick: handleStationClick,
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
         getFillColor: [stations, stationReplacements],
@@ -123,22 +103,21 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
         getPosition: [stationReplacements]
       }
     })
-  }, [stations, stationReplacements, handleStationClick])
+  }, [stations, stationReplacements])
 
   // 次要測站圖層（TSMIP）
   const secondaryStationsLayer = useMemo(() => {
     const data = allStations.map(s => ({
       ...s,
       coordinates: [s.longitude, s.latitude],
-      isSecondary: true,
-      isSelected: selectedStations.has(s.station)
+      isSecondary: true
     }))
 
     return new ScatterplotLayer({
       id: 'secondary-stations',
       data,
       pickable: true,
-      opacity: 0.8,
+      opacity: 0.6,
       stroked: true,
       filled: true,
       radiusScale: 1,
@@ -146,19 +125,14 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
       radiusMaxPixels: 5,
       lineWidthMinPixels: 1,
       getPosition: d => d.coordinates,
-      getFillColor: d => {
-        // 選中：黃色，未選中：灰色
-        return d.isSelected ? [255, 193, 7] : [102, 102, 102]
-      },
+      getFillColor: [102, 102, 102], // 統一灰色
       getLineColor: [255, 255, 255],
-      onClick: handleStationClick,
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
-        getFillColor: [selectedStations],
         getData: [allStations]
       }
     })
-  }, [allStations, selectedStations, handleStationClick])
+  }, [allStations])
 
   const layers = [secondaryStationsLayer, primaryStationsLayer]
 
@@ -185,7 +159,7 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
           }}
         >
           <div className="tooltip-content">
-            {hoverInfo.object.isPrimary || hoverInfo.object.station_zh ? (
+            {!hoverInfo.object.isSecondary ? (
               <>
                 <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
                 <div className="tooltip-code">{hoverInfo.object.station}</div>
@@ -216,45 +190,9 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
                 <div className="tooltip-coords">
                   {hoverInfo.object.latitude.toFixed(3)}°N, {hoverInfo.object.longitude.toFixed(3)}°E
                 </div>
-                {hoverInfo.object.isSelected && (
-                  <div className="tooltip-status" style={{ color: '#ffc107' }}>已選中</div>
-                )}
-                <div className="tooltip-hint">點擊加入測試群組</div>
               </>
             )}
           </div>
-        </div>
-      )}
-
-      {/* 選中的測站列表面板 */}
-      {selectedStations.size > 0 && (
-        <div className="selected-stations-panel">
-          <h4>測試群組 ({selectedStations.size})</h4>
-          <div className="selected-stations-list">
-            {Array.from(selectedStations).map(station => (
-              <span
-                key={station}
-                className="selected-station-tag"
-                onClick={() => {
-                  const newSelected = new Set(selectedStations)
-                  newSelected.delete(station)
-                  setSelectedStations(newSelected)
-                  if (onStationSelect) onStationSelect(Array.from(newSelected))
-                }}
-              >
-                {station} ×
-              </span>
-            ))}
-          </div>
-          <button
-            className="clear-selection-btn"
-            onClick={() => {
-              setSelectedStations(new Set())
-              if (onStationSelect) onStationSelect([])
-            }}
-          >
-            清空
-          </button>
         </div>
       )}
 
@@ -297,12 +235,8 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
 
             <div className="legend-title">次要測站（TSMIP）</div>
             <div className="legend-item">
-              <span className="legend-dot small" style={{ backgroundColor: '#ffc107' }}></span>
-              <span>已選中</span>
-            </div>
-            <div className="legend-item">
               <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
-              <span>未選中</span>
+              <span>參考測站</span>
             </div>
           </>
         )}
@@ -319,7 +253,6 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
 
 TaiwanMapDeck.propTypes = {
   stations: PropTypes.array.isRequired,
-  onStationSelect: PropTypes.func,
   stationReplacements: PropTypes.object
 }
 
