@@ -157,7 +157,7 @@ def find_nearest_station():
         if exclude_pattern == "CWASN":
             # 只保留 TSMIP 格式測站 (Axxx, Bxxx, Cxxx)
             import re
-            tsmip_pattern = re.compile(r'^[ABC]\d{3}$')
+            tsmip_pattern = re.compile(r'^[ABCDEFGH]\d{3}$')
             filtered_stations = [
                 s for s in all_stations_dict
                 if tsmip_pattern.match(s.get('station', ''))
@@ -260,7 +260,7 @@ def handle_disconnect():
 
 def wave_emitter():
     """按需推送波形數據 - 只發送被訂閱的測站，提高更新頻率"""
-    batch_interval = 0.2  # 每 0.2 秒批量發送一次（提高更新頻率）
+    batch_interval = 0.5  # 每 0.2 秒批量發送一次（提高更新頻率）
     last_send_time = time.time()
 
     while True:

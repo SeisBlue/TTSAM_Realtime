@@ -538,6 +538,8 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
 
     const fetchNearestStations = async () => {
       const cache = {}
+      const MAX_DISTANCE_KM = 5 // 最大替換距離：5 公里
+      const FALLBACK_DISTANCE_KM = 10 // 如果找不到，放寬到 10 公里
 
       for (const station of targetStations) {
         const stationCode = station.station
@@ -553,24 +555,46 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
         }
 
         try {
+          // 先嘗試查找 5 公里內的測站（返回前 5 個候選）
           const response = await fetch(
-            `http://localhost:5001/api/find-nearest-station?lat=${station.latitude}&lon=${station.longitude}&exclude_pattern=CWASN&max_count=1`
+            `http://localhost:5001/api/find-nearest-station?lat=${station.latitude}&lon=${station.longitude}&exclude_pattern=CWASN&max_count=5`
           )
 
           if (response.ok) {
             const nearestStations = await response.json()
+
             if (nearestStations && nearestStations.length > 0) {
-              const nearest = nearestStations[0]
-              cache[stationCode] = {
-                originalStation: stationCode,
-                replacementStation: nearest.station,
-                distance: nearest.distance_km,
-                coordinates: {
-                  lat: nearest.latitude,
-                  lon: nearest.longitude
-                }
+              // 優先選擇距離在限制內的測站
+              let selectedStation = nearestStations.find(s => s.distance_km <= MAX_DISTANCE_KM)
+
+              // 如果沒有找到足夠近的，嘗試放寬限制
+              if (!selectedStation) {
+                selectedStation = nearestStations.find(s => s.distance_km <= FALLBACK_DISTANCE_KM)
               }
-              console.log(`🔄 [替換] ${stationCode} → ${nearest.station} (距離: ${nearest.distance_km} km)`)
+
+              // 如果還是沒有，只有在距離合理的情況下才使用最近的
+              if (!selectedStation && nearestStations[0].distance_km <= 15) {
+                selectedStation = nearestStations[0]
+                console.warn(`⚠️ [替換] ${stationCode} 距離較遠: ${nearestStations[0].distance_km} km`)
+              }
+
+              if (selectedStation) {
+                cache[stationCode] = {
+                  originalStation: stationCode,
+                  replacementStation: selectedStation.station,
+                  distance: selectedStation.distance_km,
+                  coordinates: {
+                    lat: selectedStation.latitude,
+                    lon: selectedStation.longitude
+                  }
+                }
+
+                const emoji = selectedStation.distance_km <= MAX_DISTANCE_KM ? '✅' :
+                             selectedStation.distance_km <= FALLBACK_DISTANCE_KM ? '⚠️' : '❌'
+                console.log(`${emoji} [替換] ${stationCode} → ${selectedStation.station} (距離: ${selectedStation.distance_km} km)`)
+              } else {
+                console.log(`❌ [跳過] ${stationCode}: 最近測站距離過遠 (${nearestStations[0].distance_km} km)`)
+              }
             }
           }
         } catch (error) {
@@ -580,6 +604,14 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
 
       setNearestStationCache(cache)
       console.log('✅ 最近測站映射已建立:', Object.keys(cache).length, '個替換')
+
+      // 統計距離分佈
+      const distances = Object.values(cache).map(r => r.distance)
+      if (distances.length > 0) {
+        const avgDistance = (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(2)
+        const maxDistance = Math.max(...distances).toFixed(2)
+        console.log(`📊 替換距離統計: 平均 ${avgDistance} km, 最大 ${maxDistance} km`)
+      }
 
       // 通知父組件替換信息已更新
       if (onReplacementUpdate) {
@@ -848,7 +880,7 @@ function RealtimeWaveformDeck({ targetStations, wavePackets, selectedStations = 
         </button>
         <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '13px' }}>
           {useNearestTSMIP
-            ? `自動將無資料的 CWASN 測站替換為最近的 TSMIP 測站 (已替換 ${Object.keys(nearestStationCache).length} 個測站)`
+            ? `自動替換為 5km 內最近的 TSMIP 測站 (已替換 ${Object.keys(nearestStationCache).length} 個測站)`
             : '使用原始 CWASN 測站配置'}
         </span>
       </div>
