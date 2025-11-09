@@ -159,6 +159,28 @@
   z-index: 1000;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.map-legend.collapsed {
+  padding: 8px 12px;
+}
+
+.legend-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64b5f6;
+  margin-bottom: 4px;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.legend-header:hover {
+  color: #90caf9;
+}
+
+.map-legend.collapsed .legend-header {
+  margin-bottom: 0;
 }
 
 .legend-title {
@@ -166,8 +188,13 @@
   font-weight: 600;
   color: #64b5f6;
   margin-bottom: 8px;
+  margin-top: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.legend-title:first-of-type {
+  margin-top: 4px;
 }
 
 .legend-item {

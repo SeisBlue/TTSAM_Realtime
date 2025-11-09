@@ -22,6 +22,7 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
   const [selectedStations, setSelectedStations] = useState(new Set())
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
   const [hoverInfo, setHoverInfo] = useState(null)
+  const [isLegendExpanded, setIsLegendExpanded] = useState(false) // 圖例預設摺疊
 
   // 載入所有測站資料（從後端 API）
   useEffect(() => {
@@ -258,40 +259,53 @@ function TaiwanMapDeck({ stations, onStationSelect, stationReplacements = {} }) 
       )}
 
       {/* 圖例 */}
-      <div className="map-legend">
-        <div className="legend-title">主要測站</div>
-        <div className="legend-item">
-          <span className="legend-dot" style={{ backgroundColor: '#a855f7' }}></span>
-          <span>已替換 (顯示替換後位置)</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
-          <span>正常</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot" style={{ backgroundColor: '#f59e0b' }}></span>
-          <span>延遲</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot" style={{ backgroundColor: '#ef4444' }}></span>
-          <span>掉線</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
-          <span>未知</span>
+      <div className={`map-legend ${isLegendExpanded ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="legend-header"
+          onClick={() => setIsLegendExpanded(!isLegendExpanded)}
+          style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <span style={{ fontWeight: 'bold' }}>圖例</span>
+          <span style={{ fontSize: '12px' }}>{isLegendExpanded ? '▼' : '▶'}</span>
         </div>
 
-        <div className="legend-divider"></div>
+        {isLegendExpanded && (
+          <>
+            <div className="legend-title">主要測站</div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#a855f7' }}></span>
+              <span>已替換 (顯示替換後位置)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
+              <span>正常</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#f59e0b' }}></span>
+              <span>延遲</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#ef4444' }}></span>
+              <span>掉線</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
+              <span>未知</span>
+            </div>
 
-        <div className="legend-title">次要測站（TSMIP）</div>
-        <div className="legend-item">
-          <span className="legend-dot small" style={{ backgroundColor: '#ffc107' }}></span>
-          <span>已選中</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
-          <span>未選中</span>
-        </div>
+            <div className="legend-divider"></div>
+
+            <div className="legend-title">次要測站（TSMIP）</div>
+            <div className="legend-item">
+              <span className="legend-dot small" style={{ backgroundColor: '#ffc107' }}></span>
+              <span>已選中</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot small" style={{ backgroundColor: '#666' }}></span>
+              <span>未選中</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 性能指示器 */}
