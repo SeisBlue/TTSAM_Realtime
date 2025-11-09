@@ -12,7 +12,7 @@ const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.j
 const INITIAL_VIEW_STATE = {
   longitude: 121.0,
   latitude: 23.5,
-  zoom: 7,
+  zoom: 6,
   pitch: 0,
   bearing: 0
 }

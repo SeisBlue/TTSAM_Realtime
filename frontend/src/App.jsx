@@ -3,8 +3,7 @@ import io from 'socket.io-client'
 import './App.css'
 import EventDetail from './components/EventDetail'
 import WaveDetail from './components/WaveDetail'
-// import TaiwanMap from './components/TaiwanMap'  // Leaflet 版本（備用）
-import TaiwanMap from './components/TaiwanMapDeck'  // Deck.gl 版本（WebGL 加速）
+import TaiwanMap from './components/TaiwanMapDeck'
 import RealtimeWaveform from './components/RealtimeWaveform'
 
 /**
