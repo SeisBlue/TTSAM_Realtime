@@ -445,6 +445,13 @@ def slide_array(array, data):
 
 
 def earthworm_wave_listener():
+    buffer_time = 30  # 設定緩衝區保留時間
+    sample_rate = 100  # 設定取樣率
+
+    # 預先計算常數，避免重複查詢
+    wave_constant_cache = {}
+    wave_buffer_local = {}  # 本地緩存，減少 Manager.dict 訪問
+
     while True:
         if not earthworm.mod_sta():
             continue
@@ -453,34 +460,67 @@ def earthworm_wave_listener():
         if not wave:
             continue
 
-        if wave["endt"] < time.time() - 2:
+        # 快速時間檢查（最早過濾）
+        wave_endt_val = wave["endt"]
+        current_time = time.time()
+        if wave_endt_val < current_time - 3 or wave_endt_val > current_time + 1:
             continue
-
-        if wave["endt"] > time.time() + 1:
-            continue
-
-        buffer_time = 30  # 設定緩衝區保留時間
-        sample_rate = 100  # 設定取樣率
 
         # 得到最新的 wave 結束時間
-        wave_endt.value = wave["endt"]
+        wave_endt.value = wave_endt_val
 
         try:
-            wave = convert_to_tsmip_legacy_naming(wave)
-            wave_id = join_id_from_dict(wave, order="NSLC")
-            wave["data"] = wave["data"] * get_wave_constant(wave)
+            # 內聯 convert_to_tsmip_legacy_naming，避免函數調用
+            network = wave["network"]
+            if network == "TW":
+                network = "SM"
+                location = "01"
+            else:
+                location = wave["location"]
+
+            station = wave["station"]
+            channel = wave["channel"]
+
+            # 內聯 join_id_from_dict，避免字串操作開銷
+            wave_id = f"{network}.{station}.{location}.{channel}"
+
+            # 快速檢查是否為 Z 通道（提前判斷）
+            is_z_channel = "Z" in wave_id
+
+            # 使用緩存獲取 wave_constant
+            cache_key = (station, channel)
+            if cache_key not in wave_constant_cache:
+                try:
+                    wave_constant_cache[cache_key] = constant_dict[cache_key]
+                except:
+                    wave_constant_cache[cache_key] = 3.2e-6
+
+            # 直接在原數據上乘以常數，避免複製
+            wave_data = wave["data"] * wave_constant_cache[cache_key]
+            wave["data"] = wave_data
 
             # 將 wave_id 加入 wave_queue 給 wave_emitter 發送至前端
-            if "Z" in wave_id:
+            if is_z_channel:
                 wave_queue.put(wave)
 
-            # add new trace to buffer
-            if wave_id not in wave_buffer.keys():
-                # wave_buffer 初始化時全部填入 wave 的平均值，確保 demean 時不會被斷點影響
-                wave_buffer[wave_id] = wave_array_init(
-                    sample_rate, buffer_time, fill_value=np.array(wave["data"]).mean()
-                )
-            wave_buffer[wave_id] = slide_array(wave_buffer[wave_id], wave["data"])
+            # add new trace to buffer - 使用本地緩存
+            if wave_id not in wave_buffer_local:
+                # 檢查是否在共享 buffer 中
+                if wave_id not in wave_buffer.keys():
+                    # wave_buffer 初始化時全部填入 wave 的平均值
+                    init_array = wave_array_init(
+                        sample_rate, buffer_time, fill_value=wave_data.mean()
+                    )
+                    wave_buffer[wave_id] = init_array
+                    wave_buffer_local[wave_id] = init_array
+                else:
+                    wave_buffer_local[wave_id] = wave_buffer[wave_id]
+
+            # 更新 buffer
+            updated_array = slide_array(wave_buffer_local[wave_id], wave_data)
+            wave_buffer_local[wave_id] = updated_array
+            wave_buffer[wave_id] = updated_array
+
             wave_speed_count.value += 1
 
         except Exception as e:
