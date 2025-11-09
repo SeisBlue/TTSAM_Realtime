@@ -17,7 +17,7 @@ const INITIAL_VIEW_STATE = {
   bearing: 0
 }
 
-function TaiwanMapDeck({ stations, stationReplacements = {} }) {
+function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities = {} }) {
   const [allStations, setAllStations] = useState([])
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
   const [hoverInfo, setHoverInfo] = useState(null)
@@ -55,6 +55,10 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
     const data = stations.map(s => {
       const replacement = stationReplacements[s.station]
 
+      // 獲取震度數據（優先使用替換測站的數據）
+      const stationCodeForIntensity = replacement ? replacement.replacementStation : s.station
+      const intensityData = stationIntensities[stationCodeForIntensity]
+
       // 統一使用原始座標顯示測站
       const coordinates = [s.longitude, s.latitude]
 
@@ -65,7 +69,8 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
         replacementInfo: replacement,
         replacementCoordinates: replacement
           ? [replacement.coordinates.lon, replacement.coordinates.lat]
-          : null
+          : null,
+        intensityData: intensityData // 添加震度數據
       }
     })
 
@@ -82,22 +87,21 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
       lineWidthMinPixels: 2,
       getPosition: d => d.coordinates,
       getFillColor: d => {
-        // 根據狀態決定顏色（移除替換顏色邏輯）
-        switch (d.status) {
-          case 'online': return [34, 197, 94]  // #22c55e
-          case 'warning': return [245, 158, 11] // #f59e0b
-          case 'offline': return [239, 68, 68]  // #ef4444
-          default: return [148, 163, 184]       // #94a3b8
+        // 優先使用震度顏色，如果沒有震度數據則使用灰色
+        if (d.intensityData && d.intensityData.color) {
+          return d.intensityData.color
         }
+        // 默認灰色（未知/無數據）
+        return [148, 163, 184] // #94a3b8
       },
       getLineColor: [255, 255, 255],
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
-        getFillColor: [stations],
+        getFillColor: [stationIntensities, stationReplacements],
         getPosition: [stations]
       }
     })
-  }, [stations, stationReplacements])
+  }, [stations, stationReplacements, stationIntensities])
 
   // 次要測站圖層（TSMIP）
   const secondaryStationsLayer = useMemo(() => {
@@ -135,13 +139,17 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
       .filter(s => stationReplacements[s.station])
       .map(s => {
         const replacement = stationReplacements[s.station]
+        const replacementStationCode = replacement.replacementStation
+        const intensityData = stationIntensities[replacementStationCode]
+
         return {
           ...s,
-          station: replacement.replacementStation, // 顯示替換後的測站代碼
+          station: replacementStationCode, // 顯示替換後的測站代碼
           coordinates: [replacement.coordinates.lon, replacement.coordinates.lat],
           isReplacedStation: true,
           originalStation: s.station,
-          replacementInfo: replacement
+          replacementInfo: replacement,
+          intensityData: intensityData
         }
       })
 
@@ -162,14 +170,21 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
       radiusMaxPixels: 10,
       lineWidthMinPixels: 2,
       getPosition: d => d.coordinates,
-      getFillColor: [168, 85, 247], // #a855f7 紫色
+      getFillColor: d => {
+        // 使用震度顏色，如果沒有則使用紫色
+        if (d.intensityData && d.intensityData.color) {
+          return d.intensityData.color
+        }
+        return [168, 85, 247] // #a855f7 紫色（無數據時）
+      },
       getLineColor: [168, 85, 247, 200],
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
-        getData: [stationReplacements]
+        getData: [stationReplacements],
+        getFillColor: [stationIntensities]
       }
     })
-  }, [stations, stationReplacements])
+  }, [stations, stationReplacements, stationIntensities])
 
   const layers = [secondaryStationsLayer, primaryStationsLayer, replacementStationsLayer].filter(Boolean)
 
@@ -205,6 +220,21 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
                 <div className="tooltip-code" style={{ fontSize: '12px', opacity: 0.8 }}>
                   替換自: {hoverInfo.object.originalStation}
                 </div>
+
+                {/* 顯示震度信息 */}
+                {hoverInfo.object.intensityData && (
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    marginTop: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
+                  }}>
+                    震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
+                  </div>
+                )}
+
                 <div className="tooltip-coords">
                   {hoverInfo.object.coordinates[1].toFixed(3)}°N, {hoverInfo.object.coordinates[0].toFixed(3)}°E
                 </div>
@@ -219,6 +249,20 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
               <>
                 <div className="tooltip-name">{hoverInfo.object.station_zh || hoverInfo.object.station}</div>
                 <div className="tooltip-code">{hoverInfo.object.station}</div>
+
+                {/* 顯示震度信息 */}
+                {hoverInfo.object.intensityData && (
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    marginTop: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
+                  }}>
+                    震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
+                  </div>
+                )}
 
                 {/* 顯示替換信息（但測站本身在原位置） */}
                 {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
@@ -266,26 +310,50 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
 
         {isLegendExpanded && (
           <>
-            <div className="legend-title">主要測站</div>
+            <div className="legend-title">震度分級（30秒最大PGA）</div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#a855f7' }}></span>
-              <span>已替換 (顯示替換後位置)</span>
+              <span className="legend-dot" style={{ backgroundColor: '#ffffff', border: '1px solid #ccc' }}></span>
+              <span>0 級 (&lt;0.8 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#22c55e' }}></span>
-              <span>正常</span>
+              <span className="legend-dot" style={{ backgroundColor: '#33FFDD' }}></span>
+              <span>1 級 (0.8-2.5 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#f59e0b' }}></span>
-              <span>延遲</span>
+              <span className="legend-dot" style={{ backgroundColor: '#34ff32' }}></span>
+              <span>2 級 (2.5-8 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#ef4444' }}></span>
-              <span>掉線</span>
+              <span className="legend-dot" style={{ backgroundColor: '#fefd32' }}></span>
+              <span>3 級 (8-25 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#fe8532' }}></span>
+              <span>4 級 (25-80 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#fd5233' }}></span>
+              <span>5- 級 (80-140 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#c43f3b' }}></span>
+              <span>5+ 級 (140-250 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#9d4646' }}></span>
+              <span>6- 級 (250-440 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#9a4c86' }}></span>
+              <span>6+ 級 (440-800 gal)</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: '#b51fea' }}></span>
+              <span>7 級 (&gt;800 gal)</span>
             </div>
             <div className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
-              <span>未知</span>
+              <span>未知/無數據</span>
             </div>
 
             <div className="legend-divider"></div>
@@ -310,7 +378,8 @@ function TaiwanMapDeck({ stations, stationReplacements = {} }) {
 
 TaiwanMapDeck.propTypes = {
   stations: PropTypes.array.isRequired,
-  stationReplacements: PropTypes.object
+  stationReplacements: PropTypes.object,
+  stationIntensities: PropTypes.object
 }
 
 export default TaiwanMapDeck

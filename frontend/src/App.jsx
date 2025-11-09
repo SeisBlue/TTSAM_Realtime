@@ -27,6 +27,7 @@ function App() {
   const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
   const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
   const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
+  const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
 
   // 右側詳細頁面狀態
   const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
@@ -194,6 +195,7 @@ function App() {
             <TaiwanMap
               stations={targetStations}
               stationReplacements={stationReplacements}
+              stationIntensities={stationIntensities}
             />
           </section>
         </div>
@@ -205,6 +207,7 @@ function App() {
               wavePackets={wavePackets}
               socket={socket}
               onReplacementUpdate={setStationReplacements}
+              onStationIntensityUpdate={setStationIntensities}
             />
           ) : (
             <>

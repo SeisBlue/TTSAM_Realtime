@@ -32,6 +32,42 @@ function isTSMIPStation(stationCode) {
 }
 
 /**
+ * 將 PGA (gal) 轉換為震度
+ * 參考：中央氣象署震度分級
+ */
+function pgaToIntensity(pga) {
+  if (pga < 0.8) return "0"
+  if (pga < 2.5) return "1"
+  if (pga < 8.0) return "2"
+  if (pga < 25) return "3"
+  if (pga < 80) return "4"
+  if (pga < 140) return "5-"
+  if (pga < 250) return "5+"
+  if (pga < 440) return "6-"
+  if (pga < 800) return "6+"
+  return "7"
+}
+
+/**
+ * 取得震度對應的顏色
+ */
+function getIntensityColor(intensity) {
+  switch (intensity) {
+    case "0": return [255, 255, 255]     // #ffffff 白色
+    case "1": return [51, 255, 221]      // #33FFDD 青色
+    case "2": return [52, 255, 50]       // #34ff32 綠色
+    case "3": return [254, 253, 50]      // #fefd32 黃色
+    case "4": return [254, 133, 50]      // #fe8532 橙色
+    case "5-": return [253, 82, 51]      // #fd5233 紅色
+    case "5+": return [196, 63, 59]      // #c43f3b 深紅
+    case "6-": return [157, 70, 70]      // #9d4646 暗紅
+    case "6+": return [154, 76, 134]     // #9a4c86 紫紅
+    case "7": return [181, 31, 234]      // #b51fea 紫色
+    default: return [148, 163, 184]      // #94a3b8 灰色（未知）
+  }
+}
+
+/**
  * 從 SEED 格式提取測站代碼
  */
 function extractStationCode(seedName) {
@@ -494,12 +530,13 @@ GeographicWavePanel.propTypes = {
   renderTrigger: PropTypes.number
 }
 
-function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
+function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStationIntensityUpdate }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [useNearestTSMIP, setUseNearestTSMIP] = useState(false) // 是否啟用自動尋找最近 TSMIP 測站
   const [nearestStationCache, setNearestStationCache] = useState({}) // 緩存最近測站的映射
   const [renderTrigger, setRenderTrigger] = useState(0) // 添加渲染觸發器
+  const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
   const panelRef = useRef(null)
   const [dimensions, setDimensions] = useState({
     width: 1200,
@@ -739,9 +776,47 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
         })
       }
 
+      // 計算每個測站30秒內的最大PGA並轉換為震度
+      const intensityData = {}
+      Object.keys(updated).forEach(stationCode => {
+        const stationData = updated[stationCode]
+
+        // 計算30秒內所有波形的最大值（絕對值）
+        let maxPga30s = 0
+        const cutoff30s = Date.now() - 30 * 1000
+
+        stationData.dataPoints.forEach(point => {
+          if (point.timestamp >= cutoff30s && !point.isGap) {
+            point.values.forEach(value => {
+              maxPga30s = Math.max(maxPga30s, Math.abs(value))
+            })
+          }
+        })
+
+        // 轉換為震度
+        const intensity = pgaToIntensity(maxPga30s)
+        const color = getIntensityColor(intensity)
+
+        intensityData[stationCode] = {
+          pga: maxPga30s,
+          intensity: intensity,
+          color: color
+        }
+      })
+
+      // 更新測站震度數據
+      setStationIntensities(intensityData)
+
       return updated
     })
   }, [wavePackets])
+
+  // 通知父組件測站震度數據已更新
+  useEffect(() => {
+    if (onStationIntensityUpdate && Object.keys(stationIntensities).length > 0) {
+      onStationIntensityUpdate(stationIntensities)
+    }
+  }, [stationIntensities, onStationIntensityUpdate])
 
   // 響應式尺寸計算
   useEffect(() => {
@@ -867,7 +942,8 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
 RealtimeWaveformDeck.propTypes = {
   wavePackets: PropTypes.array.isRequired,
   socket: PropTypes.object,
-  onReplacementUpdate: PropTypes.func
+  onReplacementUpdate: PropTypes.func,
+  onStationIntensityUpdate: PropTypes.func
 }
 
 export default RealtimeWaveformDeck
