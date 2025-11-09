@@ -4,7 +4,7 @@ import './App.css'
 import EventDetail from './components/EventDetail'
 import WaveDetail from './components/WaveDetail'
 import TaiwanMap from './components/TaiwanMapDeck'
-import RealtimeWaveform from './components/RealtimeWaveform'
+import RealtimeWaveform from './components/RealtimeWaveformDeck'
 
 /**
  * 從 SEED 格式提取測站代碼
