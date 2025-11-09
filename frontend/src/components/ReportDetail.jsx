@@ -131,7 +131,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
           <button className="back-button" onClick={onBack}>
             ← 回上頁
           </button>
-          <h2>📊 預測報告詳細資訊</h2>
+          <h2>📊 歷史報告詳細資訊</h2>
           <span className="detail-timestamp">{currentReport.timestamp}</span>
           {selectedHistoricalReport && (
             <span className="historical-indicator">📚 歷史報告</span>

@@ -208,7 +208,7 @@ function App() {
         <div className="left-panel">
           {/* 預測報告列表 */}
           <section className="section events-section">
-            <h2>📊 預測報告 ({reports.length})</h2>
+            <h2>📊 歷史報告 ({reports.length})</h2>
             <div className="event-list">
               {reports.length === 0 ? (
                 <p className="empty-message">等待預測報告資料...</p>
