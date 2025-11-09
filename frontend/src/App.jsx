@@ -157,10 +157,10 @@ function App() {
         <div className="left-panel">
           {/* 地震事件列表 */}
           <section className="section events-section">
-            <h2>📍 地震事件 ({events.length})</h2>
+            <h2>📍 觸發事件 ({events.length})</h2>
             <div className="event-list">
               {events.length === 0 ? (
-                <p className="empty-message">等待地震事件資料...</p>
+                <p className="empty-message">等待觸發事件資料...</p>
               ) : (
                 events.map(event => (
                   <div

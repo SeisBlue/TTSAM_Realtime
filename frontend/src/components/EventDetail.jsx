@@ -8,7 +8,7 @@ export default function EventDetail({ event, onBack }) {
     <div className="detail-container">
       <div className="detail-header">
         <div className="detail-header-left">
-          <h2>📍 地震事件詳細資訊</h2>
+          <h2>📍 觸發事件詳細資訊</h2>
           <span className="detail-timestamp">{event.timestamp}</span>
         </div>
         <button className="back-button" onClick={onBack}>

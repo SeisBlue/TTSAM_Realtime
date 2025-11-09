@@ -1068,10 +1068,14 @@ PyTorch Model
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
-    logger.info("Cuda detected, torch using gpu")
+    logger.info("使用 GPU")
+elif torch.mps.is_available():
+    device = torch.device("mps")
+    logger.info("使用 Apple MPS")
 else:
     device = torch.device("cpu")
-    logger.info("Cuda not detected, torch using cpu")
+    logger.info("使用 CPU")
+
 
 
 class LambdaLayer(nn.Module):
