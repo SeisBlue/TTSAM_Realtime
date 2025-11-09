@@ -231,50 +231,70 @@ def connect_earthworm():
 
 
 def wave_emitter():
+    """批量收集並發送波形數據，避免逐個發送造成波形缺失"""
+    batch_interval = 1.0  # 每 1 秒批量發送一次
+    last_send_time = time.time()
+
     while True:
         try:
-            wave = wave_queue.get()
-            wave_id = join_id_from_dict(wave, order="NSLC")
+            wave_batch = {}  # 存儲本批次的波形數據
+            current_time = time.time()
 
-            if "Z" not in wave_id:
-                continue
+            # 收集一定時間內的所有波形數據
+            while current_time - last_send_time < batch_interval:
+                try:
+                    # 使用 timeout 避免阻塞
+                    wave = wave_queue.get(timeout=0.1)
+                    wave_id = join_id_from_dict(wave, order="NSLC")
 
-            wave["waveid"] = wave_id
+                    if "Z" not in wave_id:
+                        continue
 
-            # 計算 PGA (Peak Ground Acceleration)
-            waveform_data = wave["data"]
+                    # 計算 PGA (Peak Ground Acceleration)
+                    waveform_data = wave["data"]
 
-            # 確保 waveform_data 是可序列化的格式
-            if isinstance(waveform_data, np.ndarray):
-                waveform_list = waveform_data.tolist()
-                pga = float(np.max(np.abs(waveform_data)))
-            elif isinstance(waveform_data, list):
-                waveform_list = waveform_data
-                pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
-            else:
-                logger.warning(f"Unknown waveform data type: {type(waveform_data)}")
-                continue
+                    # 確保 waveform_data 是可序列化的格式
+                    if isinstance(waveform_data, np.ndarray):
+                        waveform_list = waveform_data.tolist()
+                        pga = float(np.max(np.abs(waveform_data)))
+                    elif isinstance(waveform_data, list):
+                        waveform_list = waveform_data
+                        pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
+                    else:
+                        logger.warning(f"Unknown waveform data type: {type(waveform_data)}")
+                        continue
 
-            # 生成時間戳
-            timestamp = int(time.time() * 1000)  # 毫秒時間戳
-
-            # 使用與前端一致的 SEED 格式：data 是一個 dict，key 是 SEED station name
-            wave_packet = {
-                "waveid": f"{wave_id}_{timestamp}",
-                "timestamp": timestamp,
-                "data": {
-                    wave_id: {
+                    # 添加到批次中
+                    wave_batch[wave_id] = {
                         "waveform": waveform_list,
                         "pga": pga,
                         "status": "active"
                     }
-                }
-            }
 
-            socketio.emit("wave_packet", wave_packet)
+                except:
+                    # Queue 為空或超時，繼續等待
+                    pass
+
+                current_time = time.time()
+
+            # 如果有數據，批量發送
+            if wave_batch:
+                timestamp = int(time.time() * 1000)  # 毫秒時間戳
+
+                wave_packet = {
+                    "waveid": f"batch_{timestamp}",
+                    "timestamp": timestamp,
+                    "data": wave_batch
+                }
+
+                socketio.emit("wave_packet", wave_packet)
+                logger.debug(f"📦 Batch sent: {len(wave_batch)} stations at {timestamp}")
+
+            last_send_time = current_time
 
         except Exception as e:
             logger.error(f"Error in wave_emitter: {e}")
+            time.sleep(0.1)
             continue
 
 
