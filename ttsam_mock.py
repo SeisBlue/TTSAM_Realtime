@@ -127,7 +127,7 @@ def get_stations():
 
 @app.route("/api/all-stations")
 def get_all_stations():
-    """API: 取得所有測站列表（包含次要測站，用於地圖顯示）"""
+    """API: 取得所有測站列表（用於測站替換功能的經緯度查找）"""
     try:
         return json.dumps(all_stations_dict, ensure_ascii=False), 200, {'Content-Type': 'application/json; charset=utf-8'}
     except Exception as e:

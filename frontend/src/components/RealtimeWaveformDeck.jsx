@@ -32,6 +32,58 @@ function isTSMIPStation(stationCode) {
 }
 
 /**
+ * 將 PGA (gal) 轉換為台灣震度級數
+ * 此函式為後端 Python `calculate_intensity` 邏輯的直接 JavaScript 轉譯，
+ * 以確保前後端計算標準完全一致。
+ * @param {number} pga - PGA 值，單位為 gal (m/s²)。
+ */
+function pgaToIntensity(pga) {
+  if (pga <= 0) {
+    return "0";
+  }
+
+  // 後端使用的 pga_level 陣列 (單位: m/s^2)
+  const pga_level = [1e-5, 0.008, 0.025, 0.080, 0.250, 0.80, 1.4, 2.5, 4.4, 8.0];
+  const intensity_label = ["0", "1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"];
+
+  // 後端使用 log10 進行比較，前端在此完全複製此行為
+  const log_pga = Math.log10(pga);
+
+  // 模擬 Python 的 bisect.bisect
+  let intensity_index = 0;
+  for (let i = 0; i < pga_level.length; i++) {
+    // 直接比較 log 值
+    if (log_pga >= Math.log10(pga_level[i])) {
+      intensity_index = i;
+    } else {
+      break;
+    }
+  }
+
+  return intensity_label[intensity_index];
+}
+
+
+/**
+ * 取得震度對應的顏色
+ */
+function getIntensityColor(intensity) {
+  switch (intensity) {
+    case "0": return [255, 255, 255]     // #ffffff 白色
+    case "1": return [51, 255, 221]      // #33FFDD 青色
+    case "2": return [52, 255, 50]       // #34ff32 綠色
+    case "3": return [254, 253, 50]      // #fefd32 黃色
+    case "4": return [254, 133, 50]      // #fe8532 橙色
+    case "5-": return [253, 82, 51]      // #fd5233 紅色
+    case "5+": return [196, 63, 59]      // #c43f3b 深紅
+    case "6-": return [157, 70, 70]      // #9d4646 暗紅
+    case "6+": return [154, 76, 134]     // #9a4c86 紫紅
+    case "7": return [181, 31, 234]      // #b51fea 紫色
+    default: return [148, 163, 184]      // #94a3b8 灰色（未知）
+  }
+}
+
+/**
  * 從 SEED 格式提取測站代碼
  */
 function extractStationCode(seedName) {
@@ -494,12 +546,13 @@ GeographicWavePanel.propTypes = {
   renderTrigger: PropTypes.number
 }
 
-function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
+function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStationIntensityUpdate }) {
   const [stationMap, setStationMap] = useState({})
   const [waveDataMap, setWaveDataMap] = useState({})
   const [useNearestTSMIP, setUseNearestTSMIP] = useState(false) // 是否啟用自動尋找最近 TSMIP 測站
   const [nearestStationCache, setNearestStationCache] = useState({}) // 緩存最近測站的映射
   const [renderTrigger, setRenderTrigger] = useState(0) // 添加渲染觸發器
+  const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
   const panelRef = useRef(null)
   const [dimensions, setDimensions] = useState({
     width: 1200,
@@ -637,55 +690,51 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
 
     setWaveDataMap(prev => {
       const updated = { ...prev }
+      const now = Date.now()
 
       if (latestPacket.data) {
         Object.keys(latestPacket.data).forEach(seedStation => {
           const stationCode = extractStationCode(seedStation)
+          const wavePacketData = latestPacket.data[seedStation]
+          const pga = wavePacketData?.pga || 0
+          const startt = wavePacketData?.startt
+          const endt = wavePacketData?.endt
+          const samprate = wavePacketData?.samprate || 100
+          const waveform = wavePacketData?.waveform || []
 
+          // 初始化測站數據結構
           if (!updated[stationCode]) {
             updated[stationCode] = {
               dataPoints: [],
+              pgaHistory: [], // 新增：用於追蹤最近30秒的PGA值
               lastPga: 0,
-              lastEndTime: null  // 追蹤上一個封包的結束時間
+              lastEndTime: null
             }
           }
-
           const stationData = updated[stationCode]
-          const wavePacketData = latestPacket.data[seedStation]
-          const waveform = wavePacketData?.waveform || []
-          const pga = wavePacketData?.pga || 0
-          const startt = wavePacketData?.startt  // Earthworm 波形起始時間（秒）
-          const endt = wavePacketData?.endt      // Earthworm 波形結束時間（秒）
-          const samprate = wavePacketData?.samprate || 100
 
-          // 使用 Earthworm 的實際時間戳，如果沒有則退回到系統時間
-          const packetStartTime = startt ? startt * 1000 : Date.now()  // 轉換為毫秒
-          const packetEndTime = endt ? endt * 1000 : Date.now()
+          // --- 波形數據處理 (用於繪圖) ---
+          const packetStartTime = startt ? startt * 1000 : now
+          const packetEndTime = endt ? endt * 1000 : now
 
-          // 檢測時間斷點（gap）
           let hasGap = false
           if (stationData.lastEndTime !== null && startt) {
             const timeDiff = Math.abs(startt - stationData.lastEndTime)
-            const expectedInterval = 1.0 / samprate  // 預期的時間間隔
-
-            // 如果時間差超過 2 個採樣間隔，視為斷點
+            const expectedInterval = 1.0 / samprate
             if (timeDiff > expectedInterval * 2) {
               hasGap = true
-              console.warn(`⚠️ Time gap detected for ${stationCode}: ${timeDiff.toFixed(3)}s (expected ~${expectedInterval.toFixed(3)}s)`)
             }
           }
 
-          // 如果有斷點，插入一個空數據點來標記斷點
           if (hasGap && stationData.dataPoints.length > 0) {
             stationData.dataPoints.push({
-              timestamp: stationData.lastEndTime * 1000,  // 使用上一個封包的結束時間
+              timestamp: stationData.lastEndTime * 1000,
               endTimestamp: packetStartTime,
-              values: [],  // 空數組表示這是一個斷點
+              values: [],
               isGap: true
             })
           }
 
-          // 添加新的波形數據點
           stationData.dataPoints.push({
             timestamp: packetStartTime,
             endTimestamp: packetEndTime,
@@ -694,30 +743,33 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
             isGap: false
           })
 
-          // 更新最後的結束時間
           if (endt) {
             stationData.lastEndTime = endt
           }
 
-          // 清理超過時間窗口的數據
-          const cutoffTime = Date.now() - TIME_WINDOW * 1000
+          // --- PGA數據處理 (用於計算震度) ---
+          // 將當前封包的PGA值和時間戳加入歷史記錄
+          stationData.pgaHistory.push({ timestamp: now, pga: pga })
+
+          // 清理超過30秒的舊數據
+          const cutoffTime = now - TIME_WINDOW * 1000
           stationData.dataPoints = stationData.dataPoints.filter(
             point => point.timestamp >= cutoffTime
           )
+          stationData.pgaHistory = stationData.pgaHistory.filter(
+            item => item.timestamp >= cutoffTime
+          )
 
+          // 更新用於標籤顯示的 lastPga
           stationData.lastPga = pga
 
-          // 動態縮放（只計算非斷點的數據）
-          const recentCutoff = Date.now() - 10 * 1000
+          // --- 動態縮放計算 ---
+          const recentCutoff = now - 10 * 1000
           const recentPoints = stationData.dataPoints.filter(
             point => point.timestamp >= recentCutoff && !point.isGap
           )
-
           if (recentPoints.length > 0) {
-            let sumSquares = 0
-            let maxAbs = 0
-            let count = 0
-
+            let sumSquares = 0, maxAbs = 0, count = 0
             recentPoints.forEach(point => {
               point.values.forEach(value => {
                 sumSquares += value * value
@@ -725,23 +777,44 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
                 count++
               })
             })
-
             const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
-            // 減小 displayScale 使波形振幅更大：rms*8 -> rms*4, maxAbs*0.6 -> maxAbs*0.3
             stationData.displayScale = Math.max(rms * 4, maxAbs * 0.3, 0.05)
-            stationData.rms = rms
-            stationData.maxAbs = maxAbs
           } else {
             stationData.displayScale = 1.0
-            stationData.rms = 0
-            stationData.maxAbs = 0
           }
         })
       }
 
+      // --- 震度計算 ---
+      const intensityData = {}
+      Object.keys(updated).forEach(stationCode => {
+        const stationData = updated[stationCode]
+
+        // 從 pgaHistory 中找到最近30秒的最大PGA
+        const maxPga30s = stationData.pgaHistory.reduce((max, item) => Math.max(max, item.pga), 0)
+
+        const intensity = pgaToIntensity(maxPga30s)
+        const color = getIntensityColor(intensity)
+
+        intensityData[stationCode] = {
+          pga: maxPga30s,
+          intensity: intensity,
+          color: color
+        }
+      })
+
+      setStationIntensities(intensityData)
       return updated
     })
   }, [wavePackets])
+
+
+  // 通知父組件測站震度數據已更新
+  useEffect(() => {
+    if (onStationIntensityUpdate && Object.keys(stationIntensities).length > 0) {
+      onStationIntensityUpdate(stationIntensities)
+    }
+  }, [stationIntensities, onStationIntensityUpdate])
 
   // 響應式尺寸計算
   useEffect(() => {
@@ -848,7 +921,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
       </div>
       <div ref={panelRef} className="waveform-panel-container" style={{ flex: 1, overflow: 'hidden' }}>
         <GeographicWavePanel
-          title={`全台測站 ${useNearestTSMIP ? '(智能替換)' : ''}`}
+          title={`全台 PWS 參考點 ${useNearestTSMIP ? '(TSMIP 替換)' : ''}`}
           stations={displayStations}
           stationMap={stationMap}
           waveDataMap={waveDataMap}
@@ -867,7 +940,8 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate }) {
 RealtimeWaveformDeck.propTypes = {
   wavePackets: PropTypes.array.isRequired,
   socket: PropTypes.object,
-  onReplacementUpdate: PropTypes.func
+  onReplacementUpdate: PropTypes.func,
+  onStationIntensityUpdate: PropTypes.func
 }
 
 export default RealtimeWaveformDeck
