@@ -1,3 +1,4 @@
+docker rm -f ttsam-rocm
 docker run \
 -v $(pwd):/workspace \
 -v /mnt/workspace/earthworm/params:/opt/Earthworm/run/params:ro \
