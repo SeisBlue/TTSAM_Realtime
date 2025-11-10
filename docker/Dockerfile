@@ -8,11 +8,6 @@ RUN apt-get update && apt-get upgrade -y; \
     apt-get install -y \
     curl git htop sudo vim wget build-essential
 
-# Install conda package
-COPY docker/conda_requirements.txt /tmp/
-RUN conda update -y conda; \
-    conda install --yes --channel conda-forge --file /tmp/conda_requirements.txt;
-
 # Install python package
 COPY docker/requirements.txt /tmp/
 RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
