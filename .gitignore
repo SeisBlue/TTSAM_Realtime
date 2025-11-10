@@ -4,11 +4,10 @@
 
 !*/.gitkeep
 #waveform and catalog
-data/*
-!data/*/.gitkeep
+misc/*
+!misc/*/.gitkeep
 !data/*.py
 
-*.csv
 *.pt
 *.json
 

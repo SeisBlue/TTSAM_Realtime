@@ -424,7 +424,7 @@ Earthworm Wave Listener
 """
 
 # Load site info
-site_info_file = "data/site_info.csv"
+site_info_file = "misc/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info = pd.read_csv(site_info_file)
@@ -674,7 +674,7 @@ def earthworm_pick_listener():
 Model Inference
 """
 # Load Vs30 grid
-vs30_file = "data/Vs30ofTaiwan.nc"
+vs30_file = "misc/Vs30ofTaiwan.nc"
 try:
     logger.info(f"Loading {vs30_file}...")
     ds = xr.open_dataset(vs30_file)
@@ -703,7 +703,7 @@ except FileNotFoundError:
     logger.error(f"{vs30_file} not found")
 
 # Load target station
-target_file = "data/eew_target.csv"
+target_file = "misc/eew_target.csv"
 try:
     logger.info(f"Loading {target_file}...")
     target_df = pd.read_csv(target_file)
@@ -715,7 +715,7 @@ except FileNotFoundError:
 
 # Load all stations from site_info.csv (for secondary stations display)
 all_stations_dict = []
-site_info_file = "data/site_info.csv"
+site_info_file = "misc/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info_df = pd.read_csv(site_info_file)

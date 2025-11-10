@@ -23,7 +23,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ========== Load Target Stations ==========
-target_file = "data/eew_target.csv"
+target_file = "misc/eew_target.csv"
 try:
     logger.info(f"Loading {target_file}...")
     target_df = pd.read_csv(target_file)
@@ -39,7 +39,7 @@ except FileNotFoundError:
 
 # ========== Load All Stations from site_info.csv ==========
 all_stations_dict = []
-site_info_file = "data/site_info.csv"
+site_info_file = "misc/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info_df = pd.read_csv(site_info_file)
