@@ -4,6 +4,7 @@ discord-webhook
 fastapi
 flask-cors
 flask-socketio
+huggingface_hub
 loguru
 matplotlib
 netCDF4
