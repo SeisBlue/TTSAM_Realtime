@@ -6,7 +6,6 @@ on:
       - '.github/workflows/docker_image_TTSAM.yml'
       - 'docker/Dockerfile'
       - 'docker/requirements.txt'
-      - 'docker/conda_requirements.txt'
 
 env:
   DOCKER_REPO: seisblue/ttsam-realtime

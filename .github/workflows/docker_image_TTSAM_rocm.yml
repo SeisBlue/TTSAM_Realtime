@@ -1,4 +1,4 @@
-name: Docker Image TTSAM Realtime
+name: Docker Image TTSAM Realtime rocm
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - 'docker/requirements.txt'
 
 env:
-  DOCKER_REPO: seisblue/ttsam-realtime
+  DOCKER_REPO: seisblue/ttsam-rocm
 
 jobs:
   Build_Docker_Image:
