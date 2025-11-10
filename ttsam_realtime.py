@@ -712,7 +712,7 @@ except FileNotFoundError:
     logger.error(f"{vs30_file} not found")
 
 # Load target station
-target_file = "misc/eew_target.csv"
+target_file = "station/eew_target.csv"
 try:
     logger.info(f"Loading {target_file}...")
     target_df = pd.read_csv(target_file)
@@ -724,7 +724,7 @@ except FileNotFoundError:
 
 # Load all stations from site_info.csv (for secondary stations display)
 all_stations_dict = []
-site_info_file = "misc/site_info.csv"
+site_info_file = "station/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info_df = pd.read_csv(site_info_file)
