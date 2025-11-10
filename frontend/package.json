@@ -12,6 +12,7 @@
   "dependencies": {
     "@deck.gl/layers": "^9.2.2",
     "@deck.gl/react": "^9.2.2",
+    "@deck.gl/core": "^9.2.2",
     "deck.gl": "^9.2.2",
     "leaflet": "^1.9.4",
     "mapbox-gl": "^3.16.0",

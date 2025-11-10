@@ -10,6 +10,7 @@ misc/*
 
 *.pt
 *.json
+!package.json
 
 !/paper_image/.gitkeep
 /paper_image
