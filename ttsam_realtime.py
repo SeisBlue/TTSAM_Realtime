@@ -425,7 +425,7 @@ Earthworm Wave Listener
 """
 
 # Load site info
-site_info_file = "misc/site_info.csv"
+site_info_file = "station/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info = pd.read_csv(site_info_file)
