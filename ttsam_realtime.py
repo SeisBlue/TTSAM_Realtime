@@ -138,7 +138,7 @@ def get_all_stations():
 def get_reports():
     """API: 取得歷史預測報告列表（JSON格式）"""
     try:
-        report_log_dir = "logs/report"
+        report_log_dir = "/workspace/logs/report"
         files = []
         if os.path.exists(report_log_dir):
             for f in os.listdir(report_log_dir):
@@ -425,7 +425,7 @@ Earthworm Wave Listener
 """
 
 # Load site info
-site_info_file = "station/site_info.csv"
+site_info_file = "/workspace/station/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info = pd.read_csv(site_info_file)
@@ -676,18 +676,20 @@ Model Inference
 """
 # Load Vs30 grid
 try:
+    vs30_file = "/workspace/station/Vs30ofTaiwan.nc"
+    ds = xr.open_dataset(vs30_file)
+    logger.info("Using local Vs30 file path")
+except FileNotFoundError:
     vs30_file = hf_hub_download(
-        repo_id="SeisBlue/TaiwanVs30", filename="Vs30ofTaiwan.nc",
+        repo_id="SeisBlue/TaiwanVs30",
+        filename="Vs30ofTaiwan.nc",
+        local_dir="/workspace/station",
         repo_type="dataset"
     )
-except Exception as e:
-    vs30_file = "misc/Vs30ofTaiwan.nc"
-    logger.info("Using local Vs30 file path")
+    ds = xr.open_dataset(vs30_file)
+    logger.info("Using huggingface Vs30 file path")
 
 try:
-    logger.info(f"Loading {vs30_file}...")
-    ds = xr.open_dataset(vs30_file)
-
     # 將 2D 座標展平成 1D 陣列供 KDTree 使用
     lat_flat = ds['lat'].values.flatten()
     lon_flat = ds['lon'].values.flatten()
@@ -712,7 +714,7 @@ except FileNotFoundError:
     logger.error(f"{vs30_file} not found")
 
 # Load target station
-target_file = "station/eew_target.csv"
+target_file = "/workspace/station/eew_target.csv"
 try:
     logger.info(f"Loading {target_file}...")
     target_df = pd.read_csv(target_file)
@@ -724,7 +726,7 @@ except FileNotFoundError:
 
 # Load all stations from site_info.csv (for secondary stations display)
 all_stations_dict = []
-site_info_file = "station/site_info.csv"
+site_info_file = "/workspace/station/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info_df = pd.read_csv(site_info_file)
@@ -920,15 +922,21 @@ def get_target_dataset(dataset):
 
 def ttsam_model_predict(tensor):
     try:
-        model_path = hf_hub_download(
-            repo_id="SeisBlue/TTSAM", filename="ttsam_trained_model_11.pt"
-        )
-    except Exception as e:
-        model_path = f"model/ttsam_trained_model_11.pt"
+        model_path = f"/workspace/ttsam_trained_model_11.pt"
+        full_model = get_full_model(model_path)
         logger.info("Using local model path")
+    except FileNotFoundError:
+        model_path = hf_hub_download(
+            repo_id="SeisBlue/TTSAM",
+            filename="ttsam_trained_model_11.pt",
+            local_dir="/workspace",
+            repo_type="model"
+        )
+        full_model = get_full_model(model_path)
+        logger.info("Using huggingface model path")
+
 
     try:
-        full_model = get_full_model(model_path)
         weight, sigma, mu = full_model(tensor)
         pga_list = get_average_pga(weight, sigma, mu)
 
