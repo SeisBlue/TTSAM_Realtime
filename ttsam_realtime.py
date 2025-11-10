@@ -1317,9 +1317,12 @@ if __name__ == "__main__":
 
     # get config
     config_file = "ttsam_config.json"
-    logger.info(f"Loading {config_file}...")
-    config = json.load(open(config_file, "r"))
-    logger.info(f"{config_file} loaded")
+    try:
+        config = json.load(open(config_file, "r"))
+        logger.info(f"{config_file} loaded")
+    except FileNotFoundError:
+        config = {}
+        logger.warning(f"{config_file} not found, using default config")
 
     # 配置日誌設置
     logger.remove()
