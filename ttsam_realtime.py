@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import bisect
 import json
 import multiprocessing
@@ -14,15 +13,15 @@ import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
 import torch
-import torch.nn as nn
+import xarray as xr
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO
 from flask_cors import CORS
+from flask_socketio import SocketIO
+from huggingface_hub import hf_hub_download
 from loguru import logger
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
-import xarray as xr
 
 from ttsam_model import get_full_model
 
@@ -206,7 +205,7 @@ def find_nearest_station():
         # 計算距離並排序
         def haversine_distance(lat1, lon1, lat2, lon2):
             """計算兩點間的距離（公里）"""
-            from math import radians, cos, sin, asin, sqrt
+            from math import asin, cos, radians, sin, sqrt
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
             dlon = lon2 - lon1
             dlat = lat2 - lat1
@@ -676,7 +675,15 @@ def earthworm_pick_listener():
 Model Inference
 """
 # Load Vs30 grid
-vs30_file = "misc/Vs30ofTaiwan.nc"
+try:
+    vs30_file = hf_hub_download(
+        repo_id="SeisBlue/TaiwanVs30", filename="Vs30ofTaiwan.nc",
+        repo_type="dataset"
+    )
+except Exception as e:
+    vs30_file = "misc/Vs30ofTaiwan.nc"
+    logger.info("Using local Vs30 file path")
+
 try:
     logger.info(f"Loading {vs30_file}...")
     ds = xr.open_dataset(vs30_file)
@@ -912,7 +919,14 @@ def get_target_dataset(dataset):
 
 
 def ttsam_model_predict(tensor):
-    model_path = f"model/ttsam_trained_model_11.pt"
+    try:
+        model_path = hf_hub_download(
+            repo_id="SeisBlue/TTSAM", filename="ttsam_trained_model_11.pt"
+        )
+    except Exception as e:
+        model_path = f"model/ttsam_trained_model_11.pt"
+        logger.info("Using local model path")
+
     try:
         full_model = get_full_model(model_path)
         weight, sigma, mu = full_model(tensor)
