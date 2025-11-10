@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/docker_image_TTSAM_rocm.yml'
-      - 'docker/Dockerfile'
+      - 'docker/Dockerfile.rocm'
       - 'docker/requirements.txt'
 
 env:
@@ -42,5 +42,5 @@ jobs:
       with:
         context:
         push: ${{ github.event_name != 'pull_request' }}
-        file: docker/Dockerfile
+        file: docker/Dockerfile.rocm
         tags: ${{ steps.meta.outputs.tags }}, ${{ env.DOCKER_REPO }}:${{ github.sha }}
