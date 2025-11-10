@@ -1365,16 +1365,15 @@ if __name__ == "__main__":
 
     logger.info(f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
 
-    # 初始化 MQTT
-    username = config["mqtt"]["username"]
-    password = config["mqtt"]["password"]
-    host = config["mqtt"]["host"]
-    port = config["mqtt"]["port"]
-    topic = config["mqtt"]["topic"]
-
-    mqtt_client = mqtt.Client()
-    mqtt_client.username_pw_set(username, password)
     if args.mqtt:
+        username = config["mqtt"]["username"]
+        password = config["mqtt"]["password"]
+        host = config["mqtt"]["host"]
+        port = config["mqtt"]["port"]
+        topic = config["mqtt"]["topic"]
+
+        mqtt_client = mqtt.Client()
+        mqtt_client.username_pw_set(username, password)
         mqtt_client.connect(host=host, port=port)
 
     processes = []
