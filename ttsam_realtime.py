@@ -55,7 +55,6 @@ discord_queue = manager.Queue()
 wave_endt = manager.Value("d", 0)
 wave_speed_count = manager.Value("i", 0)
 
-
 # 訂閱管理：追蹤每個客戶端訂閱的測站
 subscribed_stations = {}  # {session_id: set(station_codes)}
 
@@ -153,7 +152,8 @@ def get_reports():
                     files.append({
                         "filename": f,
                         "timestamp": mtime,
-                        "datetime": datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                        "datetime": datetime.fromtimestamp(mtime).strftime(
+                            '%Y-%m-%d %H:%M:%S')
                     })
 
         # 按時間倒序排列
@@ -208,7 +208,7 @@ def find_nearest_station():
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
             dlon = lon2 - lon1
             dlat = lat2 - lat1
-            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+            a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
             c = 2 * asin(sqrt(a))
             km = 6371 * c
             return km
@@ -365,7 +365,8 @@ def wave_emitter():
                         "data": filtered_batch
                     }
                     socketio.emit("wave_packet", wave_packet)
-                    logger.debug(f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations")
+                    logger.debug(
+                        f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations")
 
             last_send_time = current_time
 
@@ -411,7 +412,6 @@ def web_server():
     threading.Thread(target=event_emitter, daemon=True).start()
     threading.Thread(target=dataset_emitter, daemon=True).start()
     threading.Thread(target=report_emitter, daemon=True).start()
-
 
     if args.web:
         # 開啟 web server
@@ -495,13 +495,16 @@ def earthworm_wave_listener():
     wave_constant_cache = {}
     wave_buffer_local = {}  # 本地緩存，減少 Manager.dict 訪問
 
+    wave_rings = [buf_ring for buf_ring, name in enumerate(ring_order) if "WAVE" in name]
+
     while True:
         if not earthworm.mod_sta():
             continue
 
-        wave = earthworm.get_wave(0)
-        if not wave:
-            continue
+        for wave_ring in wave_rings:
+            wave = earthworm.get_wave(wave_ring)
+            if not wave:
+                continue
 
         # 快速時間檢查（最早過濾）
         wave_endt_val = wave["endt"]
@@ -625,7 +628,8 @@ def earthworm_pick_listener():
             logger.error(f"delete pick error: {pick_id}", e)
 
         # 取得 pick msg
-        pick_msg = earthworm.get_msg(buf_ring=1, msg_type=0)
+        buf_ring = ring_order.index("PICK_RING")
+        pick_msg = earthworm.get_msg(buf_ring=buf_ring, msg_type=0)
         if not pick_msg:
             time.sleep(0.00001)
             continue
@@ -720,7 +724,7 @@ try:
     active_stations = site_info_df[
         (site_info_df['Channel'] == 'HLZ') &
         (site_info_df['End_time'] == '2599-12-31')
-    ].copy()
+        ].copy()
 
     # 去重（同一測站可能有多條記錄）
     active_stations = active_stations.drop_duplicates(subset=['Station'])
@@ -730,10 +734,12 @@ try:
         columns={'Station': 'station', 'Latitude': 'latitude', 'Longitude': 'longitude'}
     ).to_dict(orient="records")
 
-    logger.info(f"Loaded {len(all_stations_dict)} active stations from {site_info_file}")
+    logger.info(
+        f"Loaded {len(all_stations_dict)} active stations from {site_info_file}")
 
 except FileNotFoundError:
-    logger.warning(f"{site_info_file} not found, secondary stations will not be available")
+    logger.warning(
+        f"{site_info_file} not found, secondary stations will not be available")
 except Exception as e:
     logger.error(f"Error loading {site_info_file}: {e}")
 
@@ -1118,7 +1124,6 @@ elif torch.mps.is_available():
 else:
     device = torch.device("cpu")
     logger.info("使用 CPU")
-
 
 
 class LambdaLayer(nn.Module):
@@ -1679,9 +1684,7 @@ if __name__ == "__main__":
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
     parser.add_argument("--port", type=int, default=5001, help="web server port")
-    parser.add_argument(
-        "--test-env", action="store_true", help="test environment, inst_id = 255"
-    )
+    parser.add_argument("--env", type=str, default="cwa", choices=["cwa", "test"], help="set environment")
     parser.add_argument(
         "--verbose-level",
         type=str,
@@ -1713,16 +1716,35 @@ if __name__ == "__main__":
         backtrace=True,
     )
 
-    inst_id = 52  # CWA
-    if args.test_env:
-        logger.info("test env, inst_id = 255")
-        inst_id = 255  # local
 
+    earthworm_param = {
+        "test": {
+            "inst_id": 255,
+            "wave": {"WAVE_RING_CWASN": 1000, "WAVE_RING_CWASN": 1030},
+            "pick": {"PICK_RING": 1005},
+            "eew": {"EEW_RING": 1035},
+        },
+        "cwa": {
+            "inst_id": 52,
+            "wave": {"WAVE_RING_TSMIP": 1034},
+            "pick": {"PICK_RING": 1005},
+            "eew": {}
+        }
+    }
+    ring_order = []  # 新增：追蹤 ring 添加順序
     earthworm = PyEW.EWModule(
-        def_ring=1034, mod_id=2, inst_id=inst_id, hb_time=30, db=False
+        def_ring=1000, mod_id=2, inst_id=earthworm_param[args.env]["inst_id"], hb_time=30,
+        db=False
     )
-    earthworm.add_ring(1034)  # buf_ring 0: Wave ring
-    earthworm.add_ring(1005)  # buf_ring 1: Pick ring
+
+    # 添加 wave rings（根據 env 動態添加）
+    for ring_type in ["wave", "pick", "eew"]:
+        for ring_name, ring_id in earthworm_param[args.env][ring_type].items():
+            earthworm.add_ring(ring_id)
+            ring_order.append(ring_name)
+            logger.info(f"Added ring{len(ring_order)-1}: {ring_name} with ID {ring_id}")
+
+    logger.info(f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
 
     # 初始化 MQTT
     username = config["mqtt"]["username"]
