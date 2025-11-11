@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import DeckGL from '@deck.gl/react'
 import { OrthographicView } from '@deck.gl/core'
 import { PathLayer, TextLayer } from '@deck.gl/layers'
-import './RealtimeWaveform.css'
+import './RealtimeWaveformDeck.css'
 
 // 所有測站列表 - 按緯度排列顯示
 const ALL_STATIONS = [
@@ -99,7 +99,7 @@ function extractStationCode(seedName) {
  * DeckGL 波形面板組件 - 使用 memo 優化
  */
 const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight }) {
-  const [hoveredStation] = useState(null) // TODO: Implement hover interaction
+  const [hoveredStation] = useState(null)
 
   const minLat = latMin ?? LAT_MIN
   const maxLat = latMax ?? LAT_MAX
@@ -409,7 +409,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       if (lat % 1 === 0) {
         gridLabels.push({
           position: [8, y - 5],
-          text: `${lat}\u00B0N`,
+          text: `${lat} N`,
           color: [100, 181, 246],
           size: 11
         })
