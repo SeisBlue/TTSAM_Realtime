@@ -13,6 +13,7 @@ import paho.mqtt.client as mqtt
 import pandas as pd
 import PyEW
 import torch
+import torch.multiprocessing as mp
 import xarray as xr
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from flask import Flask, render_template, request
@@ -23,7 +24,17 @@ from loguru import logger
 from scipy.signal import detrend, iirfilter, sosfilt, zpk2sos
 from scipy.spatial import cKDTree
 
-from ttsam_model import get_full_model
+# 初始化 multiprocessing 共享物件
+manager = mp.Manager()
+wave_buffer = manager.dict()
+wave_queue = manager.Queue()
+pick_buffer = manager.dict()
+event_queue = manager.Queue()
+dataset_queue = manager.Queue()
+report_queue = manager.Queue()
+discord_queue = manager.Queue()
+wave_endt = manager.Value("d", 0)
+wave_speed_count = manager.Value("i", 0)
 
 app = Flask(__name__)
 # HTTP API 的 CORS
@@ -36,23 +47,6 @@ CORS(
 socketio = SocketIO(
     app, cors_allowed_origins="*", async_mode="threading"  # 明確指定非同步模式
 )
-
-# 共享物件
-manager = multiprocessing.Manager()
-
-wave_buffer = manager.dict()
-wave_queue = manager.Queue()
-
-pick_buffer = manager.dict()
-
-event_queue = manager.Queue()
-dataset_queue = manager.Queue()
-
-report_queue = manager.Queue()
-discord_queue = manager.Queue()
-
-wave_endt = manager.Value("d", 0)
-wave_speed_count = manager.Value("i", 0)
 
 # 訂閱管理：追蹤每個客戶端訂閱的測站
 subscribed_stations = {}  # {session_id: set(station_codes)}
@@ -692,10 +686,7 @@ def earthworm_pick_listener(buf_ring):
 
             # 跳過程式啟動前殘留在 shared memory 的 Pick
             if time.time() > float(pick_data["pick_time"]) + 10:
-                if args.env == "test":
-                    pass  # 測試環境使用歷史資料，不跳過
-                else:
-                    continue
+                continue
 
             # upsec 為 2 秒時加入 pick
             if pick_data["update_sec"] == "2":
@@ -726,10 +717,15 @@ def earthworm_eew_listener(buf_ring):
             if not eew_msg:
                 time.sleep(0.00001)
                 continue
+            print(eew_msg)
+            sys.stdout.flush()
             logger.debug(f"{eew_msg}")
 
         except Exception as e:
             logger.error(f"earthworm_eew_listener error: {eew_msg}, {e}")
+            continue
+        time.sleep(0.00001)
+
 
 
 """
@@ -821,6 +817,21 @@ except FileNotFoundError:
     )
 except Exception as e:
     logger.error(f"Error loading {site_info_file}: {e}")
+
+
+model_path = "ttsam_trained_model_11.pt"
+try:
+    logger.info(f"Check model weight...")
+    model_path = hf_hub_download(
+        repo_id="SeisBlue/TTSAM",
+        filename=model_path,
+        local_dir="/workspace",
+        repo_type="model",
+    )
+    logger.info(f"found {model_path} model weight")
+except Exception as e:
+    logger.error(f"Error loading {model_path}: {e}")
+
 
 
 def event_cutter(pick_buffer):
@@ -989,21 +1000,6 @@ def get_target_dataset(dataset):
 
     return dataset
 
-
-def ttsam_model_predict(tensor):
-    try:
-        weight, sigma, mu = full_model(tensor)
-        pga_list = get_average_pga(weight, sigma, mu)
-
-        return pga_list
-
-    except FileNotFoundError:
-        logger.error(f"{model_path} not found")
-
-    except Exception as e:
-        logger.error(f"ttsam_model_predict error: {e}")
-
-
 def get_average_pga(weight, sigma, mu):
     pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
     return pga_list.tolist()
@@ -1082,6 +1078,10 @@ def model_inference():
     """
     進行模型預測
     """
+    from ttsam_model import get_full_model
+    full_model = get_full_model(model_path)
+    logger.info("Model loaded")
+
     pick_threshold = 5
 
     report_log_file = None
@@ -1109,9 +1109,12 @@ def model_inference():
                 report_log_file = (
                     f"/workspace/logs/report/report_{first_pick_timestring}.log"
                 )
+                logger.info(f"create report log file {report_log_file}")
                 report_log_file = open(report_log_file, "w+")
 
+
                 pick_log_file = f"/workspace/logs/pick/pick_{first_pick_timestring}.log"
+                logger.info(f"create pick log file {pick_log_file}")
                 pick_log_file = open(pick_log_file, "w+")
 
         try:
@@ -1145,7 +1148,8 @@ def model_inference():
                 }
 
                 # 模型預測
-                pga_list = ttsam_model_predict(tensor)
+                weight, sigma, mu = full_model(tensor)
+                pga_list = get_average_pga(weight, sigma, mu)
                 dataset["pga"].extend(pga_list)
 
             dataset["intensity"] = [
@@ -1463,7 +1467,7 @@ if __name__ == "__main__":
         ring_order.append(ring_name)
         buf_ring = len(ring_order) - 1
         processes.append(
-            multiprocessing.Process(target=earthworm_wave_listener,
+            mp.Process(target=earthworm_wave_listener,
                                     kwargs={"buf_ring": buf_ring})
         )
         logger.info(
@@ -1475,37 +1479,26 @@ if __name__ == "__main__":
         ring_order.append(ring_name)
         buf_ring = len(ring_order) - 1
         processes.append(
-            multiprocessing.Process(target=earthworm_pick_listener,
+            mp.Process(target=earthworm_pick_listener,
                                     kwargs={"buf_ring": buf_ring})
         )
         logger.info(
             f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
-    # 添加 eew rings（根據 env 動態添加）
-    for ring_name, ring_id in earthworm_param[args.env]["eew"].items():
-        earthworm.add_ring(ring_id)
-        ring_order.append(ring_name)
-        buf_ring = len(ring_order) - 1
-        processes.append(
-            multiprocessing.Process(target=earthworm_eew_listener,
-                                    kwargs={"buf_ring": buf_ring})
-        )
-        logger.info(
-            f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
+    # # 添加 eew rings（根據 env 動態添加）
+    # for ring_name, ring_id in earthworm_param[args.env]["eew"].items():
+    #     earthworm.add_ring(ring_id)
+    #     ring_order.append(ring_name)
+    #     buf_ring = len(ring_order) - 1
+    #     processes.append(
+    #         mp.Process(target=earthworm_eew_listener,
+    #                                 kwargs={"buf_ring": buf_ring})
+    #     )
+    #     logger.info(
+    #         f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
     logger.info(
         f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
-
-
-    model_path = hf_hub_download(
-        repo_id="SeisBlue/TTSAM",
-        filename="ttsam_trained_model_11.pt",
-        local_dir="/workspace",
-        repo_type="model",
-    )
-    full_model = get_full_model(model_path)
-    logger.info("Using huggingface model path")
-
 
     if args.mqtt:
         username = config["mqtt"]["username"]
@@ -1518,13 +1511,13 @@ if __name__ == "__main__":
         mqtt_client.username_pw_set(username, password)
         mqtt_client.connect(host=host, port=port)
 
-    processes.append(multiprocessing.Process(target=model_inference))
-    processes.append(multiprocessing.Process(target=reporter))
+    processes.append(mp.Process(target=model_inference))
+    processes.append(mp.Process(target=reporter))
 
     if args.discord:
-        processes.append(multiprocessing.Process(target=send_discord))
+        processes.append(mp.Process(target=send_discord))
     if args.web:
-        processes.append(multiprocessing.Process(target=web_server))
+        processes.append(mp.Process(target=web_server))
 
     for p in processes:
         p.start()
