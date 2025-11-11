@@ -203,10 +203,10 @@ function App() {
                       </span>
                     </div>
                     <div className="event-stations-list">
-                      {report.data.alarm && report.data.alarm.slice(0, 5).map((station, idx) => (
+                      {report.data && report.data.alarm && report.data.alarm.slice(0, 5).map((station, idx) => (
                         <span key={idx} className="station-tag">{station}</span>
                       ))}
-                      {report.data.alarm && report.data.alarm.length > 5 && (
+                      {report.data && report.data.alarm && report.data.alarm.length > 5 && (
                         <span className="station-tag more">+{report.data.alarm.length - 5}</span>
                       )}
                     </div>

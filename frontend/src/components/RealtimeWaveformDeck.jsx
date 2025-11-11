@@ -98,7 +98,7 @@ function extractStationCode(seedName) {
 /**
  * DeckGL 波形面板組件 - 使用 memo 優化
  */
-const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight, renderTrigger }) {
+const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight }) {
   const [hoveredStation] = useState(null) // TODO: Implement hover interaction
 
   const minLat = latMin ?? LAT_MIN
@@ -252,7 +252,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     }
 
     return layers
-  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, renderTrigger])
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, title])
 
   // 文字標籤圖層 - 優化版本
   const labelLayers = useMemo(() => {
@@ -385,10 +385,10 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       updateTriggers: {
         getColor: [hoveredStation, waveDataMap],
         getSize: hoveredStation,
-        getText: [waveDataMap, renderTrigger] // 添加 renderTrigger 以更新時間顯示
+        getText: [waveDataMap] // 添加 renderTrigger 以更新時間顯示
       }
     })]
-  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, renderTrigger])
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
 
   // 緯度網格線
   const gridLayers = useMemo(() => {
@@ -409,7 +409,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       if (lat % 1 === 0) {
         gridLabels.push({
           position: [8, y - 5],
-          text: `${lat}°N`,
+          text: `${lat}\u00B0N`,
           color: [100, 181, 246],
           size: 11
         })
@@ -950,4 +950,3 @@ RealtimeWaveformDeck.propTypes = {
 }
 
 export default RealtimeWaveformDeck
-
