@@ -64,7 +64,7 @@ Web Server
 
 @app.route("/", methods=["GET"])
 def index():
-    report_log_dir = "logs/report"
+    report_log_dir = "/workspace/logs/report"
     try:
         files = []
         for f in os.listdir(report_log_dir):
@@ -86,7 +86,7 @@ def index():
 
 @app.route("/api/get_file_content")
 def get_file_content():
-    report_log_dir = "logs/report"
+    report_log_dir = "/workspace/logs/report"
     file_name = request.args.get("file")
     if not file_name.startswith("report"):
         return "Invalid file type", 400
@@ -692,7 +692,7 @@ def earthworm_pick_listener(buf_ring):
 
             # 跳過程式啟動前殘留在 shared memory 的 Pick
             if time.time() > float(pick_data["pick_time"]) + 10:
-                if args.test_env:
+                if args.env == "test":
                     pass  # 測試環境使用歷史資料，不跳過
                 else:
                     continue
@@ -708,7 +708,7 @@ def earthworm_pick_listener(buf_ring):
                 logger.debug(f"add pick: {pick_id}")
 
         except Exception as e:
-            logger.error("earthworm_pick_listener error:", e)
+            logger.error("earthworm_pick_listener error:", pick_msg, e)
             continue
         time.sleep(0.00001)
 
@@ -992,20 +992,6 @@ def get_target_dataset(dataset):
 
 def ttsam_model_predict(tensor):
     try:
-        model_path = f"/workspace/ttsam_trained_model_11.pt"
-        full_model = get_full_model(model_path)
-        logger.info("Using local model path")
-    except FileNotFoundError:
-        model_path = hf_hub_download(
-            repo_id="SeisBlue/TTSAM",
-            filename="ttsam_trained_model_11.pt",
-            local_dir="/workspace",
-            repo_type="model",
-        )
-        full_model = get_full_model(model_path)
-        logger.info("Using huggingface model path")
-
-    try:
         weight, sigma, mu = full_model(tensor)
         pga_list = get_average_pga(weight, sigma, mu)
 
@@ -1097,7 +1083,7 @@ def model_inference():
     進行模型預測
     """
     pick_threshold = 5
-    log_folder = "logs"
+
     report_log_file = None
     while True:
         # 小於 3 個測站不觸發模型預測
@@ -1121,11 +1107,11 @@ def model_inference():
 
                 # 以第一個 pick 的時間為 report log 檔案名稱
                 report_log_file = (
-                    f"{log_folder}/report/report_{first_pick_timestring}.log"
+                    f"/workspace/logs/report/report_{first_pick_timestring}.log"
                 )
                 report_log_file = open(report_log_file, "w+")
 
-                pick_log_file = f"{log_folder}/pick/pick_{first_pick_timestring}.log"
+                pick_log_file = f"/workspace/logs/pick/pick_{first_pick_timestring}.log"
                 pick_log_file = open(pick_log_file, "w+")
 
         try:
@@ -1165,6 +1151,9 @@ def model_inference():
             dataset["intensity"] = [
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
+
+            print(f"model inference done")
+            sys.stdout.flush()
 
             # 產生報告
             report = {"picks": len(pick_buffer), "log_time": "", "alarm": []}
@@ -1432,7 +1421,7 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(sys.stderr, level=args.verbose_level)
     logger.add(
-        "logs/ttsam_error.log",
+        "/workspace/logs/ttsam_error.log",
         rotation="1 week",
         level=args.log_level,
         enqueue=True,
@@ -1506,6 +1495,17 @@ if __name__ == "__main__":
 
     logger.info(
         f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
+
+
+    model_path = hf_hub_download(
+        repo_id="SeisBlue/TTSAM",
+        filename="ttsam_trained_model_11.pt",
+        local_dir="/workspace",
+        repo_type="model",
+    )
+    full_model = get_full_model(model_path)
+    logger.info("Using huggingface model path")
+
 
     if args.mqtt:
         username = config["mqtt"]["username"]
