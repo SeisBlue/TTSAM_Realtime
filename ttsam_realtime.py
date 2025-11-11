@@ -336,6 +336,11 @@ def _process_wave_data(wave, is_realtime=False):
     """處理單個波形數據，提取並格式化"""
     waveform_data = wave["data"]
 
+    # 進行訊號處理
+    processed_data = signal_processing(waveform_data)
+    if processed_data is not None:
+        waveform_data = processed_data
+
     if isinstance(waveform_data, np.ndarray):
         waveform_list = waveform_data.tolist()
         pga = float(np.max(np.abs(waveform_data)))
