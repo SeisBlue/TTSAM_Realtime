@@ -5,18 +5,6 @@ import ReportDetail from './components/ReportDetail'
 import TaiwanMap from './components/TaiwanMapDeck'
 import RealtimeWaveform from './components/RealtimeWaveformDeck'
 
-/**
- * 從 SEED 格式提取測站代碼
- * 格式：SM.{station}.01.HLZ -> {station}
- */
-function extractStationCode(seedName) {
-  if (!seedName) return seedName
-  const parts = seedName.split('.')
-  if (parts.length >= 2) {
-    return parts[1]
-  }
-  return seedName
-}
 
 function App() {
   const [isConnected, setIsConnected] = useState(false)
@@ -32,7 +20,7 @@ function App() {
   const loadHistoricalReports = async (limit = 20) => {
     try {
       // 獲取歷史報告列表
-      const reportsResponse = await fetch('http://localhost:5001/api/reports')
+      const reportsResponse = await fetch('/api/reports')
       const reportFiles = await reportsResponse.json()
 
       // 載入最近的幾個歷史報告
@@ -40,7 +28,7 @@ function App() {
       for (let i = 0; i < Math.min(limit, reportFiles.length); i++) {
         const file = reportFiles[i]
         try {
-          const contentResponse = await fetch(`http://localhost:5001/get_file_content?file=${file.filename}`)
+          const contentResponse = await fetch(`/api/get_file_content?file=${file.filename}`)
           const text = await contentResponse.text()
           const jsonData = text.split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line))
 
@@ -72,7 +60,7 @@ function App() {
 
   useEffect(() => {
     // 載入 eew_target 測站資料
-    fetch('http://localhost:5001/api/stations')
+    fetch('/api/stations')
       .then(res => res.json())
       .then(stations => {
         const stationsWithStatus = stations.map(s => ({
@@ -87,7 +75,7 @@ function App() {
       .catch(err => console.error('載入測站資料失敗:', err))
 
     // 連接到 Mock Server 的 SocketIO
-    const socket = io('http://localhost:5001', {
+    const socket = io('/', {
       transports: ['websocket', 'polling']
     })
 
@@ -117,20 +105,6 @@ function App() {
       const timestamp = new Date().toLocaleString('zh-TW')
       setLatestWaveTime(timestamp)
       setWavePackets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
-    }
-
-    // 接收地震事件
-    const handleEventData = (data) => {
-      console.log('📍 Event data received:', Object.keys(data).length, 'stations')
-      const timestamp = new Date().toLocaleString('zh-TW')
-      // 從 SEED 格式提取測站代碼
-      const stationCodes = Object.keys(data).map(seedName => extractStationCode(seedName))
-      setEvents(prev => [{
-        id: Date.now(),
-        timestamp,
-        stations: stationCodes,
-        data
-      }, ...prev].slice(0, 20)) // 保留最新 20 筆
     }
 
     // 接收預測報告

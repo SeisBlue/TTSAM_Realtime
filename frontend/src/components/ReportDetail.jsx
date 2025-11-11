@@ -48,7 +48,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
   const loadHistoricalReport = async (filename) => {
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:5001/get_file_content?file=${filename}`)
+      const response = await fetch(`/get_file_content?file=${filename}`)
       const text = await response.text()
       const jsonData = text.split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line))
 

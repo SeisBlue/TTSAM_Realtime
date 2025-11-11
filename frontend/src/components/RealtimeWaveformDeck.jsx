@@ -561,7 +561,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
 
   // 建立測站快速查找 Map
   useEffect(() => {
-    fetch('http://localhost:5001/api/all-stations')
+    fetch('/api/all-stations')
       .then(response => response.json())
       .then(stations => {
         const map = {}
@@ -609,7 +609,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
         try {
           // 先嘗試查找 5 公里內的測站（返回前 5 個候選）
           const response = await fetch(
-            `http://localhost:5001/api/find-nearest-station?lat=${station.latitude}&lon=${station.longitude}&exclude_pattern=CWASN&max_count=5`
+            `/api/find-nearest-station?lat=${station.latitude}&lon=${station.longitude}&exclude_pattern=CWASN&max_count=5`
           )
 
           if (response.ok) {
