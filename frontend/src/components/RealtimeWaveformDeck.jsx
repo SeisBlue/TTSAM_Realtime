@@ -857,21 +857,26 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
 
   // 自動訂閱當前顯示的測站
   useEffect(() => {
-    if (!socket || !socket.connected) {
-      console.log('⏳ Socket not ready for subscription')
-      return
+    if (!socket) return
+
+    const handleConnect = () => {
+      socket.emit('subscribe_stations', {
+        stations: displayStations
+      })
+      console.log('📡 Subscribed to', displayStations.length, 'stations:', displayStations.slice(0, 10), '...')
     }
 
-    // 發送訂閱請求
-    socket.emit('subscribe_stations', {
-      stations: displayStations
-    })
+    socket.on('connect', handleConnect)
 
-    console.log('📡 Subscribed to', displayStations.length, 'stations:', displayStations.slice(0, 10), '...')
+    // 如果已經連接，立即訂閱
+    if (socket.connected) {
+      handleConnect()
+    }
 
-    // 清理函數：組件卸載時取消訂閱
+    // 清理函數：組件卸載時取消訂閱和事件監聽
     return () => {
-      if (socket && socket.connected) {
+      socket.off('connect', handleConnect)
+      if (socket.connected) {
         socket.emit('subscribe_stations', { stations: [] })
         console.log('📡 Unsubscribed from all stations')
       }
