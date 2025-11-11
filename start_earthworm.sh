@@ -1,6 +1,7 @@
 docker run \
 -it \
 --rm \
+-v $(pwd):/workspace \
 --ipc host \
 --net host \
 --name earthworm \

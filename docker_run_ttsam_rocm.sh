@@ -1,7 +1,7 @@
 docker rm -f ttsam-rocm
 docker run \
 -v $(pwd):/workspace \
--v /mnt/workspace/earthworm/params:/opt/Earthworm/run/params:ro \
+-v $(pwd)/params_cwa:/opt/Earthworm/run/params:ro \
 --rm \
 --device=/dev/kfd \
 --device=/dev/dri \
