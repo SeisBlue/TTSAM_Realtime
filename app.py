@@ -19,16 +19,14 @@ vs30_table = None
 try:
     logger.info("從 Hugging Face 載入 Vs30 資料...")
     vs30_file = hf_hub_download(
-        repo_id="SeisBlue/TaiwanVs30", filename="Vs30ofTaiwan.nc",
-        repo_type="dataset"
+        repo_id="SeisBlue/TaiwanVs30", filename="Vs30ofTaiwan.nc", repo_type="dataset"
     )
     ds = xr.open_dataset(vs30_file)
     lat_flat = ds["lat"].values.flatten()
     lon_flat = ds["lon"].values.flatten()
     vs30_flat = ds["vs30"].values.flatten()
 
-    vs30_table = pd.DataFrame(
-        {"lat": lat_flat, "lon": lon_flat, "Vs30": vs30_flat})
+    vs30_table = pd.DataFrame({"lat": lat_flat, "lon": lon_flat, "Vs30": vs30_flat})
     vs30_table = vs30_table.replace([np.inf, -np.inf], np.nan).dropna()
     tree = cKDTree(vs30_table[["lat", "lon"]])
     logger.info("Vs30 資料載入完成")
@@ -49,14 +47,11 @@ try:
         f for f in required_site_fields if f not in site_info.columns
     ]
     if missing_site_fields:
-        logger.error(
-            f"{site_info_file} 缺少必要欄位: {missing_site_fields}")
-        raise ValueError(
-            f"site_info.csv 缺少必要欄位: {missing_site_fields}")
+        logger.error(f"{site_info_file} 缺少必要欄位: {missing_site_fields}")
+        raise ValueError(f"site_info.csv 缺少必要欄位: {missing_site_fields}")
 
     # 只保留唯一的測站（去除重複的分量）
-    site_info = site_info.drop_duplicates(subset=["Station"]).reset_index(
-        drop=True)
+    site_info = site_info.drop_duplicates(subset=["Station"]).reset_index(drop=True)
     logger.info(f"{site_info_file} 載入完成，共 {len(site_info)} 個測站")
 except FileNotFoundError:
     logger.warning(f"{site_info_file} 找不到")
@@ -70,15 +65,13 @@ try:
     target_df = pd.read_csv(target_file)
 
     # 驗證 eew_target.csv 必要欄位
-    required_target_fields = ["station", "latitude", "longitude",
-                              "elevation"]
+    required_target_fields = ["station", "latitude", "longitude", "elevation"]
     missing_target_fields = [
         f for f in required_target_fields if f not in target_df.columns
     ]
     if missing_target_fields:
         logger.error(f"{target_file} 缺少必要欄位: {missing_target_fields}")
-        raise ValueError(
-            f"eew_target.csv 缺少必要欄位: {missing_target_fields}")
+        raise ValueError(f"eew_target.csv 缺少必要欄位: {missing_target_fields}")
 
     target_dict = target_df.to_dict(orient="records")
     logger.info(f"{target_file} 載入完成（共 {len(target_dict)} 個目標點）")
@@ -183,8 +176,9 @@ def detect_p_wave_sta_lta(trace, sta_len=0.1, lta_len=2, thr_on=1.5, thr_off=0.0
         sampling_rate = trace.stats.sampling_rate
 
         # 計算 STA/LTA characteristic function
-        cft = classic_sta_lta(trace.data, int(sta_len * sampling_rate),
-                              int(lta_len * sampling_rate))
+        cft = classic_sta_lta(
+            trace.data, int(sta_len * sampling_rate), int(lta_len * sampling_rate)
+        )
 
         # 偵測觸發點
         triggers = trigger_onset(cft, thr_on, thr_off)
@@ -193,7 +187,9 @@ def detect_p_wave_sta_lta(trace, sta_len=0.1, lta_len=2, thr_on=1.5, thr_off=0.0
             # 取第一個觸發點作為 P 波到時
             p_sample = triggers[0][0]
             p_arrival_time = p_sample / sampling_rate
-            logger.debug(f"測站 {trace.stats.station} 偵測到 P 波於 {p_arrival_time:.2f} 秒")
+            logger.debug(
+                f"測站 {trace.stats.station} 偵測到 P 波於 {p_arrival_time:.2f} 秒"
+            )
             return p_arrival_time, cft
         else:
             logger.debug(f"測站 {trace.stats.station} 未偵測到 P 波")
@@ -270,7 +266,8 @@ def generate_earthquake_alert_report(pga_list, target_names, event_name, duratio
                 else:
                     # 保留較高的震度
                     if convert_intensity(intensity_label) > convert_intensity(
-                            county_intensity[county]):
+                        county_intensity[county]
+                    ):
                         county_intensity[county] = intensity_label
 
     # 生成報告
@@ -281,7 +278,7 @@ def generate_earthquake_alert_report(pga_list, target_names, event_name, duratio
         county_list = sorted(
             county_intensity.items(),
             key=lambda x: convert_intensity(x[1]),
-            reverse=True
+            reverse=True,
         )
         for county, intensity in county_list:
             report_lines.append(f"  {county}　預估震度 {intensity} 級")
@@ -301,7 +298,9 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return np.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2)
 
 
-def select_nearest_stations(st, epicenter_lat, epicenter_lon, n_stations=25, event_name=None):
+def select_nearest_stations(
+    st, epicenter_lat, epicenter_lon, n_stations=25, event_name=None
+):
     """
     從 site_info（1000+ 個輸入測站）中選擇距離震央最近的 n 個測站
     並使用 STA/LTA 偵測 P 波到時，只保留成功偵測到 P 波的測站
@@ -351,7 +350,11 @@ def select_nearest_stations(st, epicenter_lat, epicenter_lon, n_stations=25, eve
             elev = station_data["Elevation"].values[0]
 
             # 偵測 P 波（使用 Z 分量）- 優先使用快取
-            if event_name and event_name in sta_lta_cache and station_code in sta_lta_cache[event_name]:
+            if (
+                event_name
+                and event_name in sta_lta_cache
+                and station_code in sta_lta_cache[event_name]
+            ):
                 # 使用快取的 STA/LTA 結果
                 cached_result = sta_lta_cache[event_name][station_code]
                 p_arrival_time = cached_result["p_arrival_time"]
@@ -373,7 +376,7 @@ def select_nearest_stations(st, epicenter_lat, epicenter_lon, n_stations=25, eve
                 if event_name:
                     sta_lta_cache[event_name][station_code] = {
                         "p_arrival_time": p_arrival_time,
-                        "cft": cft
+                        "cft": cft,
                     }
                     logger.debug(f"測站 {station_code} STA/LTA 結果已快取")
 
@@ -393,7 +396,6 @@ def select_nearest_stations(st, epicenter_lat, epicenter_lon, n_stations=25, eve
                 "p_arrival_time": p_arrival_time,  # 記錄 P 波到時
             }
             p_wave_detected_count += 1
-
 
         except Exception as e:
             logger.warning(f"測站 {station_code} 資訊查詢失敗: {e}")
@@ -424,9 +426,9 @@ def select_nearest_stations(st, epicenter_lat, epicenter_lon, n_stations=25, eve
     return selected_stations
 
 
-def extract_waveforms_from_stream(event_name,
-                                  st, selected_stations, duration, vs30_input
-                                  ):
+def extract_waveforms_from_stream(
+    event_name, st, selected_stations, duration, vs30_input
+):
     """
     從 Stream 中提取選定測站的波形資料
 
@@ -511,7 +513,9 @@ def extract_waveforms_from_stream(event_name,
             # 檢查 Z 分量（必須存在）
             if len(z_trace) > 0:
                 z_data = z_trace[0].data[start_idx:end_idx]
-                logger.debug(f"測站 {station_code}: Z 分量切片長度 = {len(z_data)} samples")
+                logger.debug(
+                    f"測站 {station_code}: Z 分量切片長度 = {len(z_data)} samples"
+                )
             else:
                 continue
 
@@ -583,7 +587,13 @@ def extract_waveforms_from_stream(event_name,
             f"其中 {p_wave_outside_window_count} 個測站的 P 波不在時間窗內（已跳過）"
         )
 
-    return waveforms, station_info_list, valid_stations, missing_components_count, p_wave_outside_window_count
+    return (
+        waveforms,
+        station_info_list,
+        valid_stations,
+        missing_components_count,
+        p_wave_outside_window_count,
+    )
 
 
 def plot_waveform(st, selected_stations, first_pick, duration):
@@ -602,7 +612,9 @@ def plot_waveform(st, selected_stations, first_pick, duration):
     # 計算結束時間
     end_time = first_pick + duration
 
-    logger.debug(f"繪製波形圖（使用快取的 P 波到時資訊，共 {len(selected_stations)} 個測站）")
+    logger.debug(
+        f"繪製波形圖（使用快取的 P 波到時資訊，共 {len(selected_stations)} 個測站）"
+    )
 
     # 創建 Plotly figure
     fig = go.Figure()
@@ -647,25 +659,31 @@ def plot_waveform(st, selected_stations, first_pick, duration):
                 y_values = distance + data_normalized * amplitude_scale
 
                 # 使用 Scattergl 加速渲染（WebGL 模式，適合大量數據點）
-                fig.add_trace(go.Scattergl(
-                    x=times,
-                    y=y_values,
-                    mode='lines',
-                    line=dict(color='black', width=0.5),
-                    opacity=0.8,
-                    name=station_code,
-                    hovertemplate=f'{station_code}<br>Time: %{{x:.2f}}s<br>Distance: {distance:.3f}°<extra></extra>',
-                    showlegend=False
-                ))
+                fig.add_trace(
+                    go.Scattergl(
+                        x=times,
+                        y=y_values,
+                        mode="lines",
+                        line=dict(color="black", width=0.5),
+                        opacity=0.8,
+                        name=station_code,
+                        hovertemplate=f"{station_code}<br>Time: %{{x:.2f}}s<br>Distance: {distance:.3f}°<extra></extra>",
+                        showlegend=False,
+                    )
+                )
 
                 # 記錄 P 波標記位置
                 if p_arrival_time is not None:
                     if 0 <= p_arrival_time <= end_time:
                         # P 波在時間窗內（綠色）
-                        p_wave_markers_in.append((p_arrival_time, distance, station_code))
+                        p_wave_markers_in.append(
+                            (p_arrival_time, distance, station_code)
+                        )
                     else:
                         # P 波在時間窗外（紅色）
-                        p_wave_markers_out.append((p_arrival_time, distance, station_code))
+                        p_wave_markers_out.append(
+                            (p_arrival_time, distance, station_code)
+                        )
 
                 distances.append(distance)
                 station_names.append(station_code)
@@ -677,75 +695,74 @@ def plot_waveform(st, selected_stations, first_pick, duration):
     # 繪製 P 波標記
     if p_wave_markers_in:
         p_times_in, p_dists_in, p_names_in = zip(*p_wave_markers_in)
-        fig.add_trace(go.Scattergl(
-            x=p_times_in,
-            y=p_dists_in,
-            mode='markers',
-            marker=dict(color='green', size=8, symbol='triangle-down'),
-            name='P-wave (in window)',
-            hovertemplate='P-wave<br>Station: %{text}<br>Time: %{x:.2f}s<extra></extra>',
-            text=p_names_in,
-            showlegend=True
-        ))
+        fig.add_trace(
+            go.Scattergl(
+                x=p_times_in,
+                y=p_dists_in,
+                mode="markers",
+                marker=dict(color="green", size=8, symbol="triangle-down"),
+                name="P-wave (in window)",
+                hovertemplate="P-wave<br>Station: %{text}<br>Time: %{x:.2f}s<extra></extra>",
+                text=p_names_in,
+                showlegend=True,
+            )
+        )
 
     if p_wave_markers_out:
         p_times_out, p_dists_out, p_names_out = zip(*p_wave_markers_out)
-        fig.add_trace(go.Scattergl(
-            x=p_times_out,
-            y=p_dists_out,
-            mode='markers',
-            marker=dict(color='red', size=8, symbol='triangle-down'),
-            name='P-wave (out window)',
-            hovertemplate='P-wave<br>Station: %{text}<br>Time: %{x:.2f}s<extra></extra>',
-            text=p_names_out,
-            showlegend=True
-        ))
+        fig.add_trace(
+            go.Scattergl(
+                x=p_times_out,
+                y=p_dists_out,
+                mode="markers",
+                marker=dict(color="red", size=8, symbol="triangle-down"),
+                name="P-wave (out window)",
+                hovertemplate="P-wave<br>Station: %{text}<br>Time: %{x:.2f}s<extra></extra>",
+                text=p_names_out,
+                showlegend=True,
+            )
+        )
 
     # 添加垂直線標記
     # First Motion
     fig.add_vline(
         x=first_pick,
-        line=dict(color='blue', dash='dash', width=2),
-        annotation_text='First Motion',
-        annotation_position='top',
-        opacity=0.7
+        line=dict(color="blue", dash="dash", width=2),
+        annotation_text="First Motion",
+        annotation_position="top",
+        opacity=0.7,
     )
 
     # 標記選取時間範圍
-    fig.add_vline(
-        x=0,
-        line=dict(color='red', dash='dash', width=2),
-        opacity=0.7
-    )
+    fig.add_vline(x=0, line=dict(color="red", dash="dash", width=2), opacity=0.7)
 
-    fig.add_vline(
-        x=end_time,
-        line=dict(color='red', dash='dash', width=2),
-        opacity=0.7
-    )
+    fig.add_vline(x=end_time, line=dict(color="red", dash="dash", width=2), opacity=0.7)
 
     # 添加時間窗陰影
     fig.add_vrect(
-        x0=0, x1=end_time,
-        fillcolor='blue', opacity=0.1,
-        layer='below', line_width=0,
+        x0=0,
+        x1=end_time,
+        fillcolor="blue",
+        opacity=0.1,
+        layer="below",
+        line_width=0,
     )
 
     # 設定軸標籤和標題
     fig.update_layout(
         xaxis=dict(
-            title=dict(text='Time (s)', font=dict(size=12)),
-            gridcolor='rgba(128, 128, 128, 0.2)',
+            title=dict(text="Time (s)", font=dict(size=12)),
+            gridcolor="rgba(128, 128, 128, 0.2)",
             showgrid=True,
         ),
         yaxis=dict(
-            title=dict(text='Distance (°)', font=dict(size=12)),
-            gridcolor='rgba(128, 128, 128, 0.2)',
-            showgrid=False
+            title=dict(text="Distance (°)", font=dict(size=12)),
+            gridcolor="rgba(128, 128, 128, 0.2)",
+            showgrid=False,
         ),
-        hovermode='closest',
+        hovermode="closest",
         height=200,
-        plot_bgcolor='white',
+        plot_bgcolor="white",
         margin=dict(l=0, r=10, t=50, b=0),  # 緊凑的邊距設置
         showlegend=True,
         legend=dict(
@@ -756,7 +773,7 @@ def plot_waveform(st, selected_stations, first_pick, duration):
             bgcolor="rgba(255, 255, 255, 0.8)",
         ),
         # 效能優化：簡化互動功能以加速渲染（HF Space 環境）
-        dragmode='pan',  # 只允許平移，不允許框選縮放
+        dragmode="pan",  # 只允許平移，不允許框選縮放
     )
 
     return fig
@@ -780,8 +797,13 @@ def get_intensity_color(intensity):
 
 
 def create_intensity_map(
-        pga_list, target_names, epicenter_lat=None, epicenter_lon=None,
-        selected_stations=None, duration=None, first_pick=None
+    pga_list,
+    target_names,
+    epicenter_lat=None,
+    epicenter_lon=None,
+    selected_stations=None,
+    duration=None,
+    first_pick=None,
 ):
     """使用 Plotly 創建互動式震度分布地圖（合併輸入測站與預測震度）
 
@@ -835,7 +857,11 @@ def create_intensity_map(
         stations_out_window = {"lat": [], "lon": [], "text": []}
 
         # 計算時間窗範圍
-        end_time = first_pick + duration if first_pick is not None and duration is not None else None
+        end_time = (
+            first_pick + duration
+            if first_pick is not None and duration is not None
+            else None
+        )
 
         for station_data in selected_stations:
             lat = station_data["latitude"]
@@ -846,13 +872,14 @@ def create_intensity_map(
             # 判斷 P 波是否在時間窗內
             in_window = False
             if end_time is not None and p_arrival_time is not None:
-                in_window = (0 <= p_arrival_time <= end_time)
+                in_window = 0 <= p_arrival_time <= end_time
 
             hover_text = (
                 f"{station_name}<br>"
                 f"輸入測站<br>"
-                f"P 波到時: {p_arrival_time:.2f}s<br>" if p_arrival_time is not None else f"{station_name}<br>輸入測站<br>"
-                f"位置: ({lat:.3f}, {lon:.3f})"
+                f"P 波到時: {p_arrival_time:.2f}s<br>"
+                if p_arrival_time is not None
+                else f"{station_name}<br>輸入測站<br>" f"位置: ({lat:.3f}, {lon:.3f})"
             )
 
             if in_window:
@@ -914,9 +941,11 @@ def create_intensity_map(
                     marker=dict(size=20, color=group["color"], opacity=0.9),
                     text=intensity_labels[intensity_level],
                     textposition="middle center",
-                    textfont=dict(size=14,
-                                  color=("black" if intensity_level <= 4 else "white"),
-                                  family="Open Sans Bold"),
+                    textfont=dict(
+                        size=14,
+                        color=("black" if intensity_level <= 4 else "white"),
+                        family="Open Sans Bold",
+                    ),
                     hoverinfo="text",
                     name=f"震度 {intensity_labels[intensity_level]}",
                     showlegend=True,
@@ -1028,19 +1057,23 @@ def step1_load_mseed_and_select_stations(event_name):
             logger.error("找不到有效的測站資料")
             return None, None
 
-        logger.info(f"[步驟 1] 完成 - mseed 已載入，測站已選擇，STA/LTA 結果已快取（{len(selected_stations)} 個測站）")
+        logger.info(
+            f"[步驟 1] 完成 - mseed 已載入，測站已選擇，STA/LTA 結果已快取（{len(selected_stations)} 個測站）"
+        )
         return st, selected_stations
 
     except Exception as e:
         logger.error(f"[步驟 1] 發生錯誤: {e}")
         import traceback
+
         traceback.print_exc()
         return None, None
 
 
 # ============ 步驟 2：提取波形（使用快取的 stream + stations）============
-def step2_extract_and_plot_waveforms(cached_stream, cached_stations, event_name,
-                                     duration):
+def step2_extract_and_plot_waveforms(
+    cached_stream, cached_stations, event_name, duration
+):
     """
     步驟 2：根據時間範圍提取波形並繪圖
 
@@ -1054,14 +1087,19 @@ def step2_extract_and_plot_waveforms(cached_stream, cached_stations, event_name,
 
         first_pick = earthquake_metadata[event_name]["first_pick"]
 
-        logger.info(f"[步驟 2] 提取波形資料（P 波後 {duration} 秒，使用快取的測站與 STA/LTA 資訊）...")
+        logger.info(
+            f"[步驟 2] 提取波形資料（P 波後 {duration} 秒，使用快取的測站與 STA/LTA 資訊）..."
+        )
 
         # 提取波形資料
-        (waveforms, station_info_list, valid_stations,
-         missing_components_count, p_wave_outside_window_count) = (
-            extract_waveforms_from_stream(
-                event_name, cached_stream, cached_stations, duration, vs30_input=600
-            )
+        (
+            waveforms,
+            station_info_list,
+            valid_stations,
+            missing_components_count,
+            p_wave_outside_window_count,
+        ) = extract_waveforms_from_stream(
+            event_name, cached_stream, cached_stations, duration, vs30_input=600
         )
 
         if len(waveforms) == 0:
@@ -1069,8 +1107,9 @@ def step2_extract_and_plot_waveforms(cached_stream, cached_stations, event_name,
             return None, None, None
 
         # 繪製波形圖（包含所有 cached_stations，含 P 波標記）
-        waveform_plot = plot_waveform(cached_stream, cached_stations, first_pick,
-                                      duration)
+        waveform_plot = plot_waveform(
+            cached_stream, cached_stations, first_pick, duration
+        )
 
         logger.info(f"[步驟 2] 完成 - 已提取 {len(waveforms)} 個測站的波形")
         return waveforms, station_info_list, waveform_plot
@@ -1078,13 +1117,15 @@ def step2_extract_and_plot_waveforms(cached_stream, cached_stations, event_name,
     except Exception as e:
         logger.error(f"[步驟 2] 發生錯誤: {e}")
         import traceback
+
         traceback.print_exc()
         return None, None, None
 
 
 # ============ 步驟 3：執行模型推論（使用快取的波形）============
-def step3_predict_intensity(cached_waveforms, cached_station_info, cached_stations,
-                            event_name, duration):
+def step3_predict_intensity(
+    cached_waveforms, cached_station_info, cached_stations, event_name, duration
+):
     """
     步驟 3：執行震度預測
 
@@ -1188,8 +1229,13 @@ def step3_predict_intensity(cached_waveforms, cached_station_info, cached_statio
         # 繪製互動式地圖（固定高度 800）- 合併輸入測站與預測震度
         # 根據 P 波到時是否在時間窗內調整輸入測站透明度
         intensity_map = create_intensity_map(
-            pga_list, target_names, epicenter_lat, epicenter_lon,
-            selected_stations=cached_stations, duration=duration, first_pick=first_pick
+            pga_list,
+            target_names,
+            epicenter_lat,
+            epicenter_lon,
+            selected_stations=cached_stations,
+            duration=duration,
+            first_pick=first_pick,
         )
 
         # 生成警報文字報告
@@ -1255,8 +1301,7 @@ with gr.Blocks(title="TT-SAM 震度預測模型", fill_height=True) as demo:
         observed_intensity_image = gr.Image(
             label="實際觀測震度",
             type="filepath",
-            value=load_observed_intensity_image(
-                list(earthquake_metadata.keys())[2]),
+            value=load_observed_intensity_image(list(earthquake_metadata.keys())[2]),
         )
     with gr.Row():
         gr.Markdown(
@@ -1288,49 +1333,67 @@ with gr.Blocks(title="TT-SAM 震度預測模型", fill_height=True) as demo:
     event_dropdown.change(
         fn=step1_load_mseed_and_select_stations,
         inputs=[event_dropdown],
-        outputs=[cached_stream, cached_stations]
+        outputs=[cached_stream, cached_stations],
     ).then(  # 載入觀測圖片（只在事件切換時執行）
         fn=load_observed_intensity_image,
         inputs=[event_dropdown],
-        outputs=[observed_intensity_image]
+        outputs=[observed_intensity_image],
     ).then(  # 鏈式觸發步驟 2
         fn=step2_extract_and_plot_waveforms,
         inputs=[cached_stream, cached_stations, event_dropdown, duration_slider],
-        outputs=[cached_waveforms, cached_station_info, waveform_plot]
+        outputs=[cached_waveforms, cached_station_info, waveform_plot],
     ).then(  # 鏈式觸發步驟 3
         fn=step3_predict_intensity,
-        inputs=[cached_waveforms, cached_station_info, cached_stations, event_dropdown, duration_slider],
-        outputs=[predicted_intensity_map, alert_textbox]
+        inputs=[
+            cached_waveforms,
+            cached_station_info,
+            cached_stations,
+            event_dropdown,
+            duration_slider,
+        ],
+        outputs=[predicted_intensity_map, alert_textbox],
     )
 
     # 【觸發點 2】時間範圍調整：自動執行步驟 2 → 步驟 3（不重新讀檔，不更新觀測圖片）
     duration_slider.change(
         fn=step2_extract_and_plot_waveforms,
         inputs=[cached_stream, cached_stations, event_dropdown, duration_slider],
-        outputs=[cached_waveforms, cached_station_info, waveform_plot]
+        outputs=[cached_waveforms, cached_station_info, waveform_plot],
     ).then(  # 鏈式觸發步驟 3
         fn=step3_predict_intensity,
-        inputs=[cached_waveforms, cached_station_info, cached_stations, event_dropdown, duration_slider],
-        outputs=[predicted_intensity_map, alert_textbox]
+        inputs=[
+            cached_waveforms,
+            cached_station_info,
+            cached_stations,
+            event_dropdown,
+            duration_slider,
+        ],
+        outputs=[predicted_intensity_map, alert_textbox],
     )
 
     # 【冷啟動】應用載入時自動執行完整流程 步驟 1 → 載入觀測圖片 → 步驟 2 → 步驟 3
     demo.load(
         fn=step1_load_mseed_and_select_stations,
         inputs=[event_dropdown],
-        outputs=[cached_stream, cached_stations]
+        outputs=[cached_stream, cached_stations],
     ).then(
         fn=load_observed_intensity_image,
         inputs=[event_dropdown],
-        outputs=[observed_intensity_image]
+        outputs=[observed_intensity_image],
     ).then(
         fn=step2_extract_and_plot_waveforms,
         inputs=[cached_stream, cached_stations, event_dropdown, duration_slider],
-        outputs=[cached_waveforms, cached_station_info, waveform_plot]
+        outputs=[cached_waveforms, cached_station_info, waveform_plot],
     ).then(
         fn=step3_predict_intensity,
-        inputs=[cached_waveforms, cached_station_info, cached_stations, event_dropdown, duration_slider],
-        outputs=[predicted_intensity_map, alert_textbox]
+        inputs=[
+            cached_waveforms,
+            cached_station_info,
+            cached_stations,
+            event_dropdown,
+            duration_slider,
+        ],
+        outputs=[predicted_intensity_map, alert_textbox],
     )
 
 demo.launch()
