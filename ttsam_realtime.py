@@ -1,7 +1,6 @@
 import argparse
 import bisect
 import json
-import multiprocessing
 import os
 import sys
 import threading
@@ -16,7 +15,7 @@ import torch
 import torch.multiprocessing as mp
 import xarray as xr
 from discord_webhook import DiscordEmbed, DiscordWebhook
-from flask import Flask, render_template, request
+from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from huggingface_hub import hf_hub_download
@@ -38,14 +37,10 @@ wave_speed_count = manager.Value("i", 0)
 
 app = Flask(__name__)
 # HTTP API 的 CORS
-CORS(
-    app, resources={r"/api/*": {"origins": "*"}}
-)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # SocketIO 的 CORS（獨立處理 WebSocket）
-socketio = SocketIO(
-    app, cors_allowed_origins="*", async_mode="threading"
-)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # 訂閱管理：追蹤每個客戶端訂閱的測站
 subscribed_stations = {}  # {session_id: set(station_codes)}
@@ -53,7 +48,6 @@ subscribed_stations = {}  # {session_id: set(station_codes)}
 """
 Web Server
 """
-
 
 
 @app.route("/api/get_file_content")
@@ -126,9 +120,9 @@ def get_reports():
             for f in os.listdir(report_log_dir):
                 file_path = os.path.join(report_log_dir, f)
                 if (
-                        f.startswith("report")
-                        and f.endswith(".log")
-                        and os.path.isfile(file_path)
+                    f.startswith("report")
+                    and f.endswith(".log")
+                    and os.path.isfile(file_path)
                 ):
                     # 獲取文件修改時間
                     mtime = os.path.getmtime(file_path)
@@ -218,8 +212,7 @@ def find_nearest_station():
             station_lat = station.get("latitude")
             station_lon = station.get("longitude")
             if station_lat is not None and station_lon is not None:
-                distance = haversine_distance(lat, lon, station_lat,
-                                              station_lon)
+                distance = haversine_distance(lat, lon, station_lat, station_lon)
                 stations_with_distance.append(
                     {**station, "distance_km": round(distance, 2)}
                 )
@@ -280,8 +273,7 @@ def handle_disconnect():
     session_id = request.sid
     if session_id in subscribed_stations:
         del subscribed_stations[session_id]
-        logger.info(
-            f"🔌 Client {session_id[:8]} disconnected, subscription removed")
+        logger.info(f"🔌 Client {session_id[:8]} disconnected, subscription removed")
 
 
 def _process_wave_data(wave, is_realtime=False):
@@ -298,8 +290,7 @@ def _process_wave_data(wave, is_realtime=False):
         pga = float(np.max(np.abs(waveform_data)))
     elif isinstance(waveform_data, list):
         waveform_list = waveform_data
-        pga = float(
-            max(abs(x) for x in waveform_data)) if waveform_data else 0.0
+        pga = float(max(abs(x) for x in waveform_data)) if waveform_data else 0.0
     else:
         return None
 
@@ -351,8 +342,7 @@ def wave_emitter():
 
                 filtered_batch = {}
                 for wave_id, wave_data in wave_batch.items():
-                    station_code = wave_id.split(".")[
-                        1] if "." in wave_id else wave_id
+                    station_code = wave_id.split(".")[1] if "." in wave_id else wave_id
                     if station_code in all_subscribed:
                         filtered_batch[wave_id] = wave_data
 
@@ -426,8 +416,7 @@ site_info_file = "/workspace/station/site_info.csv"
 try:
     logger.info(f"Loading {site_info_file}...")
     site_info = pd.read_csv(site_info_file)
-    constant_dict = site_info.set_index(["Station", "Channel"])[
-        "Constant"].to_dict()
+    constant_dict = site_info.set_index(["Station", "Channel"])["Constant"].to_dict()
     logger.info(f"{site_info_file} loaded")
 
 except FileNotFoundError:
@@ -465,8 +454,7 @@ def wave_array_init(sample_rate, buffer_time, fill_value):
     return np.full(sample_rate * buffer_time, fill_value=fill_value)
 
 
-def time_array_init(sample_rate, buffer_time, start_time, end_time,
-                    data_length):
+def time_array_init(sample_rate, buffer_time, start_time, end_time, data_length):
     """
     生成一個時間序列，包含前後兩段
     後段從 start_time 內插至 end_time (確定的時間序列)
@@ -484,7 +472,7 @@ def time_array_init(sample_rate, buffer_time, start_time, end_time,
 
 def slide_array(array, data):
     array = np.append(array, data)
-    return array[data.size:]
+    return array[data.size :]
 
 
 def earthworm_wave_listener(buf_ring):
@@ -685,7 +673,6 @@ def earthworm_eew_listener(buf_ring):
         time.sleep(0.00001)
 
 
-
 """
 Model Inference
 """
@@ -711,8 +698,7 @@ try:
     vs30_flat = ds["vs30"].values.flatten()
 
     # 建立查詢表格
-    vs30_table = pd.DataFrame(
-        {"lat": lat_flat, "lon": lon_flat, "Vs30": vs30_flat})
+    vs30_table = pd.DataFrame({"lat": lat_flat, "lon": lon_flat, "Vs30": vs30_flat})
 
     # 移除包含 NaN 或 Inf 的資料
     vs30_table = vs30_table.replace([np.inf, -np.inf], np.nan)
@@ -745,9 +731,8 @@ try:
 
     # 只取 HLZ 通道且仍在運作的測站（End_time = 2599-12-31）
     active_stations = site_info_df[
-        (site_info_df["Channel"] == "HLZ") & (
-                    site_info_df["End_time"] == "2599-12-31")
-        ].copy()
+        (site_info_df["Channel"] == "HLZ") & (site_info_df["End_time"] == "2599-12-31")
+    ].copy()
 
     # 去重（同一測站可能有多條記錄）
     active_stations = active_stations.drop_duplicates(subset=["Station"])
@@ -789,7 +774,6 @@ try:
     logger.info(f"found {model_path} model weight")
 except Exception as e:
     logger.error(f"Error loading {model_path}: {e}")
-
 
 
 def event_cutter(pick_buffer):
@@ -848,8 +832,7 @@ def lowpass(data, freq=10, df=100, corners=4):
 
     if f > 1:
         f = 1.0
-    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter",
-                        output="zpk")
+    z, p, k = iirfilter(corners, f, btype="lowpass", ftype="butter", output="zpk")
     sos = zpk2sos(z, p, k)
 
     return sosfilt(sos, data)
@@ -862,14 +845,15 @@ def get_vs30(lat, lon):
         return float(vs30)
 
     except Exception as e:
-        logger.error(f"get_vs30 error: {e}",)
+        logger.error(
+            f"get_vs30 error: {e}",
+        )
 
 
 def get_station_position(station):
     try:
         latitude, longitude, elevation = site_info.loc[
-            (site_info["Station"] == station), ["Latitude", "Longitude",
-                                                "Elevation"]
+            (site_info["Station"] == station), ["Latitude", "Longitude", "Elevation"]
         ].values[0]
         return latitude, longitude, elevation
     except Exception as e:
@@ -932,8 +916,8 @@ def dataset_batch(dataset, batch_size=25):
 
         for i in range(0, len(dataset["target"]), batch_size):
             # 迭代 25 站的 target
-            batch["target"] = dataset["target"][i: i + batch_size]
-            batch["target_name"] = dataset["target_name"][i: i + batch_size]
+            batch["target"] = dataset["target"][i : i + batch_size]
+            batch["target_name"] = dataset["target_name"][i : i + batch_size]
 
             yield batch
 
@@ -957,6 +941,7 @@ def get_target_dataset(dataset):
     dataset["target_name"] = target_name_list
 
     return dataset
+
 
 def get_average_pga(weight, sigma, mu):
     pga_list = torch.sum(weight * mu, dim=2).cpu().detach().numpy().flatten()
@@ -1014,8 +999,7 @@ def loading_animation(pick_threshold):
 
         wave_count = len(wave_buffer)
 
-        wave_timestring = datetime.fromtimestamp(
-            float(wave_endt.value)).strftime(
+        wave_timestring = datetime.fromtimestamp(float(wave_endt.value)).strftime(
             "%Y-%m-%d %H:%M:%S.%f"
         )
 
@@ -1037,6 +1021,7 @@ def model_inference():
     進行模型預測
     """
     from ttsam_model import get_full_model
+
     full_model = get_full_model(model_path)
     logger.info("Model loaded")
 
@@ -1070,7 +1055,6 @@ def model_inference():
                 logger.info(f"create report log file {report_log_file}")
                 report_log_file = open(report_log_file, "w+")
 
-
                 pick_log_file = f"/workspace/logs/pick/pick_{first_pick_timestring}.log"
                 logger.info(f"create pick log file {pick_log_file}")
                 pick_log_file = open(pick_log_file, "w+")
@@ -1092,8 +1076,7 @@ def model_inference():
                 wave = np.array(batch["waveform"])
                 wave_transposed = wave.transpose(0, 2, 1)
 
-                batch_waveform = prepare_tensor(wave_transposed, (25, 3000, 3),
-                                                25)
+                batch_waveform = prepare_tensor(wave_transposed, (25, 3000, 3), 25)
                 batch_station = prepare_tensor(batch["station"], (25, 4), 25)
                 batch_target = prepare_tensor(batch["target"], (25, 4), 25)
 
@@ -1128,13 +1111,10 @@ def model_inference():
                     report["alarm"].append(target_name)
 
             inference_end_time = time.time()
-            report["report_time"] = datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S.%f")[:-3]
+            report["report_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
             report["format_time"] = datetime.now().strftime("%Y%m%d_%H%M%S")
-            report["wave_time"] = wave_endtime - float(
-                event_first_pick["pick_time"])
-            report["wave_endt"] = datetime.fromtimestamp(
-                float(wave_endtime)).strftime(
+            report["wave_time"] = wave_endtime - float(event_first_pick["pick_time"])
+            report["wave_endt"] = datetime.fromtimestamp(float(wave_endtime)).strftime(
                 "%Y-%m-%d %H:%M:%S.%f"
             )
             report["wave_lag"] = inference_end_time - wave_endtime
@@ -1209,7 +1189,7 @@ def reporter():
                 new_alarm_county[county] = intensity
 
             elif convert_intensity(intensity) > convert_intensity(
-                    past_alarm_county[county]
+                past_alarm_county[county]
             ):
                 new_alarm_county[county] = intensity
 
@@ -1221,8 +1201,8 @@ def reporter():
             sys.stdout.flush()
 
             with open(
-                    f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
-                    "a",
+                f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
+                "a",
             ) as f:
                 f.write(format_report + "\n")
 
@@ -1327,15 +1307,11 @@ def send_discord():
 if __name__ == "__main__":
     logger.info("TTSAM Realtime Start")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mqtt", action="store_true",
-                        help="connect to mqtt broker")
-    parser.add_argument("--discord", action="store_true",
-                        help="connect to discord bot")
+    parser.add_argument("--mqtt", action="store_true", help="connect to mqtt broker")
+    parser.add_argument("--discord", action="store_true", help="connect to discord bot")
     parser.add_argument("--web", action="store_true", help="run web server")
-    parser.add_argument("--host", type=str, default="0.0.0.0",
-                        help="web server ip")
-    parser.add_argument("--port", type=int, default=5001,
-                        help="web server port")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
+    parser.add_argument("--port", type=int, default=5001, help="web server port")
     parser.add_argument(
         "--env",
         type=str,
@@ -1425,11 +1401,9 @@ if __name__ == "__main__":
         ring_order.append(ring_name)
         buf_ring = len(ring_order) - 1
         processes.append(
-            mp.Process(target=earthworm_wave_listener,
-                                    kwargs={"buf_ring": buf_ring})
+            mp.Process(target=earthworm_wave_listener, kwargs={"buf_ring": buf_ring})
         )
-        logger.info(
-            f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
+        logger.info(f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
     # 添加 pick rings（根據 env 動態添加）
     for ring_name, ring_id in earthworm_param[args.env]["pick"].items():
@@ -1437,11 +1411,9 @@ if __name__ == "__main__":
         ring_order.append(ring_name)
         buf_ring = len(ring_order) - 1
         processes.append(
-            mp.Process(target=earthworm_pick_listener,
-                                    kwargs={"buf_ring": buf_ring})
+            mp.Process(target=earthworm_pick_listener, kwargs={"buf_ring": buf_ring})
         )
-        logger.info(
-            f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
+        logger.info(f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
     # # 添加 eew rings（根據 env 動態添加）
     # for ring_name, ring_id in earthworm_param[args.env]["eew"].items():
@@ -1455,8 +1427,7 @@ if __name__ == "__main__":
     #     logger.info(
     #         f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
-    logger.info(
-        f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
+    logger.info(f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
 
     if args.mqtt:
         username = config["mqtt"]["username"]
