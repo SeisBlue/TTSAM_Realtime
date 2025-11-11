@@ -6,13 +6,13 @@ from loguru import logger
 # GPU/CPU 設定
 if torch.cuda.is_available():
     device = torch.device("cuda")
-    logger.info("使用 GPU")
+    logger.info("Using GPU")
 elif torch.mps.is_available():
     device = torch.device("mps")
-    logger.info("使用 Apple MPS")
+    logger.info("Using Apple MPS")
 else:
     device = torch.device("cpu")
-    logger.info("使用 CPU")
+    logger.info("Using CPU")
 
 
 class LambdaLayer(nn.Module):
