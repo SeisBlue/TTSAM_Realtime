@@ -366,24 +366,6 @@ def wave_emitter():
             continue
 
 
-def event_emitter():
-    while True:
-        event_data = event_queue.get()
-        if not event_data:
-            continue
-
-        socketio.emit("event_data", event_data)
-
-
-def dataset_emitter():
-    while True:
-        dataset_data = dataset_queue.get()
-        if not dataset_data:
-            continue
-
-        socketio.emit("dataset_data", dataset_data)
-
-
 def report_emitter():
     while True:
         report_data = report_queue.get()
@@ -399,12 +381,10 @@ def web_server():
 
     # 啟動背景資料發送執行緒
     threading.Thread(target=wave_emitter, daemon=True).start()
-    threading.Thread(target=event_emitter, daemon=True).start()
-    threading.Thread(target=dataset_emitter, daemon=True).start()
     threading.Thread(target=report_emitter, daemon=True).start()
 
     app.run(host=args.host, port=args.port, use_reloader=False)
-    socketio.run(app, debug=True)
+    socketio.run(app, host=args.host, port=args.port, debug=True)
 
 
 """
