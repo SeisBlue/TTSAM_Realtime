@@ -3,17 +3,17 @@ import torch
 import torch.nn as nn
 from loguru import logger
 
-# GPU/CPU 設定
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-    logger.info("Using GPU")
-elif torch.mps.is_available():
-    device = torch.device("mps")
-    logger.info("Using Apple MPS")
-else:
-    device = torch.device("cpu")
-    logger.info("Using CPU")
-
+# # GPU/CPU 設定
+# if torch.cuda.is_available():
+#     device = torch.device("cuda")
+#     logger.info("Using GPU")
+# elif torch.mps.is_available():
+#     device = torch.device("mps")
+#     logger.info("Using Apple MPS")
+# else:
+#     device = torch.device("cpu")
+#     logger.info("Using CPU")
+device = torch.device("cpu")
 
 class LambdaLayer(nn.Module):
     def __init__(self, lambd, eps=1e-4):

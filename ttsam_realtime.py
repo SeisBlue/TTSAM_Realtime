@@ -742,17 +742,18 @@ except Exception as e:
     logger.error(f"Error loading {site_info_file}: {e}")
 
 
-model_path = "ttsam_trained_model_11.pt"
+model_path = "/workspace/ttsam_trained_model_11.pt"
 try:
+    os.path.exists(f"{model_path}")
+except FileNotFoundError:
     logger.info(f"Check model weight...")
     model_path = hf_hub_download(
         repo_id="SeisBlue/TTSAM",
-        filename=model_path,
+        filename="ttsam_trained_model_11.pt",
         local_dir="/workspace",
         repo_type="model",
     )
     logger.info(f"found {model_path} model weight")
-except Exception as e:
     logger.error(f"Error loading {model_path}: {e}")
 
 
@@ -1001,15 +1002,13 @@ def model_inference():
     進行模型預測
     """
     from ttsam_model import get_full_model
-
     full_model = get_full_model(model_path)
-    logger.info("Model loaded")
 
     pick_threshold = 5
 
     report_log_file = None
     while True:
-        # 小於 3 個測站不觸發模型預測
+        # 小於 5 個測站不觸發模型預測
         if len(pick_buffer) < pick_threshold:
             if report_log_file:
                 report_log_file.close()
@@ -1032,10 +1031,12 @@ def model_inference():
                 report_log_file = (
                     f"/workspace/logs/report/report_{first_pick_timestring}.log"
                 )
+                os.makedirs(os.path.dirname(report_log_file), exist_ok=True)
                 logger.info(f"create report log file {report_log_file}")
                 report_log_file = open(report_log_file, "w+")
 
                 pick_log_file = f"/workspace/logs/pick/pick_{first_pick_timestring}.log"
+                os.makedirs(os.path.dirname(pick_log_file), exist_ok=True)
                 logger.info(f"create pick log file {pick_log_file}")
                 pick_log_file = open(pick_log_file, "w+")
 
@@ -1077,9 +1078,6 @@ def model_inference():
                 calculate_intensity(pga, label=True) for pga in dataset["pga"]
             ]
 
-            print(f"model inference done")
-            sys.stdout.flush()
-
             # 產生報告
             report = {"picks": len(pick_buffer), "log_time": "", "alarm": []}
             for i, target_name in enumerate(dataset["target_name"]):
@@ -1115,9 +1113,9 @@ def model_inference():
 
             # 資料傳至前端
             dataset_queue.put(dataset)
-
         except Exception as e:
             logger.error(f"model_inference error: {e}")
+            continue
 
 
 def convert_intensity(value):
