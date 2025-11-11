@@ -39,13 +39,12 @@ wave_speed_count = manager.Value("i", 0)
 app = Flask(__name__)
 # HTTP API 的 CORS
 CORS(
-    app, resources={r"/api/*": {"origins": "*"},
-                    r"/get_file_content": {"origins": "*"}}
+    app, resources={r"/api/*": {"origins": "*"}}
 )
 
 # SocketIO 的 CORS（獨立處理 WebSocket）
 socketio = SocketIO(
-    app, cors_allowed_origins="*", async_mode="threading"  # 明確指定非同步模式
+    app, cors_allowed_origins="*", async_mode="threading"
 )
 
 # 訂閱管理：追蹤每個客戶端訂閱的測站
@@ -55,27 +54,6 @@ subscribed_stations = {}  # {session_id: set(station_codes)}
 Web Server
 """
 
-
-@app.route("/", methods=["GET"])
-def index():
-    report_log_dir = "/workspace/logs/report"
-    try:
-        files = []
-        for f in os.listdir(report_log_dir):
-            file_path = os.path.join(report_log_dir, f)
-            if (
-                    f.startswith("report")
-                    and f.endswith(".log")
-                    and os.path.isfile(file_path)
-            ):
-                files.append(f)
-        files.sort(
-            key=lambda x: os.path.getmtime(os.path.join(report_log_dir, x)),
-            reverse=True,
-        )
-    except FileNotFoundError:
-        files = []
-    return render_template("index.html", files=files, target=target_dict)
 
 
 @app.route("/api/get_file_content")
@@ -271,26 +249,6 @@ def find_nearest_station():
             500,
             {"Content-Type": "application/json; charset=utf-8"},
         )
-
-
-@app.route("/trace")
-def trace_page():
-    return render_template("trace.html")
-
-
-@app.route("/event")
-def event_page():
-    return render_template("event.html")
-
-
-@app.route("/dataset")
-def dataset_page():
-    return render_template("dataset.html")
-
-
-@app.route("/intensityMap")
-def map_page():
-    return render_template("intensityMap.html")
 
 
 @socketio.on("connect")
