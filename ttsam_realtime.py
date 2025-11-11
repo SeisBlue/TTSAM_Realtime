@@ -615,7 +615,7 @@ def earthworm_wave_listener(buf_ring):
             wave_speed_count.value += 1
 
         except Exception as e:
-            logger.error("earthworm_wave_process error", e)
+            logger.error(f"earthworm_wave_process error {e}")
 
 
 """
@@ -648,7 +648,7 @@ def parse_pick_msg(pick_msg):
         return pick
 
     except IndexError as e:
-        logger.error(f"pick_msg parsing error: {pick_msg_column}", e)
+        logger.error(f"pick_msg parsing error: {pick_msg_column}, {e}")
 
 
 def earthworm_pick_listener(buf_ring):
@@ -669,7 +669,7 @@ def earthworm_pick_listener(buf_ring):
             break
 
         except Exception as e:
-            logger.error(f"delete pick error: {pick_id}", e)
+            logger.error(f"delete pick error: {pick_id}, {e}")
 
         # 取得 pick msg
         pick_msg = earthworm.get_msg(buf_ring=buf_ring, msg_type=0)
@@ -708,7 +708,7 @@ def earthworm_pick_listener(buf_ring):
                 logger.debug(f"add pick: {pick_id}")
 
         except Exception as e:
-            logger.error("earthworm_pick_listener error:", pick_msg, e)
+            logger.error(f"earthworm_pick_listener error: {pick_msg}, {e}")
             continue
         time.sleep(0.00001)
 
@@ -729,7 +729,7 @@ def earthworm_eew_listener(buf_ring):
             logger.debug(f"{eew_msg}")
 
         except Exception as e:
-            logger.error(f"earthworm_eew_listener error: {eew_msg}", e)
+            logger.error(f"earthworm_eew_listener error: {eew_msg}, {e}")
 
 
 """
@@ -866,7 +866,7 @@ def signal_processing(waveform):
         return data
 
     except Exception as e:
-        logger.error("signal_processing error:", e)
+        logger.error(f"signal_processing error: {e}")
 
 
 def lowpass(data, freq=10, df=100, corners=4):
@@ -893,7 +893,7 @@ def get_vs30(lat, lon):
         return float(vs30)
 
     except Exception as e:
-        logger.error("get_vs30 error", e)
+        logger.error(f"get_vs30 error: {e}",)
 
 
 def get_station_position(station):
@@ -904,7 +904,7 @@ def get_station_position(station):
         ].values[0]
         return latitude, longitude, elevation
     except Exception as e:
-        logger.error(f"get_station_position error: {station}", e)
+        logger.error(f"get_station_position error: {station}, {e}")
         return
 
 
@@ -950,7 +950,7 @@ def convert_dataset(event_msg):
         return dataset
 
     except Exception as e:
-        logger.error("converter error:", e)
+        logger.error(f"converter error: {e}")
 
 
 def dataset_batch(dataset, batch_size=25):
@@ -969,7 +969,7 @@ def dataset_batch(dataset, batch_size=25):
             yield batch
 
     except Exception as e:
-        logger.error("dataset_batch error:", e)
+        logger.error(f"dataset_batch error: {e}")
 
 
 def get_target_dataset(dataset):
@@ -1001,7 +1001,7 @@ def ttsam_model_predict(tensor):
         logger.error(f"{model_path} not found")
 
     except Exception as e:
-        logger.error("ttsam_model_predict error:", e)
+        logger.error(f"ttsam_model_predict error: {e}")
 
 
 def get_average_pga(weight, sigma, mu):
@@ -1035,7 +1035,7 @@ def calculate_intensity(pga, pgv=None, label=False):
             return intensity
 
     except Exception as e:
-        logger.error("calculate_intensity error:", e)
+        logger.error(f"calculate_intensity error: {e}")
 
 
 def prepare_tensor(data, shape, limit):
@@ -1195,7 +1195,7 @@ def model_inference():
             dataset_queue.put(dataset)
 
         except Exception as e:
-            logger.error("model_inference error:", e)
+            logger.error(f"model_inference error: {e}")
 
 
 def convert_intensity(value):
@@ -1358,7 +1358,7 @@ def send_discord():
             webhook.remove_embeds()
 
         except Exception as e:
-            logger.error("send_discord error:", e)
+            logger.error(f"send_discord error: {e}")
             print(e)
 
 
@@ -1419,7 +1419,7 @@ if __name__ == "__main__":
 
     # 配置日誌設置
     logger.remove()
-    logger.add(sys.stderr, level=args.verbose_level)
+    logger.add(sys.stderr, level=args.verbose_level, backtrace=True, diagnose=True)
     logger.add(
         "/workspace/logs/ttsam_error.log",
         rotation="1 week",
