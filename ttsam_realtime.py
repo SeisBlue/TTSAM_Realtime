@@ -27,16 +27,13 @@ from ttsam_model import get_full_model
 
 app = Flask(__name__)
 # HTTP API 的 CORS
-CORS(app, resources={
-    r"/api/*": {"origins": "*"},
-    r"/get_file_content": {"origins": "*"}
-})
+CORS(
+    app, resources={r"/api/*": {"origins": "*"}, r"/get_file_content": {"origins": "*"}}
+)
 
 # SocketIO 的 CORS（獨立處理 WebSocket）
 socketio = SocketIO(
-    app,
-    cors_allowed_origins="*",
-    async_mode='threading'  # 明確指定非同步模式
+    app, cors_allowed_origins="*", async_mode="threading"  # 明確指定非同步模式
 )
 
 # 共享物件
@@ -72,9 +69,9 @@ def index():
         for f in os.listdir(report_log_dir):
             file_path = os.path.join(report_log_dir, f)
             if (
-                    f.startswith("report")
-                    and f.endswith(".log")
-                    and os.path.isfile(file_path)
+                f.startswith("report")
+                and f.endswith(".log")
+                and os.path.isfile(file_path)
             ):
                 files.append(f)
         files.sort(
@@ -114,24 +111,36 @@ def get_file_content():
 def get_stations():
     """API: 取得測站列表（JSON格式）"""
     try:
-        return json.dumps(target_dict, ensure_ascii=False), 200, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps(target_dict, ensure_ascii=False),
+            200,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
     except Exception as e:
         logger.error(f"Error getting stations: {e}")
-        return json.dumps({"error": str(e)}), 500, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps({"error": str(e)}),
+            500,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
 
 
 @app.route("/api/all-stations")
 def get_all_stations():
     """API: 取得所有測站列表（用於測站替換功能的經緯度查找）"""
     try:
-        return json.dumps(all_stations_dict, ensure_ascii=False), 200, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps(all_stations_dict, ensure_ascii=False),
+            200,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
     except Exception as e:
         logger.error(f"Error getting all stations: {e}")
-        return json.dumps({"error": str(e)}), 500, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps({"error": str(e)}),
+            500,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
 
 
 @app.route("/api/reports")
@@ -144,28 +153,37 @@ def get_reports():
             for f in os.listdir(report_log_dir):
                 file_path = os.path.join(report_log_dir, f)
                 if (
-                        f.startswith("report")
-                        and f.endswith(".log")
-                        and os.path.isfile(file_path)
+                    f.startswith("report")
+                    and f.endswith(".log")
+                    and os.path.isfile(file_path)
                 ):
                     # 獲取文件修改時間
                     mtime = os.path.getmtime(file_path)
-                    files.append({
-                        "filename": f,
-                        "timestamp": mtime,
-                        "datetime": datetime.fromtimestamp(mtime).strftime(
-                            '%Y-%m-%d %H:%M:%S')
-                    })
+                    files.append(
+                        {
+                            "filename": f,
+                            "timestamp": mtime,
+                            "datetime": datetime.fromtimestamp(mtime).strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                        }
+                    )
 
         # 按時間倒序排列
-        files.sort(key=lambda x: x['timestamp'], reverse=True)
+        files.sort(key=lambda x: x["timestamp"], reverse=True)
 
-        return json.dumps(files, ensure_ascii=False), 200, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps(files, ensure_ascii=False),
+            200,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
     except Exception as e:
         logger.error(f"Error getting reports: {e}")
-        return json.dumps({"error": str(e)}), 500, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps({"error": str(e)}),
+            500,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
 
 
 @app.route("/api/find-nearest-station")
@@ -178,34 +196,42 @@ def find_nearest_station():
         max_count: 返回最近的 N 個測站 (預設 1)
     """
     try:
-        lat = float(request.args.get('lat'))
-        lon = float(request.args.get('lon'))
-        exclude_pattern = request.args.get('exclude_pattern', None)
-        max_count = int(request.args.get('max_count', 1))
+        lat = float(request.args.get("lat"))
+        lon = float(request.args.get("lon"))
+        exclude_pattern = request.args.get("exclude_pattern", None)
+        max_count = int(request.args.get("max_count", 1))
 
         if not all_stations_dict:
-            return json.dumps({"error": "No stations available"}), 404, {
-                'Content-Type': 'application/json; charset=utf-8'}
+            return (
+                json.dumps({"error": "No stations available"}),
+                404,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
         # 過濾測站
         filtered_stations = all_stations_dict
         if exclude_pattern == "CWASN":
-            # 只保留 TSMIP 格式測站 (Axxx, Bxxx, Cxxx)
             import re
-            tsmip_pattern = re.compile(r'^[ABCDEFGH]\d{3}$')
+
+            tsmip_pattern = re.compile(r"^[ABCDEFGH]\d{3}$")
             filtered_stations = [
-                s for s in all_stations_dict
-                if tsmip_pattern.match(s.get('station', ''))
+                s
+                for s in all_stations_dict
+                if tsmip_pattern.match(s.get("station", ""))
             ]
 
         if not filtered_stations:
-            return json.dumps({"error": "No matching stations found"}), 404, {
-                'Content-Type': 'application/json; charset=utf-8'}
+            return (
+                json.dumps({"error": "No matching stations found"}),
+                404,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
         # 計算距離並排序
         def haversine_distance(lat1, lon1, lat2, lon2):
             """計算兩點間的距離（公里）"""
             from math import asin, cos, radians, sin, sqrt
+
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
             dlon = lon2 - lon1
             dlat = lat2 - lat1
@@ -216,31 +242,39 @@ def find_nearest_station():
 
         stations_with_distance = []
         for station in filtered_stations:
-            station_lat = station.get('latitude')
-            station_lon = station.get('longitude')
+            station_lat = station.get("latitude")
+            station_lon = station.get("longitude")
             if station_lat is not None and station_lon is not None:
                 distance = haversine_distance(lat, lon, station_lat, station_lon)
-                stations_with_distance.append({
-                    **station,
-                    'distance_km': round(distance, 2)
-                })
+                stations_with_distance.append(
+                    {**station, "distance_km": round(distance, 2)}
+                )
 
         # 按距離排序
-        stations_with_distance.sort(key=lambda x: x['distance_km'])
+        stations_with_distance.sort(key=lambda x: x["distance_km"])
 
         # 返回最近的 N 個測站
         result = stations_with_distance[:max_count]
 
-        return json.dumps(result, ensure_ascii=False), 200, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps(result, ensure_ascii=False),
+            200,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
 
     except ValueError as e:
-        return json.dumps({"error": f"Invalid parameters: {str(e)}"}), 400, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps({"error": f"Invalid parameters: {str(e)}"}),
+            400,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
     except Exception as e:
         logger.error(f"Error finding nearest station: {e}")
-        return json.dumps({"error": str(e)}), 500, {
-            'Content-Type': 'application/json; charset=utf-8'}
+        return (
+            json.dumps({"error": str(e)}),
+            500,
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
 
 
 @app.route("/trace")
@@ -276,7 +310,9 @@ def handle_subscribe_stations(data):
 
     if stations:
         subscribed_stations[session_id] = set(stations)
-        logger.info(f"📡 Client {session_id[:8]} subscribed to {len(stations)} stations")
+        logger.info(
+            f"📡 Client {session_id[:8]} subscribed to {len(stations)} stations"
+        )
     else:
         # 清空訂閱
         if session_id in subscribed_stations:
@@ -313,7 +349,7 @@ def _process_wave_data(wave, is_realtime=False):
         "startt": wave.get("startt", 0),
         "endt": wave.get("endt", 0),
         "samprate": wave.get("samprate", 100),
-        "is_realtime": is_realtime
+        "is_realtime": is_realtime,
     }
 
 
@@ -354,7 +390,7 @@ def wave_emitter():
 
                 filtered_batch = {}
                 for wave_id, wave_data in wave_batch.items():
-                    station_code = wave_id.split('.')[1] if '.' in wave_id else wave_id
+                    station_code = wave_id.split(".")[1] if "." in wave_id else wave_id
                     if station_code in all_subscribed:
                         filtered_batch[wave_id] = wave_data
 
@@ -363,11 +399,12 @@ def wave_emitter():
                     wave_packet = {
                         "waveid": f"batch_{timestamp}",
                         "timestamp": timestamp,
-                        "data": filtered_batch
+                        "data": filtered_batch,
                     }
                     socketio.emit("wave_packet", wave_packet)
                     logger.debug(
-                        f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations")
+                        f"📦 Batch sent: {len(filtered_batch)}/{len(wave_batch)} stations"
+                    )
 
             last_send_time = current_time
 
@@ -485,10 +522,10 @@ def time_array_init(sample_rate, buffer_time, start_time, end_time, data_length)
 
 def slide_array(array, data):
     array = np.append(array, data)
-    return array[data.size:]
+    return array[data.size :]
 
 
-def earthworm_wave_listener():
+def earthworm_wave_listener(buf_ring):
     buffer_time = 30  # 設定緩衝區保留時間
     sample_rate = 100  # 設定取樣率
 
@@ -496,16 +533,13 @@ def earthworm_wave_listener():
     wave_constant_cache = {}
     wave_buffer_local = {}  # 本地緩存，減少 Manager.dict 訪問
 
-    wave_rings = [buf_ring for buf_ring, name in enumerate(ring_order) if "WAVE" in name]
-
     while True:
         if not earthworm.mod_sta():
             continue
 
-        for wave_ring in wave_rings:
-            wave = earthworm.get_wave(wave_ring)
-            if not wave:
-                continue
+        wave = earthworm.get_wave(buf_ring)
+        if not wave:
+            continue
 
         # 快速時間檢查（最早過濾）
         wave_endt_val = wave["endt"]
@@ -607,14 +641,13 @@ def parse_pick_msg(pick_msg):
         logger.error(f"pick_msg parsing error: {pick_msg_column}", e)
 
 
-def earthworm_pick_listener():
+def earthworm_pick_listener(buf_ring):
     """
     監看 pick ring 的訊息，並將 pick 加入 pick_buffer
     pick msg 的時間窗為 p 波後 2-10 秒
     ref: pick_ew_new/pick_ra_0709.c line 283
     """
     event_window = 10
-
     while True:
         try:
             # 超時移除 pick
@@ -629,7 +662,6 @@ def earthworm_pick_listener():
             logger.error(f"delete pick error: {pick_id}", e)
 
         # 取得 pick msg
-        buf_ring = ring_order.index("PICK_RING")
         pick_msg = earthworm.get_msg(buf_ring=buf_ring, msg_type=0)
         if not pick_msg:
             time.sleep(0.00001)
@@ -672,6 +704,25 @@ def earthworm_pick_listener():
 
 
 """
+Earthworm EEW Listener
+"""
+
+
+def earthworm_eew_listener(buf_ring):
+    while True:
+        try:
+            # 取得 pick msg
+            eew_msg = earthworm.get_msg(buf_ring=buf_ring, msg_type=0)
+            if not eew_msg:
+                time.sleep(0.00001)
+                continue
+            logger.debug(f"{eew_msg}")
+
+        except Exception as e:
+            logger.error(f"earthworm_eew_listener error: {eew_msg}", e)
+
+
+"""
 Model Inference
 """
 # Load Vs30 grid
@@ -684,23 +735,19 @@ except FileNotFoundError:
         repo_id="SeisBlue/TaiwanVs30",
         filename="Vs30ofTaiwan.nc",
         local_dir="/workspace/station",
-        repo_type="dataset"
+        repo_type="dataset",
     )
     ds = xr.open_dataset(vs30_file)
     logger.info("Using huggingface Vs30 file path")
 
 try:
     # 將 2D 座標展平成 1D 陣列供 KDTree 使用
-    lat_flat = ds['lat'].values.flatten()
-    lon_flat = ds['lon'].values.flatten()
-    vs30_flat = ds['vs30'].values.flatten()
+    lat_flat = ds["lat"].values.flatten()
+    lon_flat = ds["lon"].values.flatten()
+    vs30_flat = ds["vs30"].values.flatten()
 
     # 建立查詢表格
-    vs30_table = pd.DataFrame({
-        'lat': lat_flat,
-        'lon': lon_flat,
-        'Vs30': vs30_flat
-    })
+    vs30_table = pd.DataFrame({"lat": lat_flat, "lon": lon_flat, "Vs30": vs30_flat})
 
     # 移除包含 NaN 或 Inf 的資料
     vs30_table = vs30_table.replace([np.inf, -np.inf], np.nan)
@@ -733,24 +780,33 @@ try:
 
     # 只取 HLZ 通道且仍在運作的測站（End_time = 2599-12-31）
     active_stations = site_info_df[
-        (site_info_df['Channel'] == 'HLZ') &
-        (site_info_df['End_time'] == '2599-12-31')
-        ].copy()
+        (site_info_df["Channel"] == "HLZ") & (site_info_df["End_time"] == "2599-12-31")
+    ].copy()
 
     # 去重（同一測站可能有多條記錄）
-    active_stations = active_stations.drop_duplicates(subset=['Station'])
+    active_stations = active_stations.drop_duplicates(subset=["Station"])
 
     # 轉換為字典格式
-    all_stations_dict = active_stations[['Station', 'Latitude', 'Longitude']].rename(
-        columns={'Station': 'station', 'Latitude': 'latitude', 'Longitude': 'longitude'}
-    ).to_dict(orient="records")
+    all_stations_dict = (
+        active_stations[["Station", "Latitude", "Longitude"]]
+        .rename(
+            columns={
+                "Station": "station",
+                "Latitude": "latitude",
+                "Longitude": "longitude",
+            }
+        )
+        .to_dict(orient="records")
+    )
 
     logger.info(
-        f"Loaded {len(all_stations_dict)} active stations from {site_info_file}")
+        f"Loaded {len(all_stations_dict)} active stations from {site_info_file}"
+    )
 
 except FileNotFoundError:
     logger.warning(
-        f"{site_info_file} not found, secondary stations will not be available")
+        f"{site_info_file} not found, secondary stations will not be available"
+    )
 except Exception as e:
     logger.error(f"Error loading {site_info_file}: {e}")
 
@@ -893,8 +949,8 @@ def dataset_batch(dataset, batch_size=25):
 
         for i in range(0, len(dataset["target"]), batch_size):
             # 迭代 25 站的 target
-            batch["target"] = dataset["target"][i: i + batch_size]
-            batch["target_name"] = dataset["target_name"][i: i + batch_size]
+            batch["target"] = dataset["target"][i : i + batch_size]
+            batch["target_name"] = dataset["target_name"][i : i + batch_size]
 
             yield batch
 
@@ -930,11 +986,10 @@ def ttsam_model_predict(tensor):
             repo_id="SeisBlue/TTSAM",
             filename="ttsam_trained_model_11.pt",
             local_dir="/workspace",
-            repo_type="model"
+            repo_type="model",
         )
         full_model = get_full_model(model_path)
         logger.info("Using huggingface model path")
-
 
     try:
         weight, sigma, mu = full_model(tensor)
@@ -1135,8 +1190,6 @@ def model_inference():
             logger.error("model_inference error:", e)
 
 
-
-
 def convert_intensity(value):
     if value.endswith("+"):
         return float(value[:-1]) + 0.25
@@ -1186,7 +1239,7 @@ def reporter():
                 new_alarm_county[county] = intensity
 
             elif convert_intensity(intensity) > convert_intensity(
-                    past_alarm_county[county]
+                past_alarm_county[county]
             ):
                 new_alarm_county[county] = intensity
 
@@ -1198,8 +1251,8 @@ def reporter():
             sys.stdout.flush()
 
             with open(
-                    f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
-                    "a",
+                f"/workspace/logs/format_report/text_report_{report['format_time']}.log",
+                "a",
             ) as f:
                 f.write(format_report + "\n")
 
@@ -1308,7 +1361,13 @@ if __name__ == "__main__":
     parser.add_argument("--web", action="store_true", help="run web server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="web server ip")
     parser.add_argument("--port", type=int, default=5001, help="web server port")
-    parser.add_argument("--env", type=str, default="cwa", choices=["cwa", "test"], help="set environment")
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="cwa",
+        choices=["cwa", "test"],
+        help="set environment",
+    )
     parser.add_argument(
         "--verbose-level",
         type=str,
@@ -1322,6 +1381,7 @@ if __name__ == "__main__":
         help="change log level: ERROR, WARNING, INFO, DEBUG",
     )
     args = parser.parse_args()
+    processes = []
 
     # get config
     config_file = "ttsam_config.json"
@@ -1329,7 +1389,19 @@ if __name__ == "__main__":
         config = json.load(open(config_file, "r"))
         logger.info(f"{config_file} loaded")
     except FileNotFoundError:
-        config = {}
+        config = {
+            "mqtt": {
+                "username": "ttsam",
+                "password": "ttsam",
+                "host": "0.0.0.0",
+                "port": 1883,
+                "topic": "ttsam",
+            },
+            "discord": {
+                "webhook_url": "webhook",
+                "proxies": {"http": "proxy", "https": "proxy"},
+            },
+        }
         logger.warning(f"{config_file} not found, using default config")
 
     # 配置日誌設置
@@ -1343,11 +1415,10 @@ if __name__ == "__main__":
         backtrace=True,
     )
 
-
     earthworm_param = {
         "test": {
             "inst_id": 255,
-            "wave": {"WAVE_RING_CWASN": 1000, "WAVE_RING_CWASN": 1030},
+            "wave": {"WAVE_RING_CWASN": 1000, "WAVE_RING_TSMIP": 1030},
             "pick": {"PICK_RING": 1005},
             "eew": {"EEW_RING": 1035},
         },
@@ -1355,21 +1426,47 @@ if __name__ == "__main__":
             "inst_id": 52,
             "wave": {"WAVE_RING_TSMIP": 1034},
             "pick": {"PICK_RING": 1005},
-            "eew": {}
-        }
+            "eew": {},
+        },
     }
     ring_order = []  # 新增：追蹤 ring 添加順序
     earthworm = PyEW.EWModule(
-        def_ring=1000, mod_id=2, inst_id=earthworm_param[args.env]["inst_id"], hb_time=30,
-        db=False
+        def_ring=1000,
+        mod_id=2,
+        inst_id=earthworm_param[args.env]["inst_id"],
+        hb_time=30,
+        db=False,
     )
 
     # 添加 wave rings（根據 env 動態添加）
-    for ring_type in ["wave", "pick", "eew"]:
-        for ring_name, ring_id in earthworm_param[args.env][ring_type].items():
-            earthworm.add_ring(ring_id)
-            ring_order.append(ring_name)
-            logger.info(f"Added ring{len(ring_order)-1}: {ring_name} with ID {ring_id}")
+    for ring_name, ring_id in earthworm_param[args.env]["wave"].items():
+        earthworm.add_ring(ring_id)
+        ring_order.append(ring_name)
+        buf_ring = len(ring_order) - 1
+        processes.append(
+            multiprocessing.Process(target=earthworm_wave_listener, args=(buf_ring,))
+        )
+        logger.info(f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
+
+    # 添加 pick rings（根據 env 動態添加）
+    for ring_name, ring_id in earthworm_param[args.env]["pick"].items():
+        earthworm.add_ring(ring_id)
+        ring_order.append(ring_name)
+        buf_ring = len(ring_order) - 1
+        processes.append(
+            multiprocessing.Process(target=earthworm_pick_listener, args=(buf_ring,))
+        )
+        logger.info(f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
+
+    # 添加 eew rings（根據 env 動態添加）
+    for ring_name, ring_id in earthworm_param[args.env]["eew"].items():
+        earthworm.add_ring(ring_id)
+        ring_order.append(ring_name)
+        buf_ring = len(ring_order) - 1
+        processes.append(
+            multiprocessing.Process(target=earthworm_eew_listener, args=(buf_ring,))
+        )
+        logger.info(f"Added ring{len(ring_order) - 1}: {ring_name} with ID {ring_id}")
 
     logger.info(f"{args.env} env, inst_id = {earthworm_param[args.env]['inst_id']}")
 
@@ -1384,18 +1481,14 @@ if __name__ == "__main__":
         mqtt_client.username_pw_set(username, password)
         mqtt_client.connect(host=host, port=port)
 
-    processes = []
-    functions = [
-        earthworm_wave_listener,
-        earthworm_pick_listener,
-        model_inference,
-        reporter,
-        web_server,
-        send_discord,
-    ]
 
-    # 為每個函數創建一個持續運行的 process
-    for func in functions:
-        p = multiprocessing.Process(target=func)
-        processes.append(p)
+    processes.append(multiprocessing.Process(target=model_inference))
+    processes.append(multiprocessing.Process(target=reporter))
+    if args.discord:
+        processes.append(multiprocessing.Process(target=send_discord))
+    if args.web:
+        processes.append(multiprocessing.Process(target=web_server))
+
+
+    for p in processes:
         p.start()
