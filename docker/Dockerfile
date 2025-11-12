@@ -18,7 +18,7 @@ RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
 RUN mkdir -p /opt/earthworm /opt/Earthworm/run/params /opt/Earthworm/run/logs &&  \
     wget http://www.earthwormcentral.org/distribution/earthworm_8.0b1-ubuntu24.04-bin.tar.gz && \
     tar -xzf earthworm_8.0b1-ubuntu24.04-bin.tar.gz -C /opt/earthworm && \
-    rm earthworm_8.0b1-ubuntu24.04-bin.tar.gz \
+    rm earthworm_8.0b1-ubuntu24.04-bin.tar.gz
 
 COPY pick_eew /opt/Earthworm/earthworm_8.0/bin/
 
