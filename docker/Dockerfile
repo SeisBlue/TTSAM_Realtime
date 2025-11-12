@@ -10,8 +10,8 @@ RUN apt-get update && apt-get upgrade -y; \
 
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/* ;\
-    corepack enable
+    rm -rf /var/lib/apt/lists/* && \
+    npm install -g pnpm
 
 # Install python package
 COPY docker/requirements.txt /tmp/
