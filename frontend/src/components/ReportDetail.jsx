@@ -4,28 +4,27 @@ import TaiwanMap from './TaiwanMapDeck'
 import './ReportDetail.css'
 
 /**
- * 取得震度對應的顏色
- * 參考 App.css 的顏色定義
+ * 取得震度對應的顏色 (用於地圖)
+ * 此顏色表需與 TaiwanMapDeck.jsx 中的圖例嚴格對應
  */
 function getIntensityColor(intensity) {
   switch (intensity) {
-    // App.css --color-info
-    case "0": return [255, 255, 255]     // #ffffff 白色
-    case "1": return [78, 205, 196]      // #4ecdc4 青色 (info)
-    case "2": return [46, 213, 115]      // #2ed573 綠色 (success)
-    case "3": return [255, 167, 38]      // #ffa726 黃色 (warning)
-    case "4": return [254, 133, 50]      // #fe8532 橙色 (original)
-    case "5-": return [255, 107, 107]     // #ff6b6b 紅色 (danger)
-    case "5+": return [196, 63, 59]      // #c43f3b 深紅
-    case "6-": return [157, 70, 70]      // #9d4646 暗紅
-    case "6+": return [154, 76, 134]     // #9a4c86 紫紅
-    case "7": return [181, 31, 234]      // #b51fea 紫色
-    default: return [148, 163, 184]      // #94a3b8 灰色（未知）
+    case "0": return [255, 255, 255]     // #ffffff
+    case "1": return [51, 255, 221]      // #33FFDD
+    case "2": return [52, 255, 50]       // #34ff32
+    case "3": return [254, 253, 50]      // #fefd32
+    case "4": return [254, 133, 50]      // #fe8532
+    case "5-": return [253, 82, 51]      // #fd5233
+    case "5+": return [196, 63, 59]      // #c43f3b
+    case "6-": return [157, 70, 70]      // #9d4646
+    case "6+": return [154, 76, 134]     // #9a4c86
+    case "7": return [181, 31, 234]      // #b51fea
+    default: return [148, 163, 184]      // #94a3b8
   }
 }
 
 /**
- * 根據震度取得徽章樣式
+ * 根據震度取得徽章樣式 (用於列表)
  */
 function getBadgeStyle(intensityStr) {
   const intensityValue = parseInt(intensityStr, 10);
@@ -33,10 +32,8 @@ function getBadgeStyle(intensityStr) {
     return {}; // 沒有有效震度則返回預設樣式
   }
 
-  const color = getIntensityColor(intensityStr);
-
-  // 震度為 "0" (白色) 時的特殊處理，確保在深色背景下可見
-  if (intensityStr === "0") {
+  // 震度小於 4 時，統一使用白色系樣式
+  if (intensityValue < 4) {
     return {
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
       color: '#E0E0E0', // --color-text-primary from App.css
@@ -44,6 +41,8 @@ function getBadgeStyle(intensityStr) {
     };
   }
 
+  // 震度大於等於 4 時，使用對應的警報色
+  const color = getIntensityColor(intensityStr);
   const style = {
     backgroundColor: `rgba(${color.join(',')}, 0.2)`,
     color: `rgb(${color.join(',')})`,
@@ -52,6 +51,18 @@ function getBadgeStyle(intensityStr) {
 
   return style;
 }
+
+/**
+ * 將震度字串轉換為可比較數值
+ */
+const getIntensityValue = (intensityStr) => {
+  if (!intensityStr || intensityStr === 'N/A') return -1;
+  const val = parseInt(intensityStr, 10);
+  if (isNaN(val)) return -1;
+  if (intensityStr.includes('+')) return val + 0.5;
+  if (intensityStr.includes('-')) return val - 0.5;
+  return val;
+};
 
 
 export default function ReportDetail({ report, onBack, targetStations, onSelectReport, reports }) {
@@ -132,19 +143,48 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [historicalPredictions, selectedPredictionIndex]);
 
-  if (!currentReport) return null
-
   const data = currentData
 
-  // 從報告數據創建 stationIntensities
+  // 計算每個警報縣市的最大震度
+  const maxIntensityByCounty = React.useMemo(() => {
+    if (!data.alarm || data.alarm.length === 0 || !targetStations || targetStations.length === 0) {
+      return [];
+    }
+    const stationToCountyMap = new Map(targetStations.map(s => [s.station, s.county]));
+    const alertedCounties = new Set(data.alarm.map(stationCode => stationToCountyMap.get(stationCode)).filter(Boolean));
+    if (alertedCounties.size === 0) return [];
+
+    const allReportStations = Object.keys(data).filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key));
+
+    const countyIntensities = Array.from(alertedCounties).map(county => {
+      let maxIntensity = '0';
+      let maxIntensityValue = 0;
+      allReportStations.forEach(stationCode => {
+        if (stationToCountyMap.get(stationCode) === county) {
+          const currentIntensity = data[stationCode];
+          const currentValue = getIntensityValue(currentIntensity);
+          if (currentValue > maxIntensityValue) {
+            maxIntensityValue = currentValue;
+            maxIntensity = currentIntensity;
+          }
+        }
+      });
+      return { county, maxIntensity };
+    });
+
+    return countyIntensities.sort((a, b) => getIntensityValue(b.maxIntensity) - getIntensityValue(a.maxIntensity));
+  }, [data, targetStations]);
+
+  // 取得本次報告的總最大震度
+  const overallMaxIntensity = maxIntensityByCounty.length > 0 ? maxIntensityByCounty[0].maxIntensity : 'N/A';
+
+  // 從報告數據創建 stationIntensities (for map)
   const reportStationIntensities = React.useMemo(() => {
     const intensities = {}
     Object.keys(data).forEach(key => {
-      // 跳過非測站數據
       if (['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key)) {
         return
       }
-
       const intensity = data[key]
       if (intensity && intensity !== 'N/A') {
         intensities[key] = {
@@ -156,6 +196,8 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
     })
     return intensities
   }, [data])
+
+  if (!currentReport) return null
 
   return (
     <div className="detail-container">
@@ -171,7 +213,6 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
           )}
         </div>
         <div className="detail-header-right">
-          {/* 歷史報告選擇器 */}
           {report.isHistorical && selectedHistoricalReport && (
             <div className="historical-selector">
               <label htmlFor="historical-reports">預測：</label>
@@ -205,16 +246,22 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         <h3>報告摘要</h3>
         <div className="detail-grid">
           <div className="detail-item">
+            <span className="detail-label">最大預估震度</span>
+            <span className="detail-value" style={{ color: `rgb(${getIntensityColor(overallMaxIntensity).join(',')})` }}>
+              {overallMaxIntensity}
+            </span>
+          </div>
+          <div className="detail-item">
+            <span className="detail-label">報告時間</span>
+            <span className="detail-value">{data.report_time || 'N/A'}</span>
+          </div>
+          <div className="detail-item">
             <span className="detail-label">觸發測站數</span>
             <span className="detail-value">{data.picks || 0} 個</span>
           </div>
           <div className="detail-item">
             <span className="detail-label">警報測站數</span>
             <span className="detail-value">{data.alarm ? data.alarm.length : 0} 個</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">報告時間</span>
-            <span className="detail-value">{data.report_time || 'N/A'}</span>
           </div>
           <div className="detail-item">
             <span className="detail-label">波形延遲</span>
@@ -225,6 +272,17 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
             <span className="detail-value">{data.run_time ? `${data.run_time.toFixed(4)} 秒` : 'N/A'}</span>
           </div>
         </div>
+
+        {/* 警報縣市最大震度 */}
+        {maxIntensityByCounty.length > 0 && (
+          <div className="station-grid" style={{ marginTop: 'var(--spacing-sm)' }}>
+            {maxIntensityByCounty.map(({ county, maxIntensity }) => (
+              <div key={county} className="station-badge" style={getBadgeStyle(maxIntensity)}>
+                {county}: {maxIntensity}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="layout-section">
@@ -240,36 +298,13 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
           </div>
         </div>
 
-        {/* 警報測站列表 */}
-        {data.alarm && data.alarm.length > 0 && (
-          <div className="detail-section stations-container">
-            <h3>警報測站列表</h3>
-            <div className="station-grid">
-              {data.alarm.map((station, idx) => (
-                <div key={idx} className="station-badge" style={getBadgeStyle(data[station])}>
-                  {station}: {data[station] || 'N/A'}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="layout-section">
-        {/* 原始資料 */}
-        <div className="detail-section raw-data-container">
-          <h3>原始資料</h3>
-          <pre className="detail-json">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-
         {/* 所有測站震度 */}
         <div className="detail-section stations-container">
           <h3>所有測站震度</h3>
           <div className="station-grid">
             {Object.keys(data)
               .filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key))
+              .sort((a, b) => getIntensityValue(data[b]) - getIntensityValue(data[a]))
               .map((station, idx) => (
                 <div key={idx} className="station-badge" style={getBadgeStyle(data[station])}>
                   {station}: {data[station] || 'N/A'}
@@ -277,6 +312,14 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
               ))}
           </div>
         </div>
+      </div>
+
+      {/* 原始資料 */}
+      <div className="detail-section">
+        <h3>原始資料</h3>
+        <pre className="detail-json">
+          {JSON.stringify(data, null, 2)}
+        </pre>
       </div>
     </div>
   )

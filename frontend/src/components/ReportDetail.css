@@ -47,3 +47,22 @@
   flex-wrap: wrap;
   gap: var(--spacing-xs);
 }
+
+.section-subtitle {
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.1rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-base);
+  padding-bottom: 4px;
+}
+
+/* 次要指標的樣式 */
+.detail-grid.secondary .detail-value {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.detail-grid.secondary .detail-label {
+  font-size: 0.8rem;
+}

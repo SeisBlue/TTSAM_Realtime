@@ -5,6 +5,58 @@ import ReportDetail from './components/ReportDetail'
 import TaiwanMap from './components/TaiwanMapDeck'
 import RealtimeWaveform from './components/RealtimeWaveformDeck'
 
+// 輔助函式：將震度字串轉換為可比較數值
+const getIntensityValue = (intensityStr) => {
+  if (!intensityStr || intensityStr === 'N/A') return -1;
+  const val = parseInt(intensityStr, 10);
+  if (isNaN(val)) return -1;
+  if (intensityStr.includes('+')) return val + 0.5;
+  if (intensityStr.includes('-')) return val - 0.5;
+  return val;
+};
+
+// 輔助函式：計算並回傳各警報縣市的最大震度
+const getMaxIntensityByCounty = (reportData, stationToCountyMap) => {
+  if (!reportData || !reportData.alarm || !stationToCountyMap) {
+    return [];
+  }
+  const alertedCounties = new Set(
+    reportData.alarm
+      .map(stationCode => stationToCountyMap.get(stationCode))
+      .filter(Boolean)
+  );
+  if (alertedCounties.size === 0) return [];
+
+  const allReportStations = Object.keys(reportData).filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key));
+
+  const countyIntensities = Array.from(alertedCounties).map(county => {
+    let maxIntensity = '0';
+    let maxIntensityValue = 0;
+    allReportStations.forEach(stationCode => {
+      if (stationToCountyMap.get(stationCode) === county) {
+        const currentIntensity = reportData[stationCode];
+        const currentValue = getIntensityValue(currentIntensity);
+        if (currentValue > maxIntensityValue) {
+          maxIntensityValue = currentValue;
+          maxIntensity = currentIntensity;
+        }
+      }
+    });
+    return { county, maxIntensity };
+  });
+
+  return countyIntensities.sort((a, b) => getIntensityValue(b.maxIntensity) - getIntensityValue(a.maxIntensity));
+};
+
+// 輔助函式：根據震度取得標籤樣式
+const getIntensityTagClass = (intensityStr) => {
+  const value = parseInt(intensityStr, 10);
+  if (isNaN(value)) return 'info';
+  if (value >= 5) return 'danger';
+  if (value >= 4) return 'warning';
+  return 'info';
+};
+
 
 function App() {
   const [isConnected, setIsConnected] = useState(false)
@@ -15,6 +67,7 @@ function App() {
   const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
   const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
   const [reports, setReports] = useState([]) // 預測報告數據
+  const [stationToCountyMap, setStationToCountyMap] = useState(new Map()); // 測站到縣市的映射
 
   // 載入歷史報告
   const loadHistoricalReports = async (limit = 20) => {
@@ -70,6 +123,7 @@ function App() {
           pga: null
         }))
         setTargetStations(stationsWithStatus)
+        setStationToCountyMap(new Map(stations.map(s => [s.station, s.county])));
         console.log('📍 Loaded', stationsWithStatus.length, 'target stations')
       })
       .catch(err => console.error('載入測站資料失敗:', err))
@@ -187,31 +241,42 @@ function App() {
               {reports.length === 0 ? (
                 <p className="empty-message">等待預測報告資料...</p>
               ) : (
-                reports.map(report => (
-                  <div
-                    key={report.id}
-                    className={`event-card ${selectedType === 'report' && selectedItem?.id === report.id ? 'selected' : ''} ${report.isHistorical ? 'historical' :  ''}`}
-                    onClick={() => {
-                      setSelectedType('report')
-                      setSelectedItem(report)
-                    }}
-                  >
-                    <div className="event-header">
-                      <span className="event-time">
-                        {report.timestamp}
-                        {report.isHistorical && <span className="report-type-indicator">📚</span>}
-                      </span>
+                reports.map(report => {
+                  const countyIntensities = getMaxIntensityByCounty(report.data, stationToCountyMap);
+                  return (
+                    <div
+                      key={report.id}
+                      className={`event-card ${selectedType === 'report' && selectedItem?.id === report.id ? 'selected' : ''} ${report.isHistorical ? 'historical' : ''}`}
+                      onClick={() => {
+                        setSelectedType('report')
+                        setSelectedItem(report)
+                      }}
+                    >
+                      <div className="event-header">
+                        <span className="event-time">
+                          {report.timestamp}
+                          {report.isHistorical && <span className="report-type-indicator">📚</span>}
+                        </span>
+                      </div>
+                      <div className="event-stations-list">
+                        {countyIntensities.length > 0 ? (
+                          <>
+                            {countyIntensities.slice(0, 3).map(({ county, maxIntensity }) => (
+                              <span key={county} className={`station-tag ${getIntensityTagClass(maxIntensity)}`}>
+                                {county} {maxIntensity}
+                              </span>
+                            ))}
+                            {countyIntensities.length > 3 && (
+                              <span className="station-tag more">+{countyIntensities.length - 3}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="station-tag neutral">無警報縣市</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="event-stations-list">
-                      {report.data && report.data.alarm && report.data.alarm.slice(0, 5).map((station, idx) => (
-                        <span key={idx} className="station-tag">{station}</span>
-                      ))}
-                      {report.data && report.data.alarm && report.data.alarm.length > 5 && (
-                        <span className="station-tag more">+{report.data.alarm.length - 5}</span>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
