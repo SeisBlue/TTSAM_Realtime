@@ -1,13 +1,13 @@
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
+FROM pytorch/pytorch:2.9.0-cuda13.0-cudnn9-runtime
 
 # Ignore all interactive dialog during apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install linux package
-RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y \
-    curl git htop sudo vim wget build-essential nodejs npm \
-    && npm install -g pnpm
+RUN apt-get update && apt-get upgrade -y; \
+    apt-get install -y; \
+    curl git htop sudo vim wget build-essential nodejs npm; \
+    npm install -g pnpm
 
 # Install python package
 COPY docker/requirements.txt /tmp/
@@ -17,7 +17,8 @@ RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
 # Get Earthworm
 RUN wget http://www.earthwormcentral.org/distribution/earthworm_8.0b1-ubuntu24.04-bin.tar.gz; \
     mkdir /opt/Earthworm; \
-    tar -xvf earthworm_8.0b1-ubuntu24.04-bin.tar.gz -C /opt/Earthworm;
+    tar -xvf earthworm_8.0b1-ubuntu24.04-bin.tar.gz -C /opt/Earthworm; \
+    rm earthworm_8.0b1-ubuntu24.04-bin.tar.gz;
 
 # Install PyEarthworm
 ENV EW_HOME=/opt/Earthworm/earthworm_8.0
