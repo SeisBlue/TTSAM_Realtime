@@ -5,4 +5,4 @@ docker run -it --rm \
 --name web_server \
 -w /workspace/frontend \
 seisblue/ttsam-realtime \
-/bin/bash
+/usr/bin/pnpm run dev --host
