@@ -8,6 +8,12 @@ RUN apt-get update && apt-get upgrade -y; \
     apt-get install -y \
     curl git htop sudo vim wget build-essential
 
+# Install Node.js and pnpm
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && npm install -g pnpm
+
 # Install python package
 COPY docker/requirements.txt /tmp/
 RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
