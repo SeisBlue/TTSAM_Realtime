@@ -4,14 +4,10 @@ FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install linux package
-RUN apt-get update && apt-get upgrade -y; \
-    apt-get install -y \
-    curl git htop sudo vim wget build-essential
-
-# Install Node.js and pnpm
-RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get update \
-    && apt-get install -y nodejs \
+RUN wget -qO- https://get.pnpm.io/install.sh | sh - \
+    && apt-get update && apt-get upgrade -y \
+    && apt-get install -y \
+    curl git htop sudo vim wget build-essential nodejs \
     && npm install -g pnpm
 
 # Install python package
