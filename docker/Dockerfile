@@ -17,11 +17,12 @@ RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
 # Get Earthworm
 RUN wget http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_ubuntu24_04.tar.gz; \
     mkdir /opt/Earthworm; \
-    tar -xvf earthworm_v8-0b8_ubuntu24_04.tar.gz -C /opt/Earthworm; \
+    tar -xvf earthworm_v8-0b8_ubuntu24_04.tar.gz -C /opt/earthworm; \
     rm earthworm_v8-0b8_ubuntu24_04.tar.gz
 
 # Install PyEarthworm
-ENV EW_HOME=/opt/Earthworm/earthworm_8.0
-ENV EW_PARAMS=/opt/Earthworm/run/params
+ENV EW_VERSION="8.0"
+ENV EW_HOME=/opt/earthworm/earthworm_8.0
+ENV EW_PARAMS=/opt/earthworm/run/params
 ENV CFLAGS="-fno-stack-protector -fPIC -Dlinux -D_LINUX -D_USE_SCHED -D_USE_PTHREADS -D_USE_TERMIOS -I${EW_HOME}/include"
 RUN /opt/conda/bin/python3 -m pip install git+https://github.com/Boritech-Solutions/PyEarthworm
