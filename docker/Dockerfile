@@ -4,10 +4,9 @@ FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install linux package
-RUN wget -qO- https://get.pnpm.io/install.sh | sh - \
-    && apt-get update && apt-get upgrade -y \
+RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y \
-    curl git htop sudo vim wget build-essential nodejs \
+    curl git htop sudo vim wget build-essential nodejs npm \
     && npm install -g pnpm
 
 # Install python package
