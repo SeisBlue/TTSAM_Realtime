@@ -15,12 +15,12 @@ RUN /opt/conda/bin/python3 -m pip install --upgrade pip; \
     /opt/conda/bin/python3 -m pip --no-cache-dir install -r /tmp/requirements.txt;
 
 # Get Earthworm
-RUN mkdir -p /opt/earthworm /opt/Earthworm/run/params /opt/Earthworm/run/logs &&  \
+RUN mkdir -p /opt/earthworm /opt/earthworm/run/params /opt/earthworm/run/logs &&  \
     wget http://www.earthwormcentral.org/distribution/earthworm_8.0b1-ubuntu24.04-bin.tar.gz && \
     tar -xzf earthworm_8.0b1-ubuntu24.04-bin.tar.gz -C /opt/earthworm && \
     rm earthworm_8.0b1-ubuntu24.04-bin.tar.gz
 
-COPY pick_eew /opt/Earthworm/earthworm_8.0/bin/
+COPY pick_eew /opt/earthworm/earthworm_8.0/bin/
 
 # Install PyEarthworm
 ENV EW_VERSION="8.0"
