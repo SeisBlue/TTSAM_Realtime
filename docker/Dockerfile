@@ -6,11 +6,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install linux package
 RUN apt-get update && apt-get upgrade -y; \
     apt-get install -y \
-    curl git htop sudo vim wget build-essential
+    curl git htop sudo vim build-essential ca-certificates
 
-RUN apt-get update && \
-    apt-get install -y ca-certificates curl && \
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/* ;\
     corepack enable
