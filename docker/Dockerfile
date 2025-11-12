@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install linux package
 RUN apt-get update && apt-get upgrade -y; \
-    apt-get install -y; \
+    apt-get install -y \
     curl git htop sudo vim wget build-essential nodejs npm; \
     npm install -g pnpm
 
