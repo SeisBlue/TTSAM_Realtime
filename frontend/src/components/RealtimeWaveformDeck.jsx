@@ -692,31 +692,28 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
       const updated = { ...prev }
       const now = Date.now()
 
+      // --- 步驟 1: 接收新數據 ---
       if (latestPacket.data) {
         Object.keys(latestPacket.data).forEach(seedStation => {
           const stationCode = extractStationCode(seedStation)
           const wavePacketData = latestPacket.data[seedStation]
-          const pga = wavePacketData?.pga || 0
-          const startt = wavePacketData?.startt
-          const endt = wavePacketData?.endt
-          const samprate = wavePacketData?.samprate || 100
-          const waveform = wavePacketData?.waveform || []
+          const { pga = 0, startt, endt, samprate = 100, waveform = [] } = wavePacketData
 
-          // 初始化測站數據結構
-          if (!updated[stationCode]) {
-            updated[stationCode] = {
-              dataPoints: [],
-              pgaHistory: [], // 新增：用於追蹤最近30秒的PGA值
-              lastPga: 0,
-              lastEndTime: null
-            }
+          // 初始化或複製測站數據
+          const prevStationData = updated[stationCode] || {
+            dataPoints: [], pgaHistory: [], lastPga: 0, lastEndTime: null
           }
-          const stationData = updated[stationCode]
+          const stationData = {
+            ...prevStationData,
+            dataPoints: [...prevStationData.dataPoints],
+            pgaHistory: [...prevStationData.pgaHistory],
+          }
+          updated[stationCode] = stationData
 
-          // --- 波形數據處理 (用於繪圖) ---
           const packetStartTime = startt ? startt * 1000 : now
           const packetEndTime = endt ? endt * 1000 : now
 
+          // 處理數據間隙
           let hasGap = false
           if (stationData.lastEndTime !== null && startt) {
             const timeDiff = Math.abs(startt - stationData.lastEndTime)
@@ -735,6 +732,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
             })
           }
 
+          // 添加新的波形數據
           stationData.dataPoints.push({
             timestamp: packetStartTime,
             endTimestamp: packetEndTime,
@@ -747,52 +745,49 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
             stationData.lastEndTime = endt
           }
 
-          // --- PGA數據處理 (用於計算震度) ---
-          // 將當前封包的PGA值和時間戳加入歷史記錄
+          // 添加新的 PGA 數據
           stationData.pgaHistory.push({ timestamp: now, pga: pga })
-
-          // 清理超過30秒的舊數據
-          const cutoffTime = now - TIME_WINDOW * 1000
-          stationData.dataPoints = stationData.dataPoints.filter(
-            point => point.timestamp >= cutoffTime
-          )
-          stationData.pgaHistory = stationData.pgaHistory.filter(
-            item => item.timestamp >= cutoffTime
-          )
-
-          // 更新用於標籤顯示的 lastPga
           stationData.lastPga = pga
-
-          // --- 動態縮放計算 ---
-          const recentCutoff = now - 10 * 1000
-          const recentPoints = stationData.dataPoints.filter(
-            point => point.timestamp >= recentCutoff && !point.isGap
-          )
-          if (recentPoints.length > 0) {
-            let sumSquares = 0, maxAbs = 0, count = 0
-            recentPoints.forEach(point => {
-              point.values.forEach(value => {
-                sumSquares += value * value
-                maxAbs = Math.max(maxAbs, Math.abs(value))
-                count++
-              })
-            })
-            const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
-            stationData.displayScale = Math.max(rms * 4, maxAbs * 0.3, 0.05)
-          } else {
-            stationData.displayScale = 1.0
-          }
         })
       }
 
-      // --- 震度計算 ---
+      // --- 步驟 2: 清理、計算縮放和震度 (對所有測站) ---
       const intensityData = {}
+      const cutoffTime = now - TIME_WINDOW * 1000
+      const recentCutoff = now - 10 * 1000
+
       Object.keys(updated).forEach(stationCode => {
         const stationData = updated[stationCode]
 
-        // 從 pgaHistory 中找到最近30秒的最大PGA
-        const maxPga30s = stationData.pgaHistory.reduce((max, item) => Math.max(max, item.pga), 0)
+        // 清理超過時間窗口的舊數據
+        stationData.dataPoints = stationData.dataPoints.filter(
+          point => point.endTimestamp >= cutoffTime
+        )
+        stationData.pgaHistory = stationData.pgaHistory.filter(
+          item => item.timestamp >= cutoffTime
+        )
 
+        // 動態縮放計算
+        const recentPoints = stationData.dataPoints.filter(
+          point => point.timestamp >= recentCutoff && !point.isGap
+        )
+        if (recentPoints.length > 0) {
+          let sumSquares = 0, maxAbs = 0, count = 0
+          recentPoints.forEach(point => {
+            point.values.forEach(value => {
+              sumSquares += value * value
+              maxAbs = Math.max(maxAbs, Math.abs(value))
+              count++
+            })
+          })
+          const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
+          stationData.displayScale = Math.max(rms * 4, maxAbs * 0.3, 0.05)
+        } else if (stationData.dataPoints.length === 0) {
+          stationData.displayScale = 1.0
+        }
+
+        // 震度計算
+        const maxPga30s = stationData.pgaHistory.reduce((max, item) => Math.max(max, item.pga), 0)
         const intensity = pgaToIntensity(maxPga30s)
         const color = getIntensityColor(intensity)
 
