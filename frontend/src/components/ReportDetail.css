@@ -1,0 +1,49 @@
+.layout-section {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.layout-section > .detail-section {
+  flex: 1;
+}
+
+.map-container {
+  flex: 3; /* 地圖佔用更多空間 */
+}
+
+.stations-container {
+  flex: 1; /* 測站列表佔用較少空間 */
+  max-height: 450px; /* 設定最大高度 */
+  overflow-y: auto; /* 內容過多時顯示滾動條 */
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+}
+
+.raw-data-container {
+  flex: 3; /* 原始資料佔用更多空間 */
+  max-height: 450px; /* 設定最大高度 */
+  overflow-y: auto; /* 內容過多時顯示滾動條 */
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-dark);
+}
+
+.station-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+  margin: 2px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.station-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}

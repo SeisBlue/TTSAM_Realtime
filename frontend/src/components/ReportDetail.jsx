@@ -1,18 +1,21 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import TaiwanMap from './TaiwanMapDeck'
+import './ReportDetail.css'
 
 /**
  * 取得震度對應的顏色
+ * 參考 App.css 的顏色定義
  */
 function getIntensityColor(intensity) {
   switch (intensity) {
+    // App.css --color-info
     case "0": return [255, 255, 255]     // #ffffff 白色
-    case "1": return [51, 255, 221]      // #33FFDD 青色
-    case "2": return [52, 255, 50]       // #34ff32 綠色
-    case "3": return [254, 253, 50]      // #fefd32 黃色
-    case "4": return [254, 133, 50]      // #fe8532 橙色
-    case "5-": return [253, 82, 51]      // #fd5233 紅色
+    case "1": return [78, 205, 196]      // #4ecdc4 青色 (info)
+    case "2": return [46, 213, 115]      // #2ed573 綠色 (success)
+    case "3": return [255, 167, 38]      // #ffa726 黃色 (warning)
+    case "4": return [254, 133, 50]      // #fe8532 橙色 (original)
+    case "5-": return [255, 107, 107]     // #ff6b6b 紅色 (danger)
     case "5+": return [196, 63, 59]      // #c43f3b 深紅
     case "6-": return [157, 70, 70]      // #9d4646 暗紅
     case "6+": return [154, 76, 134]     // #9a4c86 紫紅
@@ -20,6 +23,36 @@ function getIntensityColor(intensity) {
     default: return [148, 163, 184]      // #94a3b8 灰色（未知）
   }
 }
+
+/**
+ * 根據震度取得徽章樣式
+ */
+function getBadgeStyle(intensityStr) {
+  const intensityValue = parseInt(intensityStr, 10);
+  if (isNaN(intensityValue)) {
+    return {}; // 沒有有效震度則返回預設樣式
+  }
+
+  const color = getIntensityColor(intensityStr);
+
+  // 震度為 "0" (白色) 時的特殊處理，確保在深色背景下可見
+  if (intensityStr === "0") {
+    return {
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      color: '#E0E0E0', // --color-text-primary from App.css
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    };
+  }
+
+  const style = {
+    backgroundColor: `rgba(${color.join(',')}, 0.2)`,
+    color: `rgb(${color.join(',')})`,
+    borderColor: `rgba(${color.join(',')}, 0.4)`,
+  };
+
+  return style;
+}
+
 
 export default function ReportDetail({ report, onBack, targetStations, onSelectReport, reports }) {
   const [selectedHistoricalReport, setSelectedHistoricalReport] = React.useState(null)
@@ -194,47 +227,56 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         </div>
       </div>
 
-      {/* 震度地圖 */}
-      <div className="detail-section">
-        <h3>🗺️ 測站預測震度分布</h3>
-        <div style={{ height: '400px', width: '100%', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-          <TaiwanMap
-            stations={targetStations}
-            stationReplacements={{}}
-            stationIntensities={reportStationIntensities}
-          />
-        </div>
-      </div>
-
-      {data.alarm && data.alarm.length > 0 && (
-        <div className="detail-section">
-          <h3>警報測站列表</h3>
-          <div className="station-grid">
-            {data.alarm.map((station, idx) => (
-              <div key={idx} className="station-badge alert">
-                {station}: {data[station] || 'N/A'}
-              </div>
-            ))}
+      <div className="layout-section">
+        {/* 震度地圖 */}
+        <div className="detail-section map-container">
+          <h3>🗺️ 測站預測震度分布</h3>
+          <div style={{ height: '400px', width: '100%', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+            <TaiwanMap
+              stations={targetStations}
+              stationReplacements={{}}
+              stationIntensities={reportStationIntensities}
+            />
           </div>
         </div>
-      )}
 
-      <div className="detail-section">
-        <h3>所有測站震度</h3>
-        <div className="station-grid">
-          {Object.keys(data).filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key)).map((station, idx) => (
-            <div key={idx} className="station-badge">
-              {station}: {data[station] || 'N/A'}
+        {/* 警報測站列表 */}
+        {data.alarm && data.alarm.length > 0 && (
+          <div className="detail-section stations-container">
+            <h3>警報測站列表</h3>
+            <div className="station-grid">
+              {data.alarm.map((station, idx) => (
+                <div key={idx} className="station-badge" style={getBadgeStyle(data[station])}>
+                  {station}: {data[station] || 'N/A'}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="detail-section">
-        <h3>原始資料</h3>
-        <pre className="detail-json">
-          {JSON.stringify(data, null, 2)}
-        </pre>
+      <div className="layout-section">
+        {/* 原始資料 */}
+        <div className="detail-section raw-data-container">
+          <h3>原始資料</h3>
+          <pre className="detail-json">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+
+        {/* 所有測站震度 */}
+        <div className="detail-section stations-container">
+          <h3>所有測站震度</h3>
+          <div className="station-grid">
+            {Object.keys(data)
+              .filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key))
+              .map((station, idx) => (
+                <div key={idx} className="station-badge" style={getBadgeStyle(data[station])}>
+                  {station}: {data[station] || 'N/A'}
+                </div>
+              ))}
+          </div>
+        </div>
       </div>
     </div>
   )
