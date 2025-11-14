@@ -11,6 +11,7 @@ misc/*
 *.pt
 *.json
 !package.json
+!frontend/src/assets/twCounty2010merge.topo.json
 
 !/paper_image/.gitkeep
 /paper_image

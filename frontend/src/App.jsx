@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import io from 'socket.io-client'
 import './App.css'
 import ReportDetail from './components/ReportDetail'
@@ -52,33 +52,32 @@ const getIntensityTagClass = (intensityStr) => {
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [wavePackets, setWavePackets] = useState([])
-  const [latestWaveTime, setLatestWaveTime] = useState(null) // 最新波形時間
-  const [targetStations, setTargetStations] = useState([]) // eew_target 測站列表
-  const [socket, setSocket] = useState(null) // Socket 實例，供子組件使用
-  const [stationReplacements, setStationReplacements] = useState({}) // 測站替換映射
-  const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
-  const [reports, setReports] = useState([]) // 預測報告數據
-  const [stationToCountyMap, setStationToCountyMap] = useState(new Map()); // 測站到縣市的映射
+  const [latestWaveTime, setLatestWaveTime] = useState(null)
+  const [targetStations, setTargetStations] = useState([])
+  const [socket, setSocket] = useState(null)
+  const [stationReplacements, setStationReplacements] = useState({})
+  const [stationIntensities, setStationIntensities] = useState({})
+  const [reports, setReports] = useState([])
+  const [stationToCountyMap, setStationToCountyMap] = useState(new Map());
+
+  // 新增 state 來管理累加的縣市警報
+  const [countyAlerts, setCountyAlerts] = useState({});
+  // 使用 ref 來保存計時器 ID，以便可以清除它
+  const resetTimerRef = useRef(null);
 
   // 載入歷史報告
   const loadHistoricalReports = async (limit = 20) => {
     try {
-      // 獲取歷史報告列表
       const reportsResponse = await fetch('/api/reports')
       const reportFiles = await reportsResponse.json()
-
-      // 載入最近的幾個歷史報告
       const historicalReports = []
       for (let i = 0; i < Math.min(limit, reportFiles.length); i++) {
         const file = reportFiles[i]
         try {
-          const contentResponse = await fetch(`/api/get_file_content?file=${file.filename}`)
+          const contentResponse = await fetch(`/get_file_content?file=${file.filename}`)
           const text = await contentResponse.text()
           const jsonData = text.split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line))
-
-          // 使用最新的報告數據（通常是最後一行）
           const latestData = jsonData[jsonData.length - 1]
-
           historicalReports.push({
             id: `historical_${file.filename}_${Date.now()}`,
             timestamp: file.datetime,
@@ -90,7 +89,6 @@ function App() {
           console.error(`載入歷史報告 ${file.filename} 失敗:`, err)
         }
       }
-
       setReports(prev => [...historicalReports, ...prev])
       console.log(`📚 Loaded ${historicalReports.length} historical reports`)
     } catch (err) {
@@ -98,18 +96,16 @@ function App() {
     }
   }
 
-  // 右側詳細頁面狀態
-  const [selectedType, setSelectedType] = useState(null) // 'event' | 'wave' | 'dataset'
+  const [selectedType, setSelectedType] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => {
-    // 載入 eew_target 測站資料
     fetch('/api/stations')
       .then(res => res.json())
       .then(stations => {
         const stationsWithStatus = stations.map(s => ({
           ...s,
-          status: 'unknown', // unknown, online, warning, offline
+          status: 'unknown',
           lastSeen: null,
           pga: null
         }))
@@ -119,40 +115,29 @@ function App() {
       })
       .catch(err => console.error('載入測站資料失敗:', err))
 
-    // 連接到 Mock Server 的 SocketIO
     const socket = io('/', {
       transports: ['websocket', 'polling']
     })
-
-    // 保存 socket 實例
     setSocket(socket)
 
-    // 連線事件
     const handleConnect = () => {
       console.log('✅ Connected to Server')
       setIsConnected(true)
     }
-
     const handleDisconnect = () => {
       console.log('❌ Disconnected from Server')
       setIsConnected(false)
     }
-
     const handleConnectInit = () => {
       console.log('🔌 Connection initialized')
-      // 載入歷史報告
       loadHistoricalReports(20)
     }
-
-    // 接收波形資料
     const handleWavePacket = (data) => {
       console.log('🌊 Wave packet received:', data.waveid)
       const timestamp = new Date().toLocaleString('zh-TW')
       setLatestWaveTime(timestamp)
-      setWavePackets(prev => [data, ...prev].slice(0, 10)) // 保留最新 10 筆（供詳細查看）
+      setWavePackets(prev => [data, ...prev].slice(0, 10))
     }
-
-    // 接收預測報告
     const handleReportData = (data) => {
       console.log('📊 Report data received:', data)
       const timestamp = new Date().toLocaleString('zh-TW')
@@ -161,17 +146,15 @@ function App() {
         timestamp,
         data,
         isRealtime: true
-      }, ...prev].slice(0, 20)) // 保留最新 20 筆（歷史+即時）
+      }, ...prev].slice(0, 20))
     }
 
-    // 註冊事件監聽器
     socket.on('connect', handleConnect)
     socket.on('disconnect', handleDisconnect)
     socket.on('connect_init', handleConnectInit)
     socket.on('wave_packet', handleWavePacket)
     socket.on('report_data', handleReportData)
 
-    // 清理函式
     return () => {
       socket.off('connect', handleConnect)
       socket.off('disconnect', handleDisconnect)
@@ -180,9 +163,57 @@ function App() {
       socket.off('report_data', handleReportData)
       socket.disconnect()
     }
-  }, []) // 空依賴陣列，確保只執行一次
+  }, [])
 
-  // 回到波形頁面
+  // 新增 useEffect 來處理警報累加和自動重設邏輯
+  useEffect(() => {
+    // 如果沒有報告，則不執行任何操作
+    if (reports.length === 0) {
+      return;
+    }
+
+    // 取得最新的報告
+    const latestReport = reports[0];
+    if (!latestReport || !latestReport.data) {
+      return;
+    }
+
+    // 計算最新報告中的警報縣市
+    const newCountyIntensities = getMaxIntensityByCounty(latestReport.data, stationToCountyMap);
+    const newAlerts = {};
+    for (const item of newCountyIntensities) {
+      newAlerts[item.county] = true;
+    }
+
+    // 如果有新的警報縣市，則進行累加
+    if (Object.keys(newAlerts).length > 0) {
+      // 使用 callback 形式更新 state，合併舊的警報和新的警報
+      setCountyAlerts(prevAlerts => ({
+        ...prevAlerts,
+        ...newAlerts
+      }));
+    }
+
+    // 清除上一個計時器（如果存在）
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+    }
+
+    // 設定一個新的 30 秒計時器
+    // 30 秒後，如果沒有新的報告進來重設計時器，就會執行清空操作
+    resetTimerRef.current = setTimeout(() => {
+      console.log('⏰ 30秒無新報告，重設地圖顏色');
+      setCountyAlerts({});
+    }, 30000); // 30 秒
+
+    // 元件卸載時，清除計時器以防止記憶體洩漏
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, [reports, stationToCountyMap]); // 當報告列表更新時觸發
+
   const handleBackToWaveform = () => {
     setSelectedType(null)
     setSelectedItem(null)
@@ -223,9 +254,7 @@ function App() {
       </header>
 
       <div className="dashboard">
-        {/* 左側面板：即時更新列表 */}
         <div className="left-panel">
-          {/* 預測報告列表 */}
           <section className="section events-section">
             <h2>歷史報告 ({reports.length})</h2>
             <div className="event-list">
@@ -272,18 +301,17 @@ function App() {
             </div>
           </section>
 
-          {/* 台灣地圖 - 顯示主要測站 + 次要測站（TSMIP）*/}
           <section className="section map-section">
             <h2>測站分布</h2>
             <TaiwanMap
               stations={targetStations}
               stationReplacements={stationReplacements}
               stationIntensities={stationIntensities}
+              countyAlerts={countyAlerts}
             />
           </section>
         </div>
 
-        {/* 右側面板：詳細內容 */}
         <div className="right-panel">
           <div style={{ display: !selectedType ? 'block' : 'none', height: '100%' }}>
             <RealtimeWaveform

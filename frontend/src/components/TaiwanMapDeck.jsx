@@ -1,10 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Map } from 'react-map-gl/maplibre'
 import DeckGL from '@deck.gl/react'
-import { ScatterplotLayer } from '@deck.gl/layers'
+import { ScatterplotLayer, GeoJsonLayer } from '@deck.gl/layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './TaiwanMapDeck.css'
+// 引入 topojson-client 用於格式轉換
+import * as topojson from 'topojson-client'
+// 引入台灣縣市的 TopoJSON 地圖資料
+import countyData from '../assets/twCounty2010merge.topo.json'
 
 // 使用 MapLibre（開源替代方案，不需要 token）
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
@@ -17,10 +21,49 @@ const INITIAL_VIEW_STATE = {
   bearing: 0
 }
 
-function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities = {} }) {
+function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities = {}, countyAlerts = {} }) {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
   const [hoverInfo, setHoverInfo] = useState(null)
   const [isLegendExpanded, setIsLegendExpanded] = useState(false) // 圖例預設摺疊
+  // 新增一個 state 來存放轉換後的 GeoJSON 資料
+  const [geojsonData, setGeojsonData] = useState(null)
+
+  // 使用 useEffect 在元件首次載入時，將 TopoJSON 轉換為 GeoJSON
+  useEffect(() => {
+    // 從 TopoJSON 物件中提取名為 'layer1' 的圖層並轉換
+    const geo = topojson.feature(countyData, countyData.objects.layer1)
+    setGeojsonData(geo)
+  }, []) // 空依賴陣列確保此 effect 只執行一次
+
+  // 建立縣市填色圖層
+  const countyLayer = useMemo(() => {
+    if (!geojsonData) return null // 如果 GeoJSON 還沒準備好，則不渲染圖層
+
+    return new GeoJsonLayer({
+      id: 'county-layer',
+      data: geojsonData,
+      pickable: false,
+      stroked: true, // 顯示縣市邊界
+      filled: true,
+      lineWidthMinPixels: 1,
+      getLineColor: [255, 255, 255, 80], // 縣市邊界顏色（白色，低透明度）
+      getFillColor: feature => {
+        // 從 GeoJSON 的 properties 中取得縣市名稱
+        const countyName = feature.properties.COUNTYNAME
+        // 檢查此縣市是否存在於從 App.jsx 傳入的預警列表
+        if (countyAlerts[countyName]) {
+          // 如果在預警列表中，回傳紅色（帶有透明度）
+          return [255, 0, 0, 100]
+        }
+        // 如果不在預警列表中，則完全透明
+        return [0, 0, 0, 0]
+      },
+      // 當 countyAlerts prop 變動時，觸發 getFillColor 的更新
+      updateTriggers: {
+        getFillColor: [countyAlerts]
+      }
+    })
+  }, [geojsonData, countyAlerts]) // 當 geojsonData 或 countyAlerts 變動時，重新計算圖層
 
   // 主要測站圖層（eew_target）
   const primaryStationsLayer = useMemo(() => {
@@ -88,7 +131,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
     })
   }, [stations, stationReplacements, stationIntensities])
 
-  const layers = [primaryStationsLayer]
+  const layers = [countyLayer, primaryStationsLayer].filter(Boolean)
 
   return (
     <div className="taiwan-map-deck-container">
@@ -211,7 +254,8 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
 TaiwanMapDeck.propTypes = {
   stations: PropTypes.array.isRequired,
   stationReplacements: PropTypes.object,
-  stationIntensities: PropTypes.object
+  stationIntensities: PropTypes.object,
+  countyAlerts: PropTypes.object
 }
 
 export default TaiwanMapDeck

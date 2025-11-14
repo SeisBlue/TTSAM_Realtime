@@ -149,6 +149,18 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
     return intensities
   }, [data])
 
+  // 根據當前報告的警報縣市，創建地圖填色需要的資料格式
+  const countyAlertsForDetailMap = React.useMemo(() => {
+    if (!maxIntensityByCounty || maxIntensityByCounty.length === 0) {
+      return {};
+    }
+    const alerts = {};
+    for (const item of maxIntensityByCounty) {
+      alerts[item.county] = true;
+    }
+    return alerts;
+  }, [maxIntensityByCounty]);
+
   if (!currentReport) return null
 
   return (
@@ -240,6 +252,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
               stations={targetStations}
               stationReplacements={{}}
               stationIntensities={reportStationIntensities}
+              countyAlerts={countyAlertsForDetailMap}
             />
           </div>
         </div>
