@@ -307,7 +307,7 @@ def _process_wave_data(wave, is_realtime=False):
 
 def wave_emitter():
     """按需推送波形數據 - 只發送被訂閱的測站"""
-    batch_interval = 0.5
+    batch_interval = 0.1
     last_send_time = time.time()
 
     while True:

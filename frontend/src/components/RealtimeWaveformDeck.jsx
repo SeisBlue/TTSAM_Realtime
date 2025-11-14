@@ -79,7 +79,7 @@ function extractStationCode(seedName) {
 /**
  * DeckGL 波形面板組件 - 使用 memo 優化
  */
-const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight }) {
+const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations, stationMap, waveDataMap, latMin, latMax, simpleLayout, panelWidth, panelHeight, renderTrigger }) {
   const [hoveredStation] = useState(null)
 
   const minLat = latMin ?? LAT_MIN
@@ -90,7 +90,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     const waveWidth = panelWidth * 0.75
     const waveHeight = simpleLayout ? 60 : 45 // 增加波形高度：從 40/30 增加到 60/45
     const xOffset = panelWidth * 0.15
-    const now = Date.now() // 使用靜態時間點，避免依賴 currentTime
+    const now = renderTrigger // 使用傳入的 renderTrigger 作為當前時間
     const bottomMargin = 60  // 為時間軸留出底部空間
 
     // 預計算所有測站的 Y 位置
@@ -143,7 +143,6 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
 
           // 跳過斷點標記
           if (isGap) {
-            // 可以選擇在這裡繪製斷點指示器（未來功能）
             return
           }
 
@@ -190,13 +189,6 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     // 使用單個 PathLayer 繪製所有基線
     const layers = []
 
-    console.log(`[Wave Debug ${title}] Baselines: ${baselineData.length}, Waveforms: ${waveformData.length}`)
-    console.log(`[Wave Debug ${title}] Panel size: ${panelWidth}x${panelHeight}`)
-    if (waveformData.length > 0) {
-      console.log(`[Wave Debug ${title}] First waveform path length:`, waveformData[0].path.length)
-      console.log(`[Wave Debug ${title}] First waveform sample points:`, waveformData[0].path.slice(0, 3))
-    }
-
     if (baselineData.length > 0) {
       layers.push(new PathLayer({
         id: 'baselines',
@@ -227,13 +219,13 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
         updateTriggers: {
           getColor: hoveredStation,
           getWidth: hoveredStation,
-          getPath: waveDataMap // 當波形數據變化時更新
+          getPath: [waveDataMap, renderTrigger] // 當波形數據或時間變化時更新
         }
       }))
     }
 
     return layers
-  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, title])
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, title, renderTrigger])
 
   // 文字標籤圖層 - 優化版本
   const labelLayers = useMemo(() => {
@@ -319,7 +311,7 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     const timeWaveWidth = panelWidth * 0.75
     const timeXOffset = panelWidth * 0.15
     const numTicks = 7
-    const now = new Date()
+    const now = new Date(renderTrigger) // 使用 renderTrigger 的時間
 
     for (let i = 0; i < numTicks; i++) {
       const timeValue = -i * (TIME_WINDOW / (numTicks - 1))
@@ -366,10 +358,10 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
       updateTriggers: {
         getColor: [hoveredStation, waveDataMap],
         getSize: hoveredStation,
-        getText: [waveDataMap] // 添加 renderTrigger 以更新時間顯示
+        getText: [waveDataMap, renderTrigger] // 添加 renderTrigger 以更新時間顯示
       }
     })]
-  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight])
+  }, [stations, stationMap, waveDataMap, hoveredStation, minLat, maxLat, simpleLayout, panelWidth, panelHeight, renderTrigger])
 
   // 緯度網格線
   const gridLayers = useMemo(() => {
@@ -458,8 +450,6 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
   const validWidth = Math.max(panelWidth, 100)
   const validHeight = Math.max(panelHeight, 100)
 
-  console.log(`[DeckGL ${title}] Rendering with size: ${validWidth}x${validHeight}, Layers: ${allLayers.length}`)
-
   // 使用左上角为原点的坐标系统
   const viewState = {
     target: [validWidth / 2, validHeight / 2, 0],
@@ -509,8 +499,8 @@ const GeographicWavePanel = memo(function GeographicWavePanel({ title, stations,
     prevProps.latMax === nextProps.latMax &&
     prevProps.simpleLayout === nextProps.simpleLayout &&
     prevProps.panelWidth === nextProps.panelWidth &&
-    prevProps.panelHeight === nextProps.panelHeight
-    // 注意：不比較 currentTime，因為它會在 useMemo 內部使用 Date.now()
+    prevProps.panelHeight === nextProps.panelHeight &&
+    prevProps.renderTrigger === nextProps.renderTrigger // 比較 renderTrigger
   )
 })
 
@@ -524,7 +514,7 @@ GeographicWavePanel.propTypes = {
   simpleLayout: PropTypes.bool,
   panelWidth: PropTypes.number.isRequired,
   panelHeight: PropTypes.number.isRequired,
-  renderTrigger: PropTypes.number
+  renderTrigger: PropTypes.number.isRequired
 }
 
 function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStationIntensityUpdate }) {
@@ -532,9 +522,10 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
   const [waveDataMap, setWaveDataMap] = useState({})
   const [useNearestTSMIP, setUseNearestTSMIP] = useState(false) // 是否啟用自動尋找最近 TSMIP 測站
   const [nearestStationCache, setNearestStationCache] = useState({}) // 緩存最近測站的映射
-  const [renderTrigger, setRenderTrigger] = useState(0) // 添加渲染觸發器
+  const [renderTrigger, setRenderTrigger] = useState(Date.now()) // 使用時間戳作為觸發器
   const [stationIntensities, setStationIntensities] = useState({}) // 測站震度數據
   const panelRef = useRef(null)
+  const animationFrameRef = useRef() // 用於保存 requestAnimationFrame 的 ID
   const [dimensions, setDimensions] = useState({
     width: 1200,
     height: 800
@@ -655,13 +646,21 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
     fetchNearestStations()
   }, [useNearestTSMIP, stationMap, onReplacementUpdate])
 
-  // 定期觸發波形更新以實現滾動效果
+  // --- 優化：使用 requestAnimationFrame 實現平滑滾動 ---
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRenderTrigger(prev => prev + 1)
-    }, 1000) // 每秒更新一次
-    return () => clearInterval(interval)
-  }, [])
+    const animate = () => {
+      setRenderTrigger(Date.now());
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   // 處理新的波形數據
   useEffect(() => {
@@ -682,12 +681,23 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
 
           // 初始化或複製測站數據
           const prevStationData = updated[stationCode] || {
-            dataPoints: [], pgaHistory: [], lastPga: 0, lastEndTime: null
+            dataPoints: [], pgaHistory: [], lastPga: 0, lastEndTime: null,
+            // 新增：用於增量計算的統計數據
+            recentStats: {
+              points: [], // { timestamp, sumSquares, maxAbs, count }
+              totalSumSquares: 0,
+              totalMaxAbs: 0,
+              totalCount: 0
+            }
           }
           const stationData = {
             ...prevStationData,
             dataPoints: [...prevStationData.dataPoints],
             pgaHistory: [...prevStationData.pgaHistory],
+            recentStats: {
+              ...prevStationData.recentStats,
+              points: [...prevStationData.recentStats.points]
+            }
           }
           updated[stationCode] = stationData
 
@@ -729,6 +739,25 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
           // 添加新的 PGA 數據
           stationData.pgaHistory.push({ timestamp: now, pga: pga })
           stationData.lastPga = pga
+
+          // --- 優化：增量計算 displayScale ---
+          if (waveform.length > 0) {
+            let sumSquares = 0
+            let maxAbs = 0
+            for (const value of waveform) {
+              sumSquares += value * value
+              maxAbs = Math.max(maxAbs, Math.abs(value))
+            }
+            stationData.recentStats.points.push({
+              timestamp: packetEndTime,
+              sumSquares,
+              maxAbs,
+              count: waveform.length
+            })
+            stationData.recentStats.totalSumSquares += sumSquares
+            stationData.recentStats.totalMaxAbs = Math.max(stationData.recentStats.totalMaxAbs, maxAbs)
+            stationData.recentStats.totalCount += waveform.length
+          }
         })
       }
 
@@ -748,21 +777,25 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
           item => item.timestamp >= cutoffTime
         )
 
-        // 動態縮放計算
-        const recentPoints = stationData.dataPoints.filter(
-          point => point.timestamp >= recentCutoff && !point.isGap
-        )
-        if (recentPoints.length > 0) {
-          let sumSquares = 0, maxAbs = 0, count = 0
-          recentPoints.forEach(point => {
-            point.values.forEach(value => {
-              sumSquares += value * value
-              maxAbs = Math.max(maxAbs, Math.abs(value))
-              count++
-            })
-          })
-          const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0.1
-          stationData.displayScale = Math.max(rms * 4, maxAbs * 0.3, 0.05)
+        // --- 優化：更新滑動窗口統計 ---
+        const stats = stationData.recentStats
+        let statsChanged = false
+        while (stats.points.length > 0 && stats.points[0].timestamp < recentCutoff) {
+          const removedPoint = stats.points.shift()
+          stats.totalSumSquares -= removedPoint.sumSquares
+          stats.totalCount -= removedPoint.count
+          statsChanged = true
+        }
+
+        // 如果移除了點，需要重新計算 totalMaxAbs
+        if (statsChanged) {
+          stats.totalMaxAbs = stats.points.reduce((max, p) => Math.max(max, p.maxAbs), 0)
+        }
+
+        // 動態縮放計算 (使用增量數據)
+        if (stats.totalCount > 0) {
+          const rms = Math.sqrt(stats.totalSumSquares / stats.totalCount)
+          stationData.displayScale = Math.max(rms * 4, stats.totalMaxAbs * 0.3, 0.05)
         } else if (stationData.dataPoints.length === 0) {
           stationData.displayScale = 1.0
         }
@@ -890,7 +923,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
             borderRadius: '4px',
             cursor: 'pointer',
             fontSize: '14px',
-            fontWeight: '500',
+fontWeight: '500',
             transition: 'all 0.3s ease',
             boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
           }}
