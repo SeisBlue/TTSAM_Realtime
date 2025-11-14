@@ -4,16 +4,7 @@ import './App.css'
 import ReportDetail from './components/ReportDetail'
 import TaiwanMap from './components/TaiwanMapDeck'
 import RealtimeWaveform from './components/RealtimeWaveformDeck'
-
-// 輔助函式：將震度字串轉換為可比較數值
-const getIntensityValue = (intensityStr) => {
-  if (!intensityStr || intensityStr === 'N/A') return -1;
-  const val = parseInt(intensityStr, 10);
-  if (isNaN(val)) return -1;
-  if (intensityStr.includes('+')) return val + 0.5;
-  if (intensityStr.includes('-')) return val - 0.5;
-  return val;
-};
+import { getIntensityValue } from './utils'
 
 // 輔助函式：計算並回傳各警報縣市的最大震度
 const getMaxIntensityByCounty = (reportData, stationToCountyMap) => {

@@ -2,6 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import TaiwanMap from './TaiwanMapDeck'
 import './ReportDetail.css'
+import { getIntensityValue } from '../utils'
 
 /**
  * 取得震度對應的顏色 (用於地圖)
@@ -51,19 +52,6 @@ function getBadgeStyle(intensityStr) {
 
   return style;
 }
-
-/**
- * 將震度字串轉換為可比較數值
- */
-const getIntensityValue = (intensityStr) => {
-  if (!intensityStr || intensityStr === 'N/A') return -1;
-  const val = parseInt(intensityStr, 10);
-  if (isNaN(val)) return -1;
-  if (intensityStr.includes('+')) return val + 0.5;
-  if (intensityStr.includes('-')) return val - 0.5;
-  return val;
-};
-
 
 export default function ReportDetail({ report, onBack, targetStations, onSelectReport, reports }) {
   const [selectedHistoricalReport, setSelectedHistoricalReport] = React.useState(null)
