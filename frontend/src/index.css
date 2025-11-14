@@ -34,6 +34,7 @@
   --gray-10: #e0e0e0;
   --gray-30: #b0b0b0;
   --gray-40: #999999;
+  --gray-50: #94a3b8; /* For unknown intensity */
   --gray-60: #666666;
   --gray-90: #0a0e27;
   --gray-95: #0b1724;
@@ -41,6 +42,22 @@
   /* White & Black */
   --white: #ffffff;
   --black: #000000;
+
+  /* --------------------------------------------
+   * Intensity Scale (震度色階)
+   * ----------------------------------------- */
+  --intensity-0: #ffffff;
+  --intensity-1: #33FFDD;
+  --intensity-2: #34ff32;
+  --intensity-3: #fefd32;
+  --intensity-4: #fe8532;
+  --intensity-5-minus: #fd5233;
+  --intensity-5-plus: #c43f3b;
+  --intensity-6-minus: #9d4646;
+  --intensity-6-plus: #9a4c86;
+  --intensity-7: #b51fea;
+  --intensity-unknown: var(--gray-50);
+
 
   /* --------------------------------------------
    * Semantic Colors

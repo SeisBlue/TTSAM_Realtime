@@ -107,12 +107,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
 
             {/* 顯示震度信息 */}
             {hoverInfo.object.intensityData && (
-              <div style={{
-                fontSize: '13px',
-                fontWeight: 'bold',
-                marginTop: '4px',
-                padding: '4px 8px',
-                borderRadius: '4px',
+              <div className="tooltip-intensity" style={{
                 backgroundColor: `rgba(${hoverInfo.object.intensityData.color[0]}, ${hoverInfo.object.intensityData.color[1]}, ${hoverInfo.object.intensityData.color[2]}, 0.3)`
               }}>
                 震度: {hoverInfo.object.intensityData.intensity} | PGA: {hoverInfo.object.intensityData.pga.toFixed(2)} gal
@@ -121,15 +116,9 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
 
             {/* 顯示替換信息（但測站本身在原位置） */}
             {hoverInfo.object.isReplaced && hoverInfo.object.replacementInfo && (
-              <div className="tooltip-replacement" style={{
-                color: '#4CAF50',
-                fontSize: '12px',
-                marginTop: '4px',
-                borderTop: '1px solid rgba(76, 175, 80, 0.3)',
-                paddingTop: '4px'
-              }}>
+              <div className="tooltip-replacement">
                 <div>🔄 數據來源: <strong>{hoverInfo.object.replacementInfo.replacementStation}</strong></div>
-                <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                <div className="tooltip-replacement-distance">
                   距離: {hoverInfo.object.replacementInfo.distance.toFixed(2)} km
                 </div>
               </div>
@@ -147,57 +136,56 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
         <div
           className="legend-header"
           onClick={() => setIsLegendExpanded(!isLegendExpanded)}
-          style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
-          <span style={{ fontWeight: 'bold' }}>圖例</span>
-          <span style={{ fontSize: '12px' }}>{isLegendExpanded ? '▼' : '▶'}</span>
+          <span className="legend-header-title">圖例</span>
+          <span className="legend-header-arrow">{isLegendExpanded ? '▼' : '▶'}</span>
         </div>
 
         {isLegendExpanded && (
           <>
             <div className="legend-title">震度分級（30秒最大PGA）</div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#ffffff', border: '1px solid #ccc' }}></span>
+              <span className="legend-dot legend-level-0"></span>
               <span>0 級 (&lt;0.8 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#33FFDD' }}></span>
+              <span className="legend-dot legend-level-1"></span>
               <span>1 級 (0.8-2.5 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#34ff32' }}></span>
+              <span className="legend-dot legend-level-2"></span>
               <span>2 級 (2.5-8 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#fefd32' }}></span>
+              <span className="legend-dot legend-level-3"></span>
               <span>3 級 (8-25 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#fe8532' }}></span>
+              <span className="legend-dot legend-level-4"></span>
               <span>4 級 (25-80 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#fd5233' }}></span>
+              <span className="legend-dot legend-level-5-minus"></span>
               <span>5- 級 (80-140 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#c43f3b' }}></span>
+              <span className="legend-dot legend-level-5-plus"></span>
               <span>5+ 級 (140-250 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#9d4646' }}></span>
+              <span className="legend-dot legend-level-6-minus"></span>
               <span>6- 級 (250-440 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#9a4c86' }}></span>
+              <span className="legend-dot legend-level-6-plus"></span>
               <span>6+ 級 (440-800 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#b51fea' }}></span>
+              <span className="legend-dot legend-level-7"></span>
               <span>7 級 (&gt;800 gal)</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: '#94a3b8' }}></span>
+              <span className="legend-dot legend-level-unknown"></span>
               <span>未知/無數據</span>
             </div>
           </>

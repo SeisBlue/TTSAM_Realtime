@@ -83,6 +83,28 @@
   font-style: italic;
 }
 
+.tooltip-intensity {
+  font-size: 13px;
+  font-weight: bold;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.tooltip-replacement {
+  color: var(--green-50);
+  font-size: 12px;
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--green-50) 30%, transparent);
+  padding-top: 4px;
+}
+
+.tooltip-replacement-distance {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+
 /* 選中測站面板（與 TaiwanMap.css 保持一致）*/
 .selected-stations-panel {
   position: absolute;
@@ -167,6 +189,10 @@
 }
 
 .legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-primary);
@@ -181,6 +207,14 @@
 
 .map-legend.collapsed .legend-header {
   margin-bottom: 0;
+}
+
+.legend-header-title {
+  font-weight: bold;
+}
+
+.legend-header-arrow {
+  font-size: 12px;
 }
 
 .legend-title {
@@ -210,13 +244,12 @@
   height: 10px;
   border-radius: 50%;
   margin-right: var(--spacing-xs);
-  border: 2px solid var(--color-text-primary);
+  border: 1px solid transparent; /* 預設透明邊框 */
 }
 
 .legend-dot.small {
   width: 6px;
   height: 6px;
-  border-width: 1px;
 }
 
 .legend-divider {
@@ -224,6 +257,20 @@
   background: var(--color-border-primary);
   margin: 10px 0;
 }
+
+/* 震度圖例顏色 */
+.legend-level-0 { background-color: var(--intensity-0); border-color: var(--gray-30); }
+.legend-level-1 { background-color: var(--intensity-1); }
+.legend-level-2 { background-color: var(--intensity-2); }
+.legend-level-3 { background-color: var(--intensity-3); }
+.legend-level-4 { background-color: var(--intensity-4); }
+.legend-level-5-minus { background-color: var(--intensity-5-minus); }
+.legend-level-5-plus { background-color: var(--intensity-5-plus); }
+.legend-level-6-minus { background-color: var(--intensity-6-minus); }
+.legend-level-6-plus { background-color: var(--intensity-6-plus); }
+.legend-level-7 { background-color: var(--intensity-7); }
+.legend-level-unknown { background-color: var(--intensity-unknown); }
+
 
 /* 性能指示器 */
 .performance-badge {
