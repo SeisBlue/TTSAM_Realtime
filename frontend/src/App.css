@@ -7,59 +7,40 @@
    * ----------------------------------------- */
   /* Blue Scale */
   --blue-30: #90caf9;
-  --blue-30-rgb: 144, 202, 249;
   --blue-50: #64b5f6;
-  --blue-50-rgb: 100, 181, 246;
   --blue-60: #5568d3; /* For button hover */
-  --blue-60-rgb: 85, 104, 211;
   --blue-70: #2a5298;
-  --blue-70-rgb: 42, 82, 152;
   --blue-80: #1e3c72;
-  --blue-80-rgb: 30, 60, 114;
 
   /* Red Scale */
   --red-40: #ff6b6b;
-  --red-40-rgb: 255, 107, 107;
   --red-60: #e05252;
-  --red-60-rgb: 224, 82, 82;
 
   /* Green Scale */
   --green-50: #2ed573;
-  --green-50-rgb: 46, 213, 115;
 
   /* Orange Scale */
   --orange-40: #ffa726;
-  --orange-40-rgb: 255, 167, 38;
   --orange-60: #e69500;
-  --orange-60-rgb: 230, 149, 0;
 
   /* Cyan/Teal Scale */
   --cyan-50: #4ecdc4;
-  --cyan-50-rgb: 78, 205, 196;
   --teal-30: #95e1d3;
-  --teal-30-rgb: 149, 225, 211;
 
   /* Purple Scale */
   --purple-60: #6b4ba2; /* For button hover */
-  --purple-60-rgb: 107, 75, 162;
 
   /* Gray Scale */
   --gray-10: #e0e0e0;
-  --gray-10-rgb: 224, 224, 224;
   --gray-30: #b0b0b0;
-  --gray-30-rgb: 176, 176, 176;
   --gray-40: #999999;
-  --gray-40-rgb: 153, 153, 153;
   --gray-60: #666666;
-  --gray-60-rgb: 102, 102, 102;
   --gray-90: #0a0e27;
-  --gray-90-rgb: 10, 14, 39;
   --gray-95: #0b1724;
-  --gray-95-rgb: 11, 23, 36;
 
   /* White & Black */
-  --white-rgb: 255, 255, 255;
-  --black-rgb: 0, 0, 0;
+  --white: #ffffff;
+  --black: #000000;
 
   /* --------------------------------------------
    * Semantic Colors
@@ -82,11 +63,11 @@
   /* 背景色系 */
   --color-bg-base: var(--gray-90);
   --color-bg-dark: var(--gray-95);
-  --color-bg-overlay: rgba(var(--black-rgb), 0.1);
-  --color-bg-panel: rgba(var(--black-rgb), 0.2);
-  --color-bg-glass: rgba(var(--white-rgb), 0.05);
-  --color-bg-glass-hover: rgba(var(--white-rgb), 0.08);
-  --color-bg-glass-active: rgba(var(--white-rgb), 0.12);
+  --color-bg-overlay: color-mix(in srgb, var(--black) 10%, transparent);
+  --color-bg-panel: color-mix(in srgb, var(--black) 20%, transparent);
+  --color-bg-glass: color-mix(in srgb, var(--white) 5%, transparent);
+  --color-bg-glass-hover: color-mix(in srgb, var(--white) 8%, transparent);
+  --color-bg-glass-active: color-mix(in srgb, var(--white) 12%, transparent);
 
   /* 文字色系 */
   --color-text-primary: var(--gray-10);
@@ -95,45 +76,45 @@
   --color-text-disabled: var(--gray-60);
 
   /* 邊框色系 */
-  --color-border-base: rgba(var(--white-rgb), 0.1);
-  --color-border-primary: rgba(var(--blue-50-rgb), 0.3);
+  --color-border-base: color-mix(in srgb, var(--white) 10%, transparent);
+  --color-border-primary: color-mix(in srgb, var(--color-primary) 30%, transparent);
 
   /* 功能色背景 */
-  --color-danger-bg: rgba(var(--red-40-rgb), 0.2);
-  --color-danger-bg-light: rgba(var(--red-40-rgb), 0.1);
-  --color-danger-bg-hover: rgba(var(--red-40-rgb), 0.15);
-  --color-success-bg: rgba(var(--green-50-rgb), 0.2);
-  --color-warning-bg: rgba(var(--orange-40-rgb), 0.2);
-  --color-warning-bg-light: rgba(var(--orange-40-rgb), 0.1);
-  --color-info-bg: rgba(var(--cyan-50-rgb), 0.2);
-  --color-info-bg-light: rgba(var(--cyan-50-rgb), 0.1);
-  --color-info-bg-hover: rgba(var(--cyan-50-rgb), 0.15);
-  --color-accent-bg: rgba(var(--teal-30-rgb), 0.2);
-  --color-primary-bg: rgba(var(--blue-50-rgb), 0.2);
-  --color-primary-bg-light: rgba(var(--blue-50-rgb), 0.1);
+  --color-danger-bg: color-mix(in srgb, var(--color-danger) 20%, transparent);
+  --color-danger-bg-light: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  --color-danger-bg-hover: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  --color-success-bg: color-mix(in srgb, var(--color-success) 20%, transparent);
+  --color-warning-bg: color-mix(in srgb, var(--color-warning) 20%, transparent);
+  --color-warning-bg-light: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  --color-info-bg: color-mix(in srgb, var(--color-info) 20%, transparent);
+  --color-info-bg-light: color-mix(in srgb, var(--color-info) 10%, transparent);
+  --color-info-bg-hover: color-mix(in srgb, var(--color-info) 15%, transparent);
+  --color-accent-bg: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  --color-primary-bg: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --color-primary-bg-light: color-mix(in srgb, var(--color-primary) 10%, transparent);
 
   /* 功能色邊框 */
-  --color-danger-border: rgba(var(--red-40-rgb), 0.3);
-  --color-warning-border: rgba(var(--orange-40-rgb), 0.4);
-  --color-warning-border-light: rgba(var(--orange-40-rgb), 0.3);
-  --color-info-border: rgba(var(--cyan-50-rgb), 0.4);
-  --color-info-border-light: rgba(var(--cyan-50-rgb), 0.3);
-  --color-info-border-hover: rgba(var(--cyan-50-rgb), 0.6);
-  --color-accent-border: rgba(var(--teal-30-rgb), 0.3);
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 40%, transparent);
+  --color-warning-border-light: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  --color-info-border: color-mix(in srgb, var(--color-info) 40%, transparent);
+  --color-info-border-light: color-mix(in srgb, var(--color-info) 30%, transparent);
+  --color-info-border-hover: color-mix(in srgb, var(--color-info) 60%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--color-accent) 30%, transparent);
 
   /* 陰影 */
-  --shadow-sm: 0 2px 8px rgba(var(--black-rgb), 0.3);
-  --shadow-md: 0 4px 12px rgba(var(--black-rgb), 0.3);
-  --shadow-lg: 0 4px 16px rgba(var(--black-rgb), 0.3);
-  --shadow-danger: 0 4px 16px rgba(var(--red-40-rgb), 0.3);
-  --shadow-info: 0 4px 16px rgba(var(--cyan-50-rgb), 0.3);
-  --shadow-info-sm: 0 2px 6px rgba(var(--cyan-50-rgb), 0.2);
-  --shadow-accent: 0 4px 16px rgba(var(--teal-30-rgb), 0.3);
-  --shadow-primary-focus: 0 0 0 2px rgba(var(--blue-50-rgb), 0.2);
-  --shadow-pulse-danger-1: 0 0 5px rgba(var(--red-40-rgb), 0.3);
-  --shadow-pulse-danger-2: 0 0 10px rgba(var(--red-40-rgb), 0.5);
-  --shadow-pulse-info-1: 0 0 5px rgba(var(--cyan-50-rgb), 0.3);
-  --shadow-pulse-info-2: 0 0 10px rgba(var(--cyan-50-rgb), 0.5);
+  --shadow-sm: 0 2px 8px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-md: 0 4px 12px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-lg: 0 4px 16px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-danger: 0 4px 16px color-mix(in srgb, var(--color-danger) 30%, transparent);
+  --shadow-info: 0 4px 16px color-mix(in srgb, var(--color-info) 30%, transparent);
+  --shadow-info-sm: 0 2px 6px color-mix(in srgb, var(--color-info) 20%, transparent);
+  --shadow-accent: 0 4px 16px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --shadow-primary-focus: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --shadow-pulse-danger-1: 0 0 5px color-mix(in srgb, var(--color-danger) 30%, transparent);
+  --shadow-pulse-danger-2: 0 0 10px color-mix(in srgb, var(--color-danger) 50%, transparent);
+  --shadow-pulse-info-1: 0 0 5px color-mix(in srgb, var(--color-info) 30%, transparent);
+  --shadow-pulse-info-2: 0 0 10px color-mix(in srgb, var(--color-info) 50%, transparent);
 
   /* 圓角 */
   --radius-sm: 4px;
@@ -164,10 +145,10 @@
   --left-panel-width-tablet: 350px;
 
   /* 捲軸 */
-  --scrollbar-thumb: rgba(var(--white-rgb), 0.2);
-  --scrollbar-thumb-hover: rgba(var(--white-rgb), 0.3);
-  --scrollbar-primary-thumb: rgba(var(--blue-50-rgb), 0.4);
-  --scrollbar-primary-thumb-hover: rgba(var(--blue-50-rgb), 0.6);
+  --scrollbar-thumb: color-mix(in srgb, var(--white) 20%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--white) 30%, transparent);
+  --scrollbar-primary-thumb: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  --scrollbar-primary-thumb-hover: color-mix(in srgb, var(--color-primary) 60%, transparent);
 }
 
 /* ============================================
@@ -226,7 +207,7 @@
 .app-title.clickable:hover {
   color: var(--color-primary-light);
   transform: translateX(2px);
-  text-shadow: 0 0 10px rgba(var(--blue-50-rgb), 0.3);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .app-title.clickable:active {
