@@ -50,24 +50,27 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
       id: 'primary-stations',
       data,
       pickable: true,
-      opacity: 1,
       stroked: true,
       filled: true,
-      radiusScale: 1,
-      radiusMinPixels: 5,
-      radiusMaxPixels: 8,
-      lineWidthMinPixels: 1, // <-- 修改：邊框寬度從 2px 改為 1px
+      radiusUnits: 'pixels',
+      lineWidthMinPixels: 1,
       getPosition: d => d.coordinates,
+      getRadius: d => {
+        // 有數據時半徑為 7px，無數據時為 3px
+        if (d.intensityData) {
+          return 5
+        }
+        return 3
+      },
       getFillColor: d => {
-        // 優先使用震度顏色，如果沒有震度數據則使用灰色
+        // 優先使用震度顏色，如果沒有震度數據則使用帶透明度的灰色
         if (d.intensityData && d.intensityData.color) {
           return d.intensityData.color
         }
-        // 默認灰色（未知/無數據）
-        return [148, 163, 184] // #94a3b8
+        // 默認灰色（未知/無數據），增加透明度
+        return [148, 163, 184, 90] // #94a3b8 with 90/255 alpha
       },
       getLineColor: d => {
-        // <-- 修改：邊框顏色邏輯比照圖例
         // 0 級震度顯示灰色邊框
         if (d.intensityData && d.intensityData.intensity === '0') {
           return [176, 176, 176] // var(--gray-30)
@@ -78,7 +81,8 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
         getFillColor: [stationIntensities, stationReplacements],
-        getLineColor: [stationIntensities], // <-- 新增 trigger
+        getLineColor: [stationIntensities],
+        getRadius: [stationIntensities], // 新增 getRadius 的 trigger
         getPosition: [stations]
       }
     })
