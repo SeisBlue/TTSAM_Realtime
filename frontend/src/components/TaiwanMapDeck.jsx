@@ -200,12 +200,6 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
           </>
         )}
       </div>
-
-      {/* 性能指示器 */}
-      <div className="performance-badge">
-        <span>⚡ WebGL 加速</span>
-        <span className="station-count">{stations.length} 測站</span>
-      </div>
     </div>
   )
 }

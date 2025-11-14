@@ -157,7 +157,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
           <button className="back-button" onClick={onBack}>
             ← 回上頁
           </button>
-          <h2>📊 歷史報告詳細資訊</h2>
+          <h2>歷史報告詳細資訊</h2>
           <span className="detail-timestamp">{currentReport.timestamp}</span>
           {selectedHistoricalReport && (
             <span className="historical-indicator">📚 歷史報告</span>
@@ -233,7 +233,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
       <div className="layout-section">
         {/* 震度地圖 */}
         <div className="detail-section map-container">
-          <h3>🗺️ 測站預測震度分布</h3>
+          <h3>測站預測震度分布</h3>
           <div style={{ height: '400px', width: '100%', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
             <TaiwanMap
               stations={targetStations}

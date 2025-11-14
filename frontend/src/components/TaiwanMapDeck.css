@@ -271,34 +271,6 @@
 .legend-level-7 { background-color: var(--intensity-7); }
 .legend-level-unknown { background-color: var(--intensity-unknown); }
 
-
-/* 性能指示器 */
-.performance-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success);
-  border-radius: var(--radius-sm);
-  padding: 6px var(--spacing-sm);
-  z-index: 1000;
-  backdrop-filter: var(--backdrop-blur);
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  color: var(--color-text-primary);
-  font-size: 0.7rem;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.performance-badge .station-count {
-  font-size: 0.55rem;
-  opacity: 0.8;
-}
-
 /* 響應式 */
 @media (max-width: 768px) {
   .map-legend {

@@ -129,12 +129,12 @@ function App() {
 
     // 連線事件
     const handleConnect = () => {
-      console.log('✅ Connected to Mock Server')
+      console.log('✅ Connected to Server')
       setIsConnected(true)
     }
 
     const handleDisconnect = () => {
-      console.log('❌ Disconnected from Mock Server')
+      console.log('❌ Disconnected from Server')
       setIsConnected(false)
     }
 
@@ -197,7 +197,7 @@ function App() {
             onClick={handleBackToWaveform}
             title="點擊回到首頁"
           >
-            🌏 TTSAM 地震預警即時監控
+            TTSAM 地震預警即時監控
           </h1>
           <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
             {isConnected ? '🟢 已連接' : '🔴 未連接'}
@@ -227,7 +227,7 @@ function App() {
         <div className="left-panel">
           {/* 預測報告列表 */}
           <section className="section events-section">
-            <h2>📊 歷史報告 ({reports.length})</h2>
+            <h2>歷史報告 ({reports.length})</h2>
             <div className="event-list">
               {reports.length === 0 ? (
                 <p className="empty-message">等待預測報告資料...</p>
@@ -274,7 +274,7 @@ function App() {
 
           {/* 台灣地圖 - 顯示主要測站 + 次要測站（TSMIP）*/}
           <section className="section map-section">
-            <h2>🗺️ 測站分布</h2>
+            <h2>測站分布</h2>
             <TaiwanMap
               stations={targetStations}
               stationReplacements={stationReplacements}
