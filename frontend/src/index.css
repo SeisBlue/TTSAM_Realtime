@@ -1,4 +1,156 @@
+/* ============================================
+   設計系統 - CSS 變數 (Design Tokens)
+   ============================================ */
 :root {
+  /* --------------------------------------------
+   * Color Palette
+   * ----------------------------------------- */
+  /* Blue Scale */
+  --blue-30: #90caf9;
+  --blue-50: #64b5f6;
+  --blue-60: #5568d3; /* For button hover */
+  --blue-70: #2a5298;
+  --blue-80: #1e3c72;
+
+  /* Red Scale */
+  --red-40: #ff6b6b;
+  --red-60: #e05252;
+
+  /* Green Scale */
+  --green-50: #2ed573;
+
+  /* Orange Scale */
+  --orange-40: #ffa726;
+  --orange-60: #e69500;
+
+  /* Cyan/Teal Scale */
+  --cyan-50: #4ecdc4;
+  --teal-30: #95e1d3;
+
+  /* Purple Scale */
+  --purple-60: #6b4ba2; /* For button hover */
+
+  /* Gray Scale */
+  --gray-10: #e0e0e0;
+  --gray-30: #b0b0b0;
+  --gray-40: #999999;
+  --gray-60: #666666;
+  --gray-90: #0a0e27;
+  --gray-95: #0b1724;
+
+  /* White & Black */
+  --white: #ffffff;
+  --black: #000000;
+
+  /* --------------------------------------------
+   * Semantic Colors
+   * ----------------------------------------- */
+  /* 主色系 */
+  --color-primary: var(--blue-50);
+  --color-primary-light: var(--blue-30);
+  --color-primary-dark: var(--blue-80);
+  --color-primary-gradient: linear-gradient(135deg, var(--blue-80) 0%, var(--blue-70) 100%);
+
+  /* 功能色 */
+  --color-danger: var(--red-40);
+  --color-danger-dark: var(--red-60);
+  --color-success: var(--green-50);
+  --color-warning: var(--orange-40);
+  --color-warning-dark: var(--orange-60);
+  --color-info: var(--cyan-50);
+  --color-accent: var(--teal-30);
+
+  /* 背景色系 */
+  --color-bg-base: var(--gray-90);
+  --color-bg-dark: var(--gray-95);
+  --color-bg-overlay: color-mix(in srgb, var(--black) 10%, transparent);
+  --color-bg-panel: color-mix(in srgb, var(--black) 20%, transparent);
+  --color-bg-glass: color-mix(in srgb, var(--white) 5%, transparent);
+  --color-bg-glass-hover: color-mix(in srgb, var(--white) 8%, transparent);
+  --color-bg-glass-active: color-mix(in srgb, var(--white) 12%, transparent);
+
+  /* 文字色系 */
+  --color-text-primary: var(--gray-10);
+  --color-text-secondary: var(--gray-30);
+  --color-text-muted: var(--gray-40);
+  --color-text-disabled: var(--gray-60);
+
+  /* 邊框色系 */
+  --color-border-base: color-mix(in srgb, var(--white) 10%, transparent);
+  --color-border-primary: color-mix(in srgb, var(--blue-50) 30%, transparent);
+
+  /* 功能色背景 */
+  --color-danger-bg: color-mix(in srgb, var(--red-40) 20%, transparent);
+  --color-danger-bg-light: color-mix(in srgb, var(--red-40) 10%, transparent);
+  --color-danger-bg-hover: color-mix(in srgb, var(--red-40) 15%, transparent);
+  --color-success-bg: color-mix(in srgb, var(--green-50) 20%, transparent);
+  --color-warning-bg: color-mix(in srgb, var(--orange-40) 20%, transparent);
+  --color-warning-bg-light: color-mix(in srgb, var(--orange-40) 10%, transparent);
+  --color-info-bg: color-mix(in srgb, var(--cyan-50) 20%, transparent);
+  --color-info-bg-light: color-mix(in srgb, var(--cyan-50) 10%, transparent);
+  --color-info-bg-hover: color-mix(in srgb, var(--cyan-50) 15%, transparent);
+  --color-accent-bg: color-mix(in srgb, var(--teal-30) 20%, transparent);
+  --color-primary-bg: color-mix(in srgb, var(--blue-50) 20%, transparent);
+  --color-primary-bg-light: color-mix(in srgb, var(--blue-50) 10%, transparent);
+
+  /* 功能色邊框 */
+  --color-danger-border: color-mix(in srgb, var(--red-40) 30%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--orange-40) 40%, transparent);
+  --color-warning-border-light: color-mix(in srgb, var(--orange-40) 30%, transparent);
+  --color-info-border: color-mix(in srgb, var(--cyan-50) 40%, transparent);
+  --color-info-border-light: color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --color-info-border-hover: color-mix(in srgb, var(--cyan-50) 60%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--teal-30) 30%, transparent);
+
+  /* 陰影 */
+  --shadow-sm: 0 2px 8px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-md: 0 4px 12px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-lg: 0 4px 16px color-mix(in srgb, var(--black) 30%, transparent);
+  --shadow-danger: 0 4px 16px color-mix(in srgb, var(--red-40) 30%, transparent);
+  --shadow-info: 0 4px 16px color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --shadow-info-sm: 0 2px 6px color-mix(in srgb, var(--cyan-50) 20%, transparent);
+  --shadow-accent: 0 4px 16px color-mix(in srgb, var(--teal-30) 30%, transparent);
+  --shadow-primary-focus: 0 0 0 2px color-mix(in srgb, var(--blue-50) 20%, transparent);
+  --shadow-pulse-danger-1: 0 0 5px color-mix(in srgb, var(--red-40) 30%, transparent);
+  --shadow-pulse-danger-2: 0 0 10px color-mix(in srgb, var(--red-40) 50%, transparent);
+  --shadow-pulse-info-1: 0 0 5px color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --shadow-pulse-info-2: 0 0 10px color-mix(in srgb, var(--cyan-50) 50%, transparent);
+
+  /* 圓角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 20px;
+
+  /* 間距 */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+
+  /* 過渡動畫 */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+
+  /* 毛玻璃效果 */
+  --backdrop-blur: blur(10px);
+
+  /* 響應式斷點 */
+  --breakpoint-mobile: 768px;
+  --breakpoint-tablet: 1024px;
+  --breakpoint-desktop: 1440px;
+
+  /* 左側面板寬度 */
+  --left-panel-width: 450px;
+  --left-panel-width-tablet: 350px;
+
+  /* 捲軸 */
+  --scrollbar-thumb: color-mix(in srgb, var(--white) 20%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--white) 30%, transparent);
+  --scrollbar-primary-thumb: color-mix(in srgb, var(--blue-50) 40%, transparent);
+  --scrollbar-primary-thumb-hover: color-mix(in srgb, var(--blue-50) 60%, transparent);
+
+  /* 基礎字體 */
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
