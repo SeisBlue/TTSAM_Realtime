@@ -285,31 +285,22 @@ function App() {
 
         {/* 右側面板：詳細內容 */}
         <div className="right-panel">
-          {!selectedType ? (
+          <div style={{ display: !selectedType ? 'block' : 'none', height: '100%' }}>
             <RealtimeWaveform
               wavePackets={wavePackets}
               socket={socket}
               onReplacementUpdate={setStationReplacements}
               onStationIntensityUpdate={setStationIntensities}
             />
-          ) : (
-            <>
-              {selectedType === 'wave' && (
-                <WaveDetail
-                  wave={selectedItem}
-                  onBack={handleBackToWaveform}
-                />
-              )}
-              {selectedType === 'report' && (
-                <ReportDetail
-                  report={selectedItem}
-                  onBack={handleBackToWaveform}
-                  targetStations={targetStations}
-                  onSelectReport={(report) => setSelectedItem(report)}
-                  reports={reports}
-                />
-              )}
-            </>
+          </div>
+          {selectedType === 'report' && (
+            <ReportDetail
+              report={selectedItem}
+              onBack={handleBackToWaveform}
+              targetStations={targetStations}
+              onSelectReport={(report) => setSelectedItem(report)}
+              reports={reports}
+            />
           )}
         </div>
       </div>

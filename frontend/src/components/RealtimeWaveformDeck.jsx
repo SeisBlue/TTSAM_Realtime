@@ -878,6 +878,17 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
     }
   }, [socket, displayStations])
 
+  const handleToggleTSMIP = () => {
+    // 清空當前的震度數據，以立即更新地圖
+    if (onStationIntensityUpdate) {
+      onStationIntensityUpdate({});
+    }
+    // 清空本地波形數據，避免顯示舊數據
+    setWaveDataMap({});
+    // 切換模式
+    setUseNearestTSMIP(!useNearestTSMIP);
+  };
+
   return (
     <div className="realtime-waveform geographic">
       <div className="waveform-controls" style={{
@@ -889,7 +900,7 @@ function RealtimeWaveformDeck({ wavePackets, socket, onReplacementUpdate, onStat
         gap: '15px'
       }}>
         <button
-          onClick={() => setUseNearestTSMIP(!useNearestTSMIP)}
+          onClick={handleToggleTSMIP}
           style={{
             padding: '8px 16px',
             background: useNearestTSMIP ? '#4CAF50' : '#2196F3',
