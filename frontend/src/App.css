@@ -77,44 +77,44 @@
 
   /* 邊框色系 */
   --color-border-base: color-mix(in srgb, var(--white) 10%, transparent);
-  --color-border-primary: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  --color-border-primary: color-mix(in srgb, var(--blue-50) 30%, transparent);
 
   /* 功能色背景 */
-  --color-danger-bg: color-mix(in srgb, var(--color-danger) 20%, transparent);
-  --color-danger-bg-light: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  --color-danger-bg-hover: color-mix(in srgb, var(--color-danger) 15%, transparent);
-  --color-success-bg: color-mix(in srgb, var(--color-success) 20%, transparent);
-  --color-warning-bg: color-mix(in srgb, var(--color-warning) 20%, transparent);
-  --color-warning-bg-light: color-mix(in srgb, var(--color-warning) 10%, transparent);
-  --color-info-bg: color-mix(in srgb, var(--color-info) 20%, transparent);
-  --color-info-bg-light: color-mix(in srgb, var(--color-info) 10%, transparent);
-  --color-info-bg-hover: color-mix(in srgb, var(--color-info) 15%, transparent);
-  --color-accent-bg: color-mix(in srgb, var(--color-accent) 20%, transparent);
-  --color-primary-bg: color-mix(in srgb, var(--color-primary) 20%, transparent);
-  --color-primary-bg-light: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  --color-danger-bg: color-mix(in srgb, var(--red-40) 20%, transparent);
+  --color-danger-bg-light: color-mix(in srgb, var(--red-40) 10%, transparent);
+  --color-danger-bg-hover: color-mix(in srgb, var(--red-40) 15%, transparent);
+  --color-success-bg: color-mix(in srgb, var(--green-50) 20%, transparent);
+  --color-warning-bg: color-mix(in srgb, var(--orange-40) 20%, transparent);
+  --color-warning-bg-light: color-mix(in srgb, var(--orange-40) 10%, transparent);
+  --color-info-bg: color-mix(in srgb, var(--cyan-50) 20%, transparent);
+  --color-info-bg-light: color-mix(in srgb, var(--cyan-50) 10%, transparent);
+  --color-info-bg-hover: color-mix(in srgb, var(--cyan-50) 15%, transparent);
+  --color-accent-bg: color-mix(in srgb, var(--teal-30) 20%, transparent);
+  --color-primary-bg: color-mix(in srgb, var(--blue-50) 20%, transparent);
+  --color-primary-bg-light: color-mix(in srgb, var(--blue-50) 10%, transparent);
 
   /* 功能色邊框 */
-  --color-danger-border: color-mix(in srgb, var(--color-danger) 30%, transparent);
-  --color-warning-border: color-mix(in srgb, var(--color-warning) 40%, transparent);
-  --color-warning-border-light: color-mix(in srgb, var(--color-warning) 30%, transparent);
-  --color-info-border: color-mix(in srgb, var(--color-info) 40%, transparent);
-  --color-info-border-light: color-mix(in srgb, var(--color-info) 30%, transparent);
-  --color-info-border-hover: color-mix(in srgb, var(--color-info) 60%, transparent);
-  --color-accent-border: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --color-danger-border: color-mix(in srgb, var(--red-40) 30%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--orange-40) 40%, transparent);
+  --color-warning-border-light: color-mix(in srgb, var(--orange-40) 30%, transparent);
+  --color-info-border: color-mix(in srgb, var(--cyan-50) 40%, transparent);
+  --color-info-border-light: color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --color-info-border-hover: color-mix(in srgb, var(--cyan-50) 60%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--teal-30) 30%, transparent);
 
   /* 陰影 */
   --shadow-sm: 0 2px 8px color-mix(in srgb, var(--black) 30%, transparent);
   --shadow-md: 0 4px 12px color-mix(in srgb, var(--black) 30%, transparent);
   --shadow-lg: 0 4px 16px color-mix(in srgb, var(--black) 30%, transparent);
-  --shadow-danger: 0 4px 16px color-mix(in srgb, var(--color-danger) 30%, transparent);
-  --shadow-info: 0 4px 16px color-mix(in srgb, var(--color-info) 30%, transparent);
-  --shadow-info-sm: 0 2px 6px color-mix(in srgb, var(--color-info) 20%, transparent);
-  --shadow-accent: 0 4px 16px color-mix(in srgb, var(--color-accent) 30%, transparent);
-  --shadow-primary-focus: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  --shadow-pulse-danger-1: 0 0 5px color-mix(in srgb, var(--color-danger) 30%, transparent);
-  --shadow-pulse-danger-2: 0 0 10px color-mix(in srgb, var(--color-danger) 50%, transparent);
-  --shadow-pulse-info-1: 0 0 5px color-mix(in srgb, var(--color-info) 30%, transparent);
-  --shadow-pulse-info-2: 0 0 10px color-mix(in srgb, var(--color-info) 50%, transparent);
+  --shadow-danger: 0 4px 16px color-mix(in srgb, var(--red-40) 30%, transparent);
+  --shadow-info: 0 4px 16px color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --shadow-info-sm: 0 2px 6px color-mix(in srgb, var(--cyan-50) 20%, transparent);
+  --shadow-accent: 0 4px 16px color-mix(in srgb, var(--teal-30) 30%, transparent);
+  --shadow-primary-focus: 0 0 0 2px color-mix(in srgb, var(--blue-50) 20%, transparent);
+  --shadow-pulse-danger-1: 0 0 5px color-mix(in srgb, var(--red-40) 30%, transparent);
+  --shadow-pulse-danger-2: 0 0 10px color-mix(in srgb, var(--red-40) 50%, transparent);
+  --shadow-pulse-info-1: 0 0 5px color-mix(in srgb, var(--cyan-50) 30%, transparent);
+  --shadow-pulse-info-2: 0 0 10px color-mix(in srgb, var(--cyan-50) 50%, transparent);
 
   /* 圓角 */
   --radius-sm: 4px;
@@ -147,8 +147,8 @@
   /* 捲軸 */
   --scrollbar-thumb: color-mix(in srgb, var(--white) 20%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--white) 30%, transparent);
-  --scrollbar-primary-thumb: color-mix(in srgb, var(--color-primary) 40%, transparent);
-  --scrollbar-primary-thumb-hover: color-mix(in srgb, var(--color-primary) 60%, transparent);
+  --scrollbar-primary-thumb: color-mix(in srgb, var(--blue-50) 40%, transparent);
+  --scrollbar-primary-thumb-hover: color-mix(in srgb, var(--blue-50) 60%, transparent);
 }
 
 /* ============================================
@@ -207,7 +207,7 @@
 .app-title.clickable:hover {
   color: var(--color-primary-light);
   transform: translateX(2px);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--blue-50) 30%, transparent);
 }
 
 .app-title.clickable:active {
