@@ -10,8 +10,10 @@
 
   /* 功能色 */
   --color-danger: #ff6b6b;
+  --color-danger-dark: #e05252;
   --color-success: #2ed573;
   --color-warning: #ffa726;
+  --color-warning-dark: #e69500;
   --color-info: #4ecdc4;
   --color-accent: #95e1d3;
 
@@ -34,13 +36,42 @@
   --color-border-base: rgba(255, 255, 255, 0.1);
   --color-border-primary: rgba(100, 181, 246, 0.3);
 
+  /* 功能色背景 */
+  --color-danger-bg: rgba(255, 107, 107, 0.2);
+  --color-danger-bg-light: rgba(255, 107, 107, 0.1);
+  --color-danger-bg-hover: rgba(255, 107, 107, 0.15);
+  --color-success-bg: rgba(46, 213, 115, 0.2);
+  --color-warning-bg: rgba(255, 167, 38, 0.2);
+  --color-warning-bg-light: rgba(255, 167, 38, 0.1);
+  --color-info-bg: rgba(78, 205, 196, 0.2);
+  --color-info-bg-light: rgba(78, 205, 196, 0.1);
+  --color-info-bg-hover: rgba(78, 205, 196, 0.15);
+  --color-accent-bg: rgba(149, 225, 211, 0.2);
+  --color-primary-bg: rgba(100, 181, 246, 0.2);
+  --color-primary-bg-light: rgba(100, 181, 246, 0.1);
+
+  /* 功能色邊框 */
+  --color-danger-border: rgba(255, 107, 107, 0.3);
+  --color-warning-border: rgba(255, 167, 38, 0.4);
+  --color-warning-border-light: rgba(255, 167, 38, 0.3);
+  --color-info-border: rgba(78, 205, 196, 0.4);
+  --color-info-border-light: rgba(78, 205, 196, 0.3);
+  --color-info-border-hover: rgba(78, 205, 196, 0.6);
+  --color-accent-border: rgba(149, 225, 211, 0.3);
+
   /* 陰影 */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
   --shadow-danger: 0 4px 16px rgba(255, 107, 107, 0.3);
   --shadow-info: 0 4px 16px rgba(78, 205, 196, 0.3);
+  --shadow-info-sm: 0 2px 6px rgba(78, 205, 196, 0.2);
   --shadow-accent: 0 4px 16px rgba(149, 225, 211, 0.3);
+  --shadow-primary-focus: 0 0 0 2px rgba(100, 181, 246, 0.2);
+  --shadow-pulse-danger-1: 0 0 5px rgba(255, 107, 107, 0.3);
+  --shadow-pulse-danger-2: 0 0 10px rgba(255, 107, 107, 0.5);
+  --shadow-pulse-info-1: 0 0 5px rgba(78, 205, 196, 0.3);
+  --shadow-pulse-info-2: 0 0 10px rgba(78, 205, 196, 0.5);
 
   /* 圓角 */
   --radius-sm: 4px;
@@ -69,6 +100,12 @@
   /* 左側面板寬度 */
   --left-panel-width: 450px;
   --left-panel-width-tablet: 350px;
+
+  /* 捲軸 */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --scrollbar-primary-thumb: rgba(100, 181, 246, 0.4);
+  --scrollbar-primary-thumb-hover: rgba(100, 181, 246, 0.6);
 }
 
 /* ============================================
@@ -158,15 +195,15 @@
 }
 
 .connection-status.connected {
-  background: rgba(46, 213, 115, 0.2);
+  background: var(--color-success-bg);
   border: 1px solid var(--color-success);
   color: var(--color-success);
 }
 
 .connection-status.disconnected {
-  background: rgba(255, 71, 87, 0.2);
-  border: 1px solid #ff4757;
-  color: #ff4757;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
 }
 
 /* 波形狀態 - 緊湊型（在 header 中） */
@@ -182,14 +219,14 @@
 }
 
 .wave-status-compact.waiting {
-  background: rgba(255, 167, 38, 0.2);
-  border: 1px solid rgba(255, 167, 38, 0.4);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   color: var(--color-warning);
 }
 
 .wave-status-compact.active {
-  background: rgba(78, 205, 196, 0.2);
-  border: 1px solid rgba(78, 205, 196, 0.4);
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
   color: var(--color-info);
   animation: pulse-compact 2s ease-in-out infinite;
 }
@@ -201,23 +238,23 @@
 }
 
 .wave-status-compact.clickable:hover {
-  background: rgba(78, 205, 196, 0.3);
-  border-color: rgba(78, 205, 196, 0.6);
+  background: var(--color-info-bg-hover);
+  border-color: var(--color-info-border-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+  box-shadow: var(--shadow-info);
 }
 
 .wave-status-compact.clickable:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(78, 205, 196, 0.2);
+  box-shadow: var(--shadow-info-sm);
 }
 
 @keyframes pulse-compact {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(78, 205, 196, 0.3);
+    box-shadow: var(--shadow-pulse-info-1);
   }
   50% {
-    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+    box-shadow: var(--shadow-pulse-info-2);
   }
 }
 
@@ -266,17 +303,17 @@
 }
 
 .left-panel::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-bg-panel);
   border-radius: 4px;
 }
 
 .left-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .left-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* 右側面板 - 自動補滿剩餘空間 */
@@ -297,17 +334,17 @@
 }
 
 .right-panel::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-bg-panel);
   border-radius: 4px;
 }
 
 .right-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 .right-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* 平板尺寸 (1024px 以下) */
@@ -481,7 +518,7 @@
 
 /* 選中狀態 */
 .event-card.selected {
-  background: rgba(255, 107, 107, 0.2);
+  background: var(--color-danger-bg);
   border-left-width: 6px;
   box-shadow: var(--shadow-danger);
 }
@@ -489,30 +526,30 @@
 /* 歷史報告樣式 */
 .event-card.historical {
   border-left-color: var(--color-info);
-  background: rgba(78, 205, 196, 0.1);
+  background: var(--color-info-bg-light);
 }
 
 .event-card.historical:hover {
-  background: rgba(78, 205, 196, 0.15);
+  background: var(--color-info-bg-hover);
 }
 
 /* 即時報告樣式 */
 .event-card.realtime {
   border-left-color: var(--color-danger);
-  background: rgba(255, 107, 107, 0.1);
+  background: var(--color-danger-bg-light);
   animation: realtime-pulse 2s ease-in-out infinite;
 }
 
 .event-card.realtime:hover {
-  background: rgba(255, 107, 107, 0.15);
+  background: var(--color-danger-bg-hover);
 }
 
 @keyframes realtime-pulse {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(255, 107, 107, 0.3);
+    box-shadow: var(--shadow-pulse-danger-1);
   }
   50% {
-    box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    box-shadow: var(--shadow-pulse-danger-2);
   }
 }
 
@@ -545,7 +582,7 @@
 
 .event-stations {
   font-size: 0.75rem;
-  background: rgba(100, 181, 246, 0.2);
+  background: var(--color-primary-bg);
   padding: 0.2rem 0.4rem;
   border-radius: var(--radius-sm);
   color: var(--color-primary);
@@ -569,27 +606,27 @@
 }
 
 .station-tag.danger {
-  background: rgba(255, 107, 107, 0.2);
+  background: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
 .station-tag.warning {
-  background: rgba(255, 167, 38, 0.2);
+  background: var(--color-warning-bg);
   color: var(--color-warning);
 }
 
 .station-tag.info {
-  background: rgba(78, 205, 196, 0.2);
+  background: var(--color-info-bg);
   color: var(--color-info);
 }
 
 .station-tag.neutral {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-border-base);
   color: var(--color-text-secondary);
 }
 
 .station-tag.more {
-  background: rgba(255, 167, 38, 0.2);
+  background: var(--color-warning-bg);
   color: var(--color-warning);
 }
 
@@ -622,14 +659,14 @@
 .event-list::-webkit-scrollbar-thumb,
 .left-panel::-webkit-scrollbar-thumb,
 .detail-json::-webkit-scrollbar-thumb {
-  background: rgba(100, 181, 246, 0.4);
+  background: var(--scrollbar-primary-thumb);
   border-radius: var(--radius-sm);
 }
 
 .event-list::-webkit-scrollbar-thumb:hover,
 .left-panel::-webkit-scrollbar-thumb:hover,
 .detail-json::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 181, 246, 0.6);
+  background: var(--scrollbar-primary-thumb-hover);
 }
 
 /* 詳細頁面樣式 */
@@ -676,7 +713,7 @@
 .detail-timestamp, .detail-id {
   font-size: 0.9rem;
   color: var(--color-primary-light);
-  background: rgba(100, 181, 246, 0.1);
+  background: var(--color-primary-bg-light);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
 }
@@ -684,17 +721,17 @@
 .historical-indicator {
   font-size: 0.85rem;
   color: var(--color-warning);
-  background: rgba(255, 167, 38, 0.1);
+  background: var(--color-warning-bg-light);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 167, 38, 0.3);
+  border: 1px solid var(--color-warning-border-light);
 }
 
 /* 回上頁按鈕 */
 .back-button {
   padding: var(--spacing-xs) var(--spacing-md);
   background: var(--color-primary-gradient);
-  color: white;
+  color: var(--color-text-primary);
   border: none;
   border-radius: var(--radius-md);
   font-size: 0.95rem;
@@ -788,31 +825,31 @@
 }
 
 .station-badge {
-  background: rgba(255, 107, 107, 0.2);
+  background: var(--color-danger-bg);
   color: var(--color-danger);
   padding: 0.4rem 0.8rem;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 107, 107, 0.3);
+  border: 1px solid var(--color-danger-border);
 }
 
 .station-badge.source {
-  background: rgba(78, 205, 196, 0.2);
+  background: var(--color-info-bg);
   color: var(--color-info);
-  border-color: rgba(78, 205, 196, 0.3);
+  border-color: var(--color-info-border-light);
 }
 
 .station-badge.target {
-  background: rgba(149, 225, 211, 0.2);
+  background: var(--color-accent-bg);
   color: var(--color-accent);
-  border-color: rgba(149, 225, 211, 0.3);
+  border-color: var(--color-accent-border);
 }
 
 .station-badge.more {
-  background: rgba(255, 167, 38, 0.2);
+  background: var(--color-warning-bg);
   color: var(--color-warning);
-  border-color: rgba(255, 167, 38, 0.3);
+  border-color: var(--color-warning-border-light);
 }
 
 .wave-canvas-container {
@@ -825,7 +862,7 @@
 
 .detail-json {
   background: var(--color-bg-dark);
-  color: #a0d8f1;
+  color: var(--color-primary-light);
   padding: var(--spacing-sm);
   border-radius: var(--radius-md);
   overflow-x: auto;
@@ -875,7 +912,7 @@
 .historical-selector select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+  box-shadow: var(--shadow-primary-focus);
 }
 
 .historical-selector select:disabled {

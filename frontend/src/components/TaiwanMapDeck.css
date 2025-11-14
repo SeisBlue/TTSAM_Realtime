@@ -4,8 +4,8 @@
   height: 100%;
   flex: 1;
   min-height: 300px;
-  background: #0a0e27;
-  border-radius: 8px;
+  background: var(--color-bg-base);
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -13,23 +13,23 @@
 /* Deck.gl Canvas 容器 */
 .deck-container,
 .deck-canvas {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 /* Mapbox GL 控制項 */
 .mapboxgl-ctrl-group {
-  background-color: rgba(10, 14, 39, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--color-bg-glass-active) !important;
+  border: 1px solid var(--color-border-base) !important;
 }
 
 .mapboxgl-ctrl-group button {
-  background-color: rgba(10, 14, 39, 0.9) !important;
-  color: #e0e0e0 !important;
+  background-color: var(--color-bg-glass-active) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .mapboxgl-ctrl-group button:hover {
-  background-color: rgba(30, 60, 114, 0.9) !important;
-  color: #fff !important;
+  background-color: var(--color-primary-dark) !important;
+  color: var(--color-text-primary) !important;
 }
 
 /* Hover Tooltip */
@@ -37,49 +37,49 @@
   position: absolute;
   pointer-events: none;
   z-index: 1000;
-  background: rgba(10, 14, 39, 0.95);
-  border: 1px solid rgba(100, 181, 246, 0.3);
-  border-radius: 6px;
+  background: var(--color-bg-glass-active);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-sm);
   padding: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--backdrop-blur);
   transform: translate(-50%, -120%);
 }
 
 .deck-tooltip .tooltip-content {
-  padding: 8px 12px;
-  color: #e0e0e0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  color: var(--color-text-primary);
   min-width: 120px;
 }
 
 .deck-tooltip .tooltip-name {
-  font-size: 13px;
+  font-size: 0.8rem;
   font-weight: 600;
   margin-bottom: 3px;
-  color: #fff;
+  color: var(--color-text-primary);
 }
 
 .deck-tooltip .tooltip-code {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 0.6rem;
+  color: var(--color-text-secondary);
   font-family: monospace;
   margin-bottom: 3px;
 }
 
 .deck-tooltip .tooltip-coords {
-  font-size: 9px;
-  color: #64748b;
+  font-size: 0.55rem;
+  color: var(--color-text-muted);
 }
 
 .deck-tooltip .tooltip-status {
-  font-size: 9px;
-  margin-top: 4px;
+  font-size: 0.55rem;
+  margin-top: var(--spacing-xs);
 }
 
 .deck-tooltip .tooltip-hint {
-  font-size: 9px;
-  color: #ffc107;
-  margin-top: 4px;
+  font-size: 0.55rem;
+  color: var(--color-warning);
+  margin-top: var(--spacing-xs);
   font-style: italic;
 }
 
@@ -88,20 +88,20 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0, 0, 0, 0.9);
-  border: 1px solid #ffc107;
-  border-radius: 8px;
-  padding: 12px;
+  background: var(--color-bg-glass-active);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
   max-width: 250px;
   z-index: 1000;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: var(--backdrop-blur);
+  box-shadow: var(--shadow-lg);
 }
 
 .selected-stations-panel h4 {
-  margin: 0 0 8px 0;
-  color: #ffc107;
-  font-size: 14px;
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--color-warning);
+  font-size: 0.9rem;
   font-weight: bold;
 }
 
@@ -109,42 +109,42 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-xs);
   max-height: 150px;
   overflow-y: auto;
 }
 
 .selected-station-tag {
-  background: #ffc107;
-  color: #000;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  background: var(--color-warning);
+  color: var(--color-bg-dark);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
   font-weight: bold;
   cursor: pointer;
   user-select: none;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .selected-station-tag:hover {
-  background: #ffb300;
+  background: var(--color-warning-dark);
 }
 
 .clear-selection-btn {
   width: 100%;
   padding: 6px;
-  background: #d32f2f;
-  color: white;
+  background: var(--color-danger);
+  color: var(--color-text-primary);
   border: none;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .clear-selection-btn:hover {
-  background: #b71c1c;
+  background: var(--color-danger-dark);
 }
 
 /* 圖例樣式 */
@@ -152,31 +152,31 @@
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: rgba(10, 14, 39, 0.95);
-  border: 1px solid rgba(100, 181, 246, 0.3);
-  border-radius: 8px;
-  padding: 12px;
+  background: var(--color-bg-glass-active);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
   z-index: 1000;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  transition: all 0.3s ease;
+  backdrop-filter: var(--backdrop-blur);
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-normal);
 }
 
 .map-legend.collapsed {
-  padding: 8px 12px;
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .legend-header {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #64b5f6;
-  margin-bottom: 4px;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-xs);
   user-select: none;
-  transition: color 0.2s;
+  transition: color var(--transition-fast);
 }
 
 .legend-header:hover {
-  color: #90caf9;
+  color: var(--color-primary-light);
 }
 
 .map-legend.collapsed .legend-header {
@@ -184,33 +184,33 @@
 }
 
 .legend-title {
-  font-size: 11px;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #64b5f6;
-  margin-bottom: 8px;
-  margin-top: 8px;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .legend-title:first-of-type {
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .legend-item {
   display: flex;
   align-items: center;
   margin: 6px 0;
-  font-size: 12px;
-  color: #e0e0e0;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
 }
 
 .legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  margin-right: 8px;
-  border: 2px solid white;
+  margin-right: var(--spacing-xs);
+  border: 2px solid var(--color-text-primary);
 }
 
 .legend-dot.small {
@@ -221,7 +221,7 @@
 
 .legend-divider {
   height: 1px;
-  background: rgba(100, 181, 246, 0.2);
+  background: var(--color-border-primary);
   margin: 10px 0;
 }
 
@@ -230,25 +230,25 @@
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(34, 197, 94, 0.9);
-  border: 1px solid rgba(34, 197, 94, 0.5);
-  border-radius: 6px;
-  padding: 6px 12px;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-sm);
+  padding: 6px var(--spacing-sm);
   z-index: 1000;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: var(--backdrop-blur);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  color: white;
-  font-size: 11px;
+  color: var(--color-text-primary);
+  font-size: 0.7rem;
   font-weight: 600;
   pointer-events: none;
 }
 
 .performance-badge .station-count {
-  font-size: 9px;
+  font-size: 0.55rem;
   opacity: 0.8;
 }
 
@@ -257,14 +257,13 @@
   .map-legend {
     bottom: 10px;
     right: 10px;
-    font-size: 10px;
-    padding: 8px;
+    font-size: 0.6rem;
+    padding: var(--spacing-xs);
   }
 
   .performance-badge {
     top: 10px;
     left: 10px;
-    font-size: 10px;
+    font-size: 0.6rem;
   }
 }
-
