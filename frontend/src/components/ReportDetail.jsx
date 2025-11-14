@@ -5,52 +5,16 @@ import './ReportDetail.css'
 import { getIntensityValue } from '../utils'
 
 /**
- * 取得震度對應的顏色 (用於地圖)
- * 此顏色表需與 TaiwanMapDeck.jsx 中的圖例嚴格對應
+ * 根據震度字串取得對應的 CSS Class 名稱
+ * @param {string} intensityStr - 例如 "4", "5-", "5+"
+ * @returns {string} - 例如 "intensity-level-4", "intensity-level-5-minus"
  */
-function getIntensityColor(intensity) {
-  switch (intensity) {
-    case "0": return [255, 255, 255]     // #ffffff
-    case "1": return [51, 255, 221]      // #33FFDD
-    case "2": return [52, 255, 50]       // #34ff32
-    case "3": return [254, 253, 50]      // #fefd32
-    case "4": return [254, 133, 50]      // #fe8532
-    case "5-": return [253, 82, 51]      // #fd5233
-    case "5+": return [196, 63, 59]      // #c43f3b
-    case "6-": return [157, 70, 70]      // #9d4646
-    case "6+": return [154, 76, 134]     // #9a4c86
-    case "7": return [181, 31, 234]      // #b51fea
-    default: return [148, 163, 184]      // #94a3b8
+function getIntensityClassName(intensityStr) {
+  if (!intensityStr || intensityStr === 'N/A') {
+    return 'intensity-level-unknown';
   }
-}
-
-/**
- * 根據震度取得徽章樣式 (用於列表)
- */
-function getBadgeStyle(intensityStr) {
-  const intensityValue = parseInt(intensityStr, 10);
-  if (isNaN(intensityValue)) {
-    return {}; // 沒有有效震度則返回預設樣式
-  }
-
-  // 震度小於 4 時，統一使用白色系樣式
-  if (intensityValue < 4) {
-    return {
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-      color: '#E0E0E0', // --color-text-primary from App.css
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-    };
-  }
-
-  // 震度大於等於 4 時，使用對應的警報色
-  const color = getIntensityColor(intensityStr);
-  const style = {
-    backgroundColor: `rgba(${color.join(',')}, 0.2)`,
-    color: `rgb(${color.join(',')})`,
-    borderColor: `rgba(${color.join(',')}, 0.4)`,
-  };
-
-  return style;
+  const className = `intensity-level-${intensityStr.replace('+', '-plus')}`;
+  return className;
 }
 
 export default function ReportDetail({ report, onBack, targetStations, onSelectReport, reports }) {
@@ -177,7 +141,6 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
       if (intensity && intensity !== 'N/A') {
         intensities[key] = {
           intensity: intensity,
-          color: getIntensityColor(intensity),
           pga: 0 // 報告中沒有PGA數據，用0代替
         }
       }
@@ -235,7 +198,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         <div className="detail-grid">
           <div className="detail-item">
             <span className="detail-label">最大預估震度</span>
-            <span className="detail-value" style={{ color: `rgb(${getIntensityColor(overallMaxIntensity).join(',')})` }}>
+            <span className={`detail-value ${getIntensityClassName(overallMaxIntensity)}`}>
               {overallMaxIntensity}
             </span>
           </div>
@@ -265,7 +228,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         {maxIntensityByCounty.length > 0 && (
           <div className="station-grid" style={{ marginTop: 'var(--spacing-sm)' }}>
             {maxIntensityByCounty.map(({ county, maxIntensity }) => (
-              <div key={county} className="station-badge" style={getBadgeStyle(maxIntensity)}>
+              <div key={county} className={`station-badge ${getIntensityClassName(maxIntensity)}`}>
                 {county}: {maxIntensity}
               </div>
             ))}
@@ -294,7 +257,7 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
               .filter(key => !['picks', 'log_time', 'alarm', 'report_time', 'format_time', 'wave_time', 'wave_endt', 'wave_lag', 'run_time', 'alarm_county', 'new_alarm_county'].includes(key))
               .sort((a, b) => getIntensityValue(data[b]) - getIntensityValue(data[a]))
               .map((station, idx) => (
-                <div key={idx} className="station-badge" style={getBadgeStyle(data[station])}>
+                <div key={idx} className={`station-badge ${getIntensityClassName(data[station])}`}>
                   {station}: {data[station] || 'N/A'}
                 </div>
               ))}

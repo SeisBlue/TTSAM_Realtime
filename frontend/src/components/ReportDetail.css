@@ -66,3 +66,64 @@
 .detail-grid.secondary .detail-label {
   font-size: 0.8rem;
 }
+
+/* ============================================
+   震度顏色樣式
+   ============================================ */
+
+/* 預設/低震度樣式 */
+.intensity-level-0,
+.intensity-level-1,
+.intensity-level-2,
+.intensity-level-3 {
+  background-color: color-mix(in srgb, var(--white) 10%, transparent);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--white) 20%, transparent);
+}
+
+/* 摘要中的純文字顏色 */
+.detail-value.intensity-level-0,
+.detail-value.intensity-level-1,
+.detail-value.intensity-level-2,
+.detail-value.intensity-level-3 {
+  color: var(--color-text-primary);
+  background-color: transparent;
+}
+
+/* 高震度通用樣式 */
+.intensity-level-4,
+.intensity-level-5-minus,
+.intensity-level-5-plus,
+.intensity-level-6-minus,
+.intensity-level-6-plus,
+.intensity-level-7 {
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* 各級震度顏色 */
+.intensity-level-4 { background-color: color-mix(in srgb, var(--intensity-4) 20%, transparent); color: var(--intensity-4); border-color: color-mix(in srgb, var(--intensity-4) 40%, transparent); }
+.intensity-level-5-minus { background-color: color-mix(in srgb, var(--intensity-5-minus) 20%, transparent); color: var(--intensity-5-minus); border-color: color-mix(in srgb, var(--intensity-5-minus) 40%, transparent); }
+.intensity-level-5-plus { background-color: color-mix(in srgb, var(--intensity-5-plus) 20%, transparent); color: var(--intensity-5-plus); border-color: color-mix(in srgb, var(--intensity-5-plus) 40%, transparent); }
+.intensity-level-6-minus { background-color: color-mix(in srgb, var(--intensity-6-minus) 20%, transparent); color: var(--intensity-6-minus); border-color: color-mix(in srgb, var(--intensity-6-minus) 40%, transparent); }
+.intensity-level-6-plus { background-color: color-mix(in srgb, var(--intensity-6-plus) 20%, transparent); color: var(--intensity-6-plus); border-color: color-mix(in srgb, var(--intensity-6-plus) 40%, transparent); }
+.intensity-level-7 { background-color: color-mix(in srgb, var(--intensity-7) 20%, transparent); color: var(--intensity-7); border-color: color-mix(in srgb, var(--intensity-7) 40%, transparent); }
+
+/* 摘要中的純文字高震度顏色 */
+.detail-value.intensity-level-4 { color: var(--intensity-4); background-color: transparent; }
+.detail-value.intensity-level-5-minus { color: var(--intensity-5-minus); background-color: transparent; }
+.detail-value.intensity-level-5-plus { color: var(--intensity-5-plus); background-color: transparent; }
+.detail-value.intensity-level-6-minus { color: var(--intensity-6-minus); background-color: transparent; }
+.detail-value.intensity-level-6-plus { color: var(--intensity-6-plus); background-color: transparent; }
+.detail-value.intensity-level-7 { color: var(--intensity-7); background-color: transparent; }
+
+/* 未知震度 */
+.intensity-level-unknown {
+  background-color: var(--color-bg-glass);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-base);
+}
+.detail-value.intensity-level-unknown {
+  color: var(--color-text-muted);
+  background-color: transparent;
+}
