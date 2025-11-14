@@ -197,12 +197,6 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
         <h3>報告摘要</h3>
         <div className="detail-grid">
           <div className="detail-item">
-            <span className="detail-label">最大預估震度</span>
-            <span className={`detail-value ${getIntensityClassName(overallMaxIntensity)}`}>
-              {overallMaxIntensity}
-            </span>
-          </div>
-          <div className="detail-item">
             <span className="detail-label">報告時間</span>
             <span className="detail-value">{data.report_time || 'N/A'}</span>
           </div>
