@@ -2,76 +2,138 @@
    設計系統 - CSS 變數 (Design Tokens)
    ============================================ */
 :root {
+  /* --------------------------------------------
+   * Color Palette
+   * ----------------------------------------- */
+  /* Blue Scale */
+  --blue-30: #90caf9;
+  --blue-30-rgb: 144, 202, 249;
+  --blue-50: #64b5f6;
+  --blue-50-rgb: 100, 181, 246;
+  --blue-60: #5568d3; /* For button hover */
+  --blue-60-rgb: 85, 104, 211;
+  --blue-70: #2a5298;
+  --blue-70-rgb: 42, 82, 152;
+  --blue-80: #1e3c72;
+  --blue-80-rgb: 30, 60, 114;
+
+  /* Red Scale */
+  --red-40: #ff6b6b;
+  --red-40-rgb: 255, 107, 107;
+  --red-60: #e05252;
+  --red-60-rgb: 224, 82, 82;
+
+  /* Green Scale */
+  --green-50: #2ed573;
+  --green-50-rgb: 46, 213, 115;
+
+  /* Orange Scale */
+  --orange-40: #ffa726;
+  --orange-40-rgb: 255, 167, 38;
+  --orange-60: #e69500;
+  --orange-60-rgb: 230, 149, 0;
+
+  /* Cyan/Teal Scale */
+  --cyan-50: #4ecdc4;
+  --cyan-50-rgb: 78, 205, 196;
+  --teal-30: #95e1d3;
+  --teal-30-rgb: 149, 225, 211;
+
+  /* Purple Scale */
+  --purple-60: #6b4ba2; /* For button hover */
+  --purple-60-rgb: 107, 75, 162;
+
+  /* Gray Scale */
+  --gray-10: #e0e0e0;
+  --gray-10-rgb: 224, 224, 224;
+  --gray-30: #b0b0b0;
+  --gray-30-rgb: 176, 176, 176;
+  --gray-40: #999999;
+  --gray-40-rgb: 153, 153, 153;
+  --gray-60: #666666;
+  --gray-60-rgb: 102, 102, 102;
+  --gray-90: #0a0e27;
+  --gray-90-rgb: 10, 14, 39;
+  --gray-95: #0b1724;
+  --gray-95-rgb: 11, 23, 36;
+
+  /* White & Black */
+  --white-rgb: 255, 255, 255;
+  --black-rgb: 0, 0, 0;
+
+  /* --------------------------------------------
+   * Semantic Colors
+   * ----------------------------------------- */
   /* 主色系 */
-  --color-primary: #64b5f6;
-  --color-primary-light: #90caf9;
-  --color-primary-dark: #1e3c72;
-  --color-primary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  --color-primary: var(--blue-50);
+  --color-primary-light: var(--blue-30);
+  --color-primary-dark: var(--blue-80);
+  --color-primary-gradient: linear-gradient(135deg, var(--blue-80) 0%, var(--blue-70) 100%);
 
   /* 功能色 */
-  --color-danger: #ff6b6b;
-  --color-danger-dark: #e05252;
-  --color-success: #2ed573;
-  --color-warning: #ffa726;
-  --color-warning-dark: #e69500;
-  --color-info: #4ecdc4;
-  --color-accent: #95e1d3;
+  --color-danger: var(--red-40);
+  --color-danger-dark: var(--red-60);
+  --color-success: var(--green-50);
+  --color-warning: var(--orange-40);
+  --color-warning-dark: var(--orange-60);
+  --color-info: var(--cyan-50);
+  --color-accent: var(--teal-30);
 
   /* 背景色系 */
-  --color-bg-base: #0a0e27;
-  --color-bg-dark: #0b1724;
-  --color-bg-overlay: rgba(0, 0, 0, 0.1);
-  --color-bg-panel: rgba(0, 0, 0, 0.2);
-  --color-bg-glass: rgba(255, 255, 255, 0.05);
-  --color-bg-glass-hover: rgba(255, 255, 255, 0.08);
-  --color-bg-glass-active: rgba(255, 255, 255, 0.12);
+  --color-bg-base: var(--gray-90);
+  --color-bg-dark: var(--gray-95);
+  --color-bg-overlay: rgba(var(--black-rgb), 0.1);
+  --color-bg-panel: rgba(var(--black-rgb), 0.2);
+  --color-bg-glass: rgba(var(--white-rgb), 0.05);
+  --color-bg-glass-hover: rgba(var(--white-rgb), 0.08);
+  --color-bg-glass-active: rgba(var(--white-rgb), 0.12);
 
   /* 文字色系 */
-  --color-text-primary: #e0e0e0;
-  --color-text-secondary: #b0b0b0;
-  --color-text-muted: #999;
-  --color-text-disabled: #666;
+  --color-text-primary: var(--gray-10);
+  --color-text-secondary: var(--gray-30);
+  --color-text-muted: var(--gray-40);
+  --color-text-disabled: var(--gray-60);
 
   /* 邊框色系 */
-  --color-border-base: rgba(255, 255, 255, 0.1);
-  --color-border-primary: rgba(100, 181, 246, 0.3);
+  --color-border-base: rgba(var(--white-rgb), 0.1);
+  --color-border-primary: rgba(var(--blue-50-rgb), 0.3);
 
   /* 功能色背景 */
-  --color-danger-bg: rgba(255, 107, 107, 0.2);
-  --color-danger-bg-light: rgba(255, 107, 107, 0.1);
-  --color-danger-bg-hover: rgba(255, 107, 107, 0.15);
-  --color-success-bg: rgba(46, 213, 115, 0.2);
-  --color-warning-bg: rgba(255, 167, 38, 0.2);
-  --color-warning-bg-light: rgba(255, 167, 38, 0.1);
-  --color-info-bg: rgba(78, 205, 196, 0.2);
-  --color-info-bg-light: rgba(78, 205, 196, 0.1);
-  --color-info-bg-hover: rgba(78, 205, 196, 0.15);
-  --color-accent-bg: rgba(149, 225, 211, 0.2);
-  --color-primary-bg: rgba(100, 181, 246, 0.2);
-  --color-primary-bg-light: rgba(100, 181, 246, 0.1);
+  --color-danger-bg: rgba(var(--red-40-rgb), 0.2);
+  --color-danger-bg-light: rgba(var(--red-40-rgb), 0.1);
+  --color-danger-bg-hover: rgba(var(--red-40-rgb), 0.15);
+  --color-success-bg: rgba(var(--green-50-rgb), 0.2);
+  --color-warning-bg: rgba(var(--orange-40-rgb), 0.2);
+  --color-warning-bg-light: rgba(var(--orange-40-rgb), 0.1);
+  --color-info-bg: rgba(var(--cyan-50-rgb), 0.2);
+  --color-info-bg-light: rgba(var(--cyan-50-rgb), 0.1);
+  --color-info-bg-hover: rgba(var(--cyan-50-rgb), 0.15);
+  --color-accent-bg: rgba(var(--teal-30-rgb), 0.2);
+  --color-primary-bg: rgba(var(--blue-50-rgb), 0.2);
+  --color-primary-bg-light: rgba(var(--blue-50-rgb), 0.1);
 
   /* 功能色邊框 */
-  --color-danger-border: rgba(255, 107, 107, 0.3);
-  --color-warning-border: rgba(255, 167, 38, 0.4);
-  --color-warning-border-light: rgba(255, 167, 38, 0.3);
-  --color-info-border: rgba(78, 205, 196, 0.4);
-  --color-info-border-light: rgba(78, 205, 196, 0.3);
-  --color-info-border-hover: rgba(78, 205, 196, 0.6);
-  --color-accent-border: rgba(149, 225, 211, 0.3);
+  --color-danger-border: rgba(var(--red-40-rgb), 0.3);
+  --color-warning-border: rgba(var(--orange-40-rgb), 0.4);
+  --color-warning-border-light: rgba(var(--orange-40-rgb), 0.3);
+  --color-info-border: rgba(var(--cyan-50-rgb), 0.4);
+  --color-info-border-light: rgba(var(--cyan-50-rgb), 0.3);
+  --color-info-border-hover: rgba(var(--cyan-50-rgb), 0.6);
+  --color-accent-border: rgba(var(--teal-30-rgb), 0.3);
 
   /* 陰影 */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
-  --shadow-danger: 0 4px 16px rgba(255, 107, 107, 0.3);
-  --shadow-info: 0 4px 16px rgba(78, 205, 196, 0.3);
-  --shadow-info-sm: 0 2px 6px rgba(78, 205, 196, 0.2);
-  --shadow-accent: 0 4px 16px rgba(149, 225, 211, 0.3);
-  --shadow-primary-focus: 0 0 0 2px rgba(100, 181, 246, 0.2);
-  --shadow-pulse-danger-1: 0 0 5px rgba(255, 107, 107, 0.3);
-  --shadow-pulse-danger-2: 0 0 10px rgba(255, 107, 107, 0.5);
-  --shadow-pulse-info-1: 0 0 5px rgba(78, 205, 196, 0.3);
-  --shadow-pulse-info-2: 0 0 10px rgba(78, 205, 196, 0.5);
+  --shadow-sm: 0 2px 8px rgba(var(--black-rgb), 0.3);
+  --shadow-md: 0 4px 12px rgba(var(--black-rgb), 0.3);
+  --shadow-lg: 0 4px 16px rgba(var(--black-rgb), 0.3);
+  --shadow-danger: 0 4px 16px rgba(var(--red-40-rgb), 0.3);
+  --shadow-info: 0 4px 16px rgba(var(--cyan-50-rgb), 0.3);
+  --shadow-info-sm: 0 2px 6px rgba(var(--cyan-50-rgb), 0.2);
+  --shadow-accent: 0 4px 16px rgba(var(--teal-30-rgb), 0.3);
+  --shadow-primary-focus: 0 0 0 2px rgba(var(--blue-50-rgb), 0.2);
+  --shadow-pulse-danger-1: 0 0 5px rgba(var(--red-40-rgb), 0.3);
+  --shadow-pulse-danger-2: 0 0 10px rgba(var(--red-40-rgb), 0.5);
+  --shadow-pulse-info-1: 0 0 5px rgba(var(--cyan-50-rgb), 0.3);
+  --shadow-pulse-info-2: 0 0 10px rgba(var(--cyan-50-rgb), 0.5);
 
   /* 圓角 */
   --radius-sm: 4px;
@@ -102,10 +164,10 @@
   --left-panel-width-tablet: 350px;
 
   /* 捲軸 */
-  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
-  --scrollbar-primary-thumb: rgba(100, 181, 246, 0.4);
-  --scrollbar-primary-thumb-hover: rgba(100, 181, 246, 0.6);
+  --scrollbar-thumb: rgba(var(--white-rgb), 0.2);
+  --scrollbar-thumb-hover: rgba(var(--white-rgb), 0.3);
+  --scrollbar-primary-thumb: rgba(var(--blue-50-rgb), 0.4);
+  --scrollbar-primary-thumb-hover: rgba(var(--blue-50-rgb), 0.6);
 }
 
 /* ============================================
@@ -164,7 +226,7 @@
 .app-title.clickable:hover {
   color: var(--color-primary-light);
   transform: translateX(2px);
-  text-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+  text-shadow: 0 0 10px rgba(var(--blue-50-rgb), 0.3);
 }
 
 .app-title.clickable:active {
@@ -745,7 +807,7 @@
 .back-button:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  background: linear-gradient(135deg, #5568d3 0%, #6b4ba2 100%);
+  background: linear-gradient(135deg, var(--blue-60) 0%, var(--purple-60) 100%);
 }
 
 .back-button:active {
