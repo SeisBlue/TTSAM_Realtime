@@ -56,7 +56,7 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
       radiusScale: 1,
       radiusMinPixels: 5,
       radiusMaxPixels: 8,
-      lineWidthMinPixels: 2,
+      lineWidthMinPixels: 1, // <-- 修改：邊框寬度從 2px 改為 1px
       getPosition: d => d.coordinates,
       getFillColor: d => {
         // 優先使用震度顏色，如果沒有震度數據則使用灰色
@@ -66,10 +66,19 @@ function TaiwanMapDeck({ stations, stationReplacements = {}, stationIntensities 
         // 默認灰色（未知/無數據）
         return [148, 163, 184] // #94a3b8
       },
-      getLineColor: [255, 255, 255],
+      getLineColor: d => {
+        // <-- 修改：邊框顏色邏輯比照圖例
+        // 0 級震度顯示灰色邊框
+        if (d.intensityData && d.intensityData.intensity === '0') {
+          return [176, 176, 176] // var(--gray-30)
+        }
+        // 其他情況不顯示邊框（透明）
+        return [0, 0, 0, 0]
+      },
       onHover: info => setHoverInfo(info.object ? info : null),
       updateTriggers: {
         getFillColor: [stationIntensities, stationReplacements],
+        getLineColor: [stationIntensities], // <-- 新增 trigger
         getPosition: [stations]
       }
     })
