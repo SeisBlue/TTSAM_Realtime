@@ -2,7 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import TaiwanMap from './TaiwanMapDeck'
 import './ReportDetail.css'
-import { getIntensityValue } from '../utils'
+import { getIntensityValue, getIntensityColor } from '../utils'
 
 /**
  * 根據震度字串取得對應的 CSS Class 名稱
@@ -141,7 +141,8 @@ export default function ReportDetail({ report, onBack, targetStations, onSelectR
       if (intensity && intensity !== 'N/A') {
         intensities[key] = {
           intensity: intensity,
-          pga: 0 // 報告中沒有PGA數據，用0代替
+          pga: 0, // 報告中沒有PGA數據，用0代替
+          color: getIntensityColor(intensity) // 新增：計算顏色
         }
       }
     })
